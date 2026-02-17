@@ -1,0 +1,241 @@
+<style>
+  /* =====================================================
+     1. CONFIGURAÇÕES GERAIS E BODY
+     Alinhado com a identidade visual do ecossistema OAB-GO.
+  ===================================================== */
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+  body {
+    background-color: #d1d8db; /* Fundo padrão OAB-GO */
+    font-family: 'Inter', sans-serif;
+    margin: 0;
+    padding: 0;
+  }
+
+  .main-container {
+    padding: 0 20px 20px 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  /* =====================================================
+     2. CABEÇALHO E BARRA DE PESQUISA (FIXO)
+     Card flutuante com sombra suave.
+  ===================================================== */
+  /* Container superior com leve transparência (Blur) */
+  .search-header-container {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    background-color: rgba(209, 216, 219, 0.85); /* Cor do fundo com 85% de opacidade */
+    backdrop-filter: blur(5px); /* Efeito de vidro embaçado para o conteúdo que passa atrás */
+    padding: 20px 0;
+    margin-bottom: 5px;
+  }
+
+  /* Card de Pesquisa com Sombra Moderna */
+  .search-card {
+    background: #ffffff !important;
+    padding: 0 25px;
+    border-radius: 12px;
+    border: none;
+    /* Sombra projetada para dar profundidade (efeito de elevação) */
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15) !important;
+    transition: box-shadow 0.3s ease;
+  }
+
+  /* Efeito leve ao focar na busca */
+  .search-card:focus-within {
+    box-shadow: 0 12px 30px rgba(0,47,93,0.2) !important;
+  }
+
+  /* Reajustando cores dos textos internos para escuro */
+  .search-card .material-icons.prefix, 
+  .search-card input[type=text],
+  .search-card label {
+    color: #002f5d !important;
+  }
+
+  /* Customização de foco nos inputs (Azul OAB) */
+  .input-field input:focus + label {
+    color: #002f5d !important;
+  }
+
+  .input-field input:focus {
+    border-bottom: 1px solid #002f5d !important;
+    box-shadow: 0 1px 0 0 #002f5d !important;
+  }
+
+  .input-field .prefix.active {
+    color: #002f5d !important;
+  }
+
+  /* =====================================================
+     3. LISTA DE MEMBROS (COLLECTION)
+     Hierarquia de dados e alinhamento de ações
+  ===================================================== */
+  /* Card da Lista com Movimento e Interação */
+  .collection-item-membro {
+    background-color: #fff !important;
+    border-radius: 12px !important;
+    margin-bottom: 12px !important;
+    padding: 18px 25px !important;
+    
+    /* Estado inicial do contorno (invisível para não dar salto no hover) */
+    border: 2px solid transparent !important;
+    
+    /* Transições suaves para todos os efeitos */
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    position: relative;
+    cursor: pointer;
+  }
+
+  /* Efeito de Hover: Movimento para cima + Contorno Azul OAB */
+  .collection-item-membro:hover {
+    background-color: #fff !important;
+    
+    /* Movimento leve para cima (Lift effect) */
+    transform: translateY(-5px);
+    
+    /* Adiciona o contorno Azul OAB */
+    border: 2px solid #002f5d !important;
+    
+    /* Aumenta a sombra para acompanhar o movimento */
+    box-shadow: 0 12px 20px rgba(0,0,0,0.12);
+  }
+
+  /* Nome: Principal, maior e Azul Escuro */
+  .membro-info-primary {
+    display: block;
+    font-size: 1.3rem; /* Tamanho maior */
+    font-weight: 700;
+    color: #002f5d; 
+    margin-bottom: 2px;
+    padding-right: 80px; /* Espaço para não colidir com os botões à direita */
+  }
+
+  /* Cargo: Segundo, médio, cinza escuro, negrito e itálico */
+  .membro-info-cargo {
+    display: block;
+    font-size: 1rem;
+    font-weight: 700;
+    font-style: italic;
+    color: #424242; /* Cinza escuro */
+    margin-bottom: 4px;
+  }
+
+  /* Email: Terceiro, menor, cinza escuro */
+  .membro-info-secondary {
+    display: block;
+    font-size: 0.9rem;
+    color: #616161;
+  }
+
+  /* Posicionamento dos botões à direita, alinhados ao Nome */
+  .m-actions-right {
+    position: absolute;
+    right: 20px;
+    top: 18px; /* Alinhamento com o topo (mesma linha do Nome) */
+    display: flex;
+    gap: 10px;
+  }
+
+  .btn-action-flat {
+    cursor: pointer;
+    font-size: 22px;
+    transition: 0.2s;
+  }
+
+  .btn-edit-color { color: #002f5d; }
+  .btn-delete-color { color: #ff0000; }
+  .btn-action-flat:hover { transform: scale(1.2); }
+
+  /* =====================================================
+     4. COMPONENTES DE INTERFACE (TAGS E FAB)
+     Cores institucionais aplicadas a elementos globais.
+  ===================================================== */
+  .oab-blue-bg { 
+    background-color: #002f5d !important; 
+  }
+
+  .tag-custom {
+    font-size: 0.7rem;
+    padding: 3px 12px;
+    border-radius: 50px; /* Estilo Pílula */
+    text-transform: uppercase;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .tag-ativo { background: #e8f5e9; color: #2e7d32; }
+  .tag-inativo { background: #ffebee; color: #ff0000; }
+  .tag-licenciado { background: #fff3e0; color: #ef6c00; }
+
+  /* Forçando a cor Vermelho OAB no botão flutuante */
+  .fixed-action-btn a.btn-large {
+    background-color: #ff0000 !important;
+  }
+
+  /* Efeito ao passar o mouse */
+  .fixed-action-btn a.btn-large:hover {
+    background-color: #cc0000 !important;
+    transform: scale(1.1);
+  }
+
+/* =====================================================
+     5. MODAIS (CADASTRO E CONFIRMAÇÃO)
+     Design limpo com cabeçalhos em azul escuro.
+  ===================================================== */
+  .modal {
+    border-radius: 12px !important;
+    max-height: 85% !important;
+    width: 90% !important;
+    max-width: 850px; /* Largura padrão para o cadastro */
+  }
+
+  /* TAG FALTANTE: Modal de confirmação (tamanho reduzido) */
+  .modal.modal-pequena {
+    max-width: 450px !important; /* Largura menor para alertas */
+    height: auto !important;
+    overflow-y: hidden !important;
+  }
+
+  .modal-content h5 {
+    font-weight: 700;
+    color: #002f5d;
+    margin-bottom: 25px;
+    border-left: 6px solid #ff0000; /* Detalhe em Vermelho */
+    padding-left: 15px;
+    text-transform: uppercase;
+    font-size: 1.2rem;
+  }
+
+  .modal-footer {
+    background-color: #f8f9fa !important;
+    padding: 0 25px 15px 0 !important;
+    height: 70px !important;
+  }
+
+  /* Botão Salvar Estilo OAB */
+  #btnSalvar {
+    background-color: #002f5d !important;
+    border-radius: 50px;
+    font-weight: 700;
+    text-transform: none;
+    padding: 0 25px;
+  }
+
+  #btnSalvar:hover {
+    background-color: #004480 !important;
+  }
+
+  /* Modal de confirmação (Estilo Alerta) */
+  #modalConfirmacao .modal-content h5 {
+    border-left: none;
+    color: #ff0000;
+    text-align: center;
+  }
+  
+</style>

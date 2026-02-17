@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <?!= HtmlService.createHtmlOutputFromFile('FormMembros-style').getContent(); ?>
+  </head>
+  <body>
+
+    <div class="main-container">
+      <!-- Cabeçalho e Busca FIXO -->
+      <div class="search-header-container">
+        <div class="search-card z-depth-2">
+          <div class="row" style="margin-bottom: 0;">
+            <div class="input-field col s12">
+              <i class="material-icons prefix">search</i>
+              <input type="text" id="inputBusca" oninput="filtrarListaMembros()" autocomplete="off">
+              <label for="inputBusca">Pesquisar por nome, cargo ou e-mail...</label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lista de Membros -->
+      <div class="list-wrapper">
+        <div id="loaderLista" class="center-align" style="padding: 20px; display: none;">
+           <div class="preloader-wrapper small active">
+            <div class="spinner-layer spinner-blue-only">
+              <div class="circle-clipper left"><div class="circle"></div></div><div class="gap-patch"><div class="circle"></div></div><div class="circle-clipper right"><div class="circle"></div></div>
+            </div>
+          </div>
+        </div>
+        <div id="listaMembros" class="collection">
+          <!-- Itens carregados via JS -->
+        </div>
+      </div>
+
+      <!-- Botão Adicionar Flutuante -->
+      <div class="fixed-action-btn">
+        <a class="btn-floating btn-large waves-effect waves-light tooltipped" 
+          data-position="left" data-tooltip="Cadastrar Novo Membro"
+          onclick="abrirModalMembro('novo')">
+          <i class="material-icons">add</i>
+        </a>
+      </div>
+
+    <!-- MODAL DE CADASTRO / EDIÇÃO -->
+    <div id="modalMembro" class="modal">
+      <div class="modal-content">
+        <div class="row">
+          <div class="col s12">
+            <h5 id="modalTitulo">Cadastrar Membro</h5>
+          </div>
+        </div>
+        
+        <form id="formMembro" autocomplete="off">
+          <input type="hidden" id="f_Id">
+          
+          <div class="row">
+            <div class="input-field col s12 m8">
+              <input id="f_Nome" type="text" required>
+              <label for="f_Nome">Nome Completo *</label>
+            </div>
+            <div class="input-field col s12 m4">
+              <select id="f_Genero" required>
+                <option value="" disabled selected>Selecione...</option>
+                <option value="Masculino">Masculino</option>
+                <option value="Feminino">Feminino</option>
+                <option value="Outro">Outro</option>
+              </select>
+              <label>Gênero *</label>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="input-field col s12 m7">
+              <input id="f_Email" type="email" autocomplete="one-time-code">
+              <label for="f_Email">E-mail</label>
+            </div>
+            <div class="input-field col s12 m5">
+              <input id="f_Cargo" type="text" class="autocomplete" autocomplete="off">
+              <label for="f_Cargo">Cargo</label>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-close waves-effect waves-red btn-flat">Cancelar</button>
+        <button id="btnSalvar" class="waves-effect waves-light btn" onclick="salvarMembroJS()">
+          <i class="material-icons left">save</i>Salvar Registro
+        </button>
+      </div>
+    </div>
+
+    <!-- MODAL DE CONFIRMAÇÃO GENÉRICO -->
+    <div id="modalConfirmacao" class="modal modal-pequena">
+      <div class="modal-content center-align">
+        <i id="iconConfirmacao" class="material-icons large amber-text text-darken-2">help_outline</i>
+        <h5 id="tituloConfirmacao">Confirmação</h5>
+        <p id="msgConfirmacao">Deseja realmente prosseguir com esta ação?</p>
+      </div>
+      <div class="modal-footer center-align" style="display: flex; justify-content: center; gap: 10px; padding-bottom: 20px;">
+        <button class="modal-close waves-effect waves-grey btn-flat grey lighten-4">Cancelar</button>
+        <button id="btnConfirmarAcao" class="waves-effect waves-light btn blue darken-4">Confirmar</button>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+    <?!= HtmlService.createHtmlOutputFromFile('FormMembros-js').getContent(); ?>
+  </body>
+</html> 

@@ -1,0 +1,268 @@
+<script>
+/**
+ * Lógica Frontend do Cadastro de Membros
+ */
+let baseDadosMembros = [];
+let listaCargosAutocomplete = {};
+
+document.addEventListener('DOMContentLoaded', function() {
+  M.AutoInit();
+  carregarMembrosJS();
+});
+
+function novoIdTimeStampJS() {
+  const ano = new Date().getFullYear() - 2025;
+  const ms = Date.now() % 46656000000;
+  return ano.toString(36) + ms.toString(36).padStart(5, '0');
+}
+
+/**
+ * Função Auxiliar para buscar valores no objeto de forma insensível a caso e espaços
+ */
+function obterValor(obj, chaveAlvo) {
+  if (!obj) return "";
+  const alvoBusca = chaveAlvo.toLowerCase().trim();
+  const chaveReal = Object.keys(obj).find(k => k.toLowerCase().trim() === alvoBusca);
+  return chaveReal ? obj[chaveReal] : "";
+}
+
+function carregarMembrosJS() {
+  const loader = document.getElementById('loaderLista');
+  const lista = document.getElementById('listaMembros');
+ 
+  loader.style.display = 'block';
+  lista.style.opacity = '0.5';
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      // 'res' agora contém as duas propriedades: membros e cargos
+      baseDadosMembros = res.membros || [];
+      listaCargosAutocomplete = res.cargos || {};
+     
+      loader.style.display = 'none';
+      lista.style.opacity = '1';
+     
+      // Renderiza a lista usando apenas o array de membros
+      renderizarLista(baseDadosMembros);
+    })
+    .withFailureHandler(function(err) {
+      M.toast({html: 'Erro ao carregar dados', classes: 'red'});
+      loader.style.display = 'none';
+    })
+    .buscarMembrosMacro();
+}
+
+function renderizarLista(dados) {
+  const container = document.getElementById('listaMembros');
+  container.innerHTML = '';
+
+  // Se 'dados' for um array vazio (busca sem resultados), entra aqui
+  if (!dados || dados.length === 0) {
+    container.innerHTML = `
+      <div class="center-align grey-text" style="padding:40px;">
+        <i class="material-icons" style="font-size: 40px; display: block; margin-bottom: 10px;">search_off</i>
+        Nenhum registro encontrado para esta busca.
+      </div>`;
+    return;
+  }
+
+  dados.forEach(m => {
+    // CAPTURA DE DADOS (Ajustado para bater com as chaves do backend)
+    const id = obterValor(m, "Id");
+    const nome = obterValor(m, "Nome");
+    const cargo = obterValor(m, "Cargo");
+    const email = obterValor(m, "Email"); // Removido o hífen para garantir a leitura
+    const situacao = obterValor(m, "Situação");
+
+    const item = document.createElement('div');
+    item.className = 'collection-item collection-item-membro';
+    item.ondblclick = () => abrirModalMembro('editar', id);
+
+    // Lógica das Tags (Ativo/Inativo)
+    let tagsHtml = '';
+    const sitLower = situacao.toString().toLowerCase();
+    if (sitLower === "ativo") {
+      tagsHtml += `<span class="tag-custom tag-ativo"><i class="material-icons" style="font-size:10px; margin-right:4px;">check_circle</i>Ativo</span>`;
+    } else if (sitLower === "inativo") {
+      tagsHtml += `<span class="tag-custom tag-inativo">Inativo</span>`;
+    }
+
+    // MONTAGEM DO HTML COM A HIERARQUIA SOLICITADA
+    item.innerHTML = `
+      <div class="membro-content">
+        <span class="membro-info-primary">${nome || "Sem Nome"}</span>
+        <span class="membro-info-cargo">${cargo || "Sem Cargo"}</span>
+        <span class="membro-info-secondary">${email || "E-mail não informado"}</span>
+        <div class="tags-container">${tagsHtml}</div>
+      </div>
+     
+      <div class="m-actions-right">
+        <i class="material-icons btn-action-flat btn-edit-color"
+           title="Editar"
+           onclick="event.stopPropagation(); abrirModalMembro('editar', '${id}')">edit</i>
+        <i class="material-icons btn-action-flat btn-delete-color"
+           title="Excluir"
+           onclick="event.stopPropagation(); confirmarExclusao('${id}', '${(nome || "").replace(/'/g, "\\'")}')">delete_sweep</i>
+      </div>
+    `;
+
+    container.appendChild(item);
+  });
+}
+
+function filtrarListaMembros() {
+  const termo = document.getElementById('inputBusca').value.toLowerCase();
+  const filtrados = baseDadosMembros.filter(m => {
+    const nome = obterValor(m, "Nome").toString().toLowerCase();
+    const cargo = obterValor(m, "Cargo").toString().toLowerCase();
+    const email = obterValor(m, "Email").toString().toLowerCase();
+    return nome.includes(termo) || cargo.includes(termo) || email.includes(termo);
+  });
+  renderizarLista(filtrados);
+}
+
+/**
+ * Abertura do Modal
+ */
+
+/**
+ * Gerencia a abertura do modal em modo Criação ou Edição (Instantâneo)
+ */
+function abrirModalMembro(modo, id = null) {
+  const form = document.getElementById('formMembro');
+  form.reset();
+  
+  const elemCargo = document.getElementById('f_Cargo');
+  const titulo = document.getElementById('modalTitulo');
+
+  if (modo === 'novo') {
+    titulo.innerText = 'Cadastrar Novo Membro';
+    document.getElementById('f_Id').value = '';
+  } else {
+    titulo.innerText = 'Visualização e Edição Completa';
+    
+    // Busca rápida no cache local
+    const m = baseDadosMembros.find(x => obterValor(x, "Id").toString() === (id ? id.toString() : ""));
+    
+    if (m) {
+      document.getElementById('f_Id').value = obterValor(m, "Id");
+      document.getElementById('f_Nome').value = obterValor(m, "Nome");
+      document.getElementById('f_Email').value = obterValor(m, "Email");
+      document.getElementById('f_Genero').value = obterValor(m, "Gênero");
+      document.getElementById('f_Cargo').value = obterValor(m, "Cargo");
+    }
+  }
+
+  // Inicializa o Autocomplete IMEDIATAMENTE com os cargos do cache inicial
+  M.Autocomplete.init(elemCargo, { 
+    data: listaCargosAutocomplete,
+    minLength: 1,
+    limit: 5 
+  });
+
+  // Atualiza componentes visuais do Materialize
+  M.updateTextFields();
+  M.FormSelect.init(document.querySelectorAll('select'));
+  
+  // Abre o modal de forma segura
+  const modalElem = document.getElementById('modalMembro');
+  const instance = M.Modal.getInstance(modalElem) || M.Modal.init(modalElem);
+  instance.open();
+}
+
+/**
+ * Envia os dados para salvamento no Backend
+ */
+function salvarMembroJS() {
+  const nome = document.getElementById('f_Nome').value;
+  const genero = document.getElementById('f_Genero').value;
+  const cargo = document.getElementById('f_Cargo').value; // ESTA LINHA FALTAVA OU ESTAVA INCOMPLETA
+
+  // Validação: Apenas Nome e Gênero são obrigatórios
+  if (!nome || !genero) {
+    return M.toast({html: 'Nome e Gênero são obrigatórios!', classes: 'red'});
+  }
+
+  const btn = document.getElementById('btnSalvar');
+  btn.disabled = true;
+  btn.innerHTML = 'Processando...';
+
+  let idFinal = document.getElementById('f_Id').value || novoIdTimeStampJS();
+
+  const dados = {
+    "Id": idFinal,
+    "Nome": nome,
+    "Email": document.getElementById('f_Email').value,
+    "Gênero": genero, // Usando a variável capturada acima
+    "Cargo": cargo   // Usando a variável capturada acima
+  };
+
+  google.script.run
+    .withSuccessHandler(function() {
+      M.toast({html: 'Sucesso!', classes: 'green darken-2'});
+      btn.disabled = false;
+      btn.innerHTML = '<i class="material-icons left">save</i>Salvar Registro';
+      const inst = M.Modal.getInstance(document.getElementById('modalMembro'));
+      if(inst) inst.close();
+      carregarMembrosJS();
+    })
+    .withFailureHandler(function(err){
+      console.error(err);
+      M.toast({html: 'Erro: ' + err.message, classes: 'red'});
+      btn.disabled = false;
+      btn.innerHTML = '<i class="material-icons left">save</i>Salvar Registro';
+    })
+    .salvarMembroMacro(dados);
+}
+
+function formatarDataParaInput(dataStr) {
+  if (!dataStr) return "";
+  const d = new Date(dataStr);
+  if (isNaN(d.getTime())) return "";
+  const ano = d.getUTCFullYear();
+  const mes = (d.getUTCMonth() + 1).toString().padStart(2, '0');
+  const dia = d.getUTCDate().toString().padStart(2, '0');
+  return `${ano}-${mes}-${dia}`;
+}
+
+/**
+ * Função de Central de Confirmação customizada
+ */
+function exibirConfirmacao(titulo, mensagem, icone, callback) {
+  const modal = document.getElementById('modalConfirmacao');
+  const btnConfirmar = document.getElementById('btnConfirmarAcao');
+ 
+  document.getElementById('tituloConfirmacao').innerText = titulo;
+  document.getElementById('msgConfirmacao').innerText = mensagem;
+  document.getElementById('iconConfirmacao').innerText = icone;
+ 
+  // Limpa eventos anteriores para não duplicar ações
+  const novoBtn = btnConfirmar.cloneNode(true);
+  btnConfirmar.parentNode.replaceChild(novoBtn, btnConfirmar);
+ 
+  novoBtn.onclick = function() {
+    M.Modal.getInstance(modal).close();
+    callback();
+  };
+ 
+  M.Modal.getInstance(modal).open();
+}
+
+/**
+ * Solicita exclusão com Modal customizado
+ */
+function confirmarExclusao(id, nome) {
+  exibirConfirmacao(
+    'Pensa bem!',
+    `Esta ação irá remover permanentemente o registro de\n${nome}\n\n` +
+    'Deseja mesmo continuar?',
+    'delete_forever',
+    function() {
+      google.script.run.withSuccessHandler(function() {
+        M.toast({html: 'Registro removido com sucesso.'});
+        carregarMembrosJS();
+      }).excluirMembroMacro(id);
+    }
+  );
+}
+</script>
