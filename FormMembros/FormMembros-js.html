@@ -8,7 +8,27 @@ let listaCargosAutocomplete = {};
 document.addEventListener('DOMContentLoaded', function() {
   M.AutoInit();
   carregarMembrosJS();
+
+  // Inicializa o Botão Flutuante com Menu
+  var fab = document.querySelectorAll('.fixed-action-btn');
+  M.FloatingActionButton.init(fab, {
+    hoverEnabled: true, // Abre ao passar o mouse
+    direction: 'top'    // Abre para cima
+  });
+
+  // Inicializa as Tooltips (Dicas de texto)
+  var tooltips = document.querySelectorAll('.tooltipped');
+  M.Tooltip.init(tooltips);
 });
+
+// Funções de "Placeholder" para as novas ferramentas não darem erro
+function abrirModalGenero() {
+  M.toast({html: 'Funcionalidade Inserir Gênero em breve...', classes: 'amber darken-4'});
+}
+
+function atualizarDadosOAB() {
+  M.toast({html: 'Sincronização com OAB em desenvolvimento...', classes: 'green darken-4'});
+}
 
 function novoIdTimeStampJS() {
   const ano = new Date().getFullYear() - 2025;
@@ -265,4 +285,36 @@ function confirmarExclusao(id, nome) {
     }
   );
 }
+
+  // Esta função é chamada pelo clique no botão do Layout
+  function atualizarDadosOAB() {
+    // 1. Feedback visual imediato
+    M.toast({html: 'Iniciando sincronização com site da OAB...', classes: 'blue'});
+    
+    // Opcional: Mostrar o loader que você já tem no topo da lista
+    document.getElementById('loaderLista').style.display = 'block';
+    document.getElementById('listaMembros').style.opacity = '0.5';
+
+    // 2. Chama a função do Servidor (GS)
+    google.script.run
+      .withSuccessHandler(function(mensagem) {
+        // Quando terminar com sucesso:
+        M.toast({html: mensagem, classes: 'green'});
+        
+        // Esconde o loader e atualiza a lista na tela para mostrar os novos nomes
+        document.getElementById('loaderLista').style.display = 'none';
+        document.getElementById('listaMembros').style.opacity = '1';
+        
+        // Chama sua função que recarrega a lista de membros no formulário
+        carregarMembrosJS(); 
+      })
+      .withFailureHandler(function(erro) {
+        // Se der algum erro (site fora do ar, etc)
+        M.toast({html: 'Erro na sincronização: ' + erro, classes: 'red'});
+        document.getElementById('loaderLista').style.display = 'none';
+        document.getElementById('listaMembros').style.opacity = '1';
+      })
+      .sincronizaMembrosSiteOAB(); // Nome novo da sua função no arquivo .gs
+  }
+
 </script>

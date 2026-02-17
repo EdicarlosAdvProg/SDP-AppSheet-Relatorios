@@ -49,21 +49,20 @@
     box-shadow: 0 12px 30px rgba(0,47,93,0.2) !important;
   }
 
-  /* Reajustando cores dos textos internos para escuro */
   .search-card .material-icons.prefix, 
   .search-card input[type=text],
   .search-card label {
-    color: #002f5d !important;
+    color: #004480 !important; /* Azul OAB da barra lateral */
   }
 
-  /* Customização de foco nos inputs (Azul OAB) */
+  /* Foco nos inputs */
   .input-field input:focus + label {
-    color: #002f5d !important;
+    color: #004480 !important;
   }
 
   .input-field input:focus {
-    border-bottom: 1px solid #002f5d !important;
-    box-shadow: 0 1px 0 0 #002f5d !important;
+    border-bottom: 1px solid #004480 !important;
+    box-shadow: 0 1px 0 0 #004480 !important;
   }
 
   .input-field .prefix.active {
@@ -110,7 +109,7 @@
     display: block;
     font-size: 1.3rem; /* Tamanho maior */
     font-weight: 700;
-    color: #002f5d; 
+    color: #004480; /* Azul OAB */ 
     margin-bottom: 2px;
     padding-right: 80px; /* Espaço para não colidir com os botões à direita */
   }
@@ -147,8 +146,8 @@
     transition: 0.2s;
   }
 
-  .btn-edit-color { color: #002f5d; }
-  .btn-delete-color { color: #ff0000; }
+  .btn-edit-color { color: #004480; }
+  .btn-delete-color { color: #ff0000; } /* Vermelho OAB */
   .btn-action-flat:hover { transform: scale(1.2); }
 
   /* =====================================================
@@ -173,15 +172,32 @@
   .tag-inativo { background: #ffebee; color: #ff0000; }
   .tag-licenciado { background: #fff3e0; color: #ef6c00; }
 
-  /* Forçando a cor Vermelho OAB no botão flutuante */
-  .fixed-action-btn a.btn-large {
-    background-color: #ff0000 !important;
+  /* CONFIGURAÇÃO DO BOTÃO FLUTUANTE */
+
+  /* Cor principal do FAB e sub-botões */
+  .fixed-action-btn .btn-floating {
+    background-color: #ff0000 !important; /* Vermelho OAB Puro */
   }
 
-  /* Efeito ao passar o mouse */
-  .fixed-action-btn a.btn-large:hover {
-    background-color: #cc0000 !important;
-    transform: scale(1.1);
+  /* Efeito de Crescidinha (Zoom) */
+  .btn-hover-zoom {
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+  }
+
+  .btn-hover-zoom:hover {
+    transform: scale(1.2) !important;
+    /* No hover, usamos o azul de interação da barra lateral */
+    background-color: #002f5d !important; 
+  }
+
+  /* Ajuste para o botão principal também crescer levemente ao abrir */
+  .fixed-action-btn > a:hover {
+    transform: scale(1.05);
+  }
+
+  /* Customização das Tooltips (Dicas) */
+  .material-tooltip {
+    background-color: #004480 !important; /* Azul OAB */
   }
 
 /* =====================================================
@@ -204,9 +220,9 @@
 
   .modal-content h5 {
     font-weight: 700;
-    color: #002f5d;
+    color: #004480;
+    border-left: 6px solid #ff0000; /* Detalhe em Vermelho Puro */
     margin-bottom: 25px;
-    border-left: 6px solid #ff0000; /* Detalhe em Vermelho */
     padding-left: 15px;
     text-transform: uppercase;
     font-size: 1.2rem;
@@ -220,7 +236,7 @@
 
   /* Botão Salvar Estilo OAB */
   #btnSalvar {
-    background-color: #002f5d !important;
+    background-color: #004480 !important; /* Azul OAB */
     border-radius: 50px;
     font-weight: 700;
     text-transform: none;
@@ -228,7 +244,7 @@
   }
 
   #btnSalvar:hover {
-    background-color: #004480 !important;
+    background-color: #002f5d !important; /* Azul de interação */
   }
 
   /* Modal de confirmação (Estilo Alerta) */

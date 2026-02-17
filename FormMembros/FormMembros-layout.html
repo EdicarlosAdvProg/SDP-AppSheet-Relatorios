@@ -38,11 +38,34 @@
 
       <!-- Botão Adicionar Flutuante -->
       <div class="fixed-action-btn">
-        <a class="btn-floating btn-large waves-effect waves-light tooltipped" 
-          data-position="left" data-tooltip="Cadastrar Novo Membro"
-          onclick="abrirModalMembro('novo')">
-          <i class="material-icons">add</i>
+        <a class="btn-floating btn-large btn-oab-red">
+          <i class="large material-icons">menu</i>
         </a>
+        <ul>
+          <li>
+            <a class="btn-floating btn-oab-red tooltipped btn-hover-zoom" 
+              data-position="left" data-tooltip="Inserir gênero"
+              onclick="abrirModalGenero()">
+              <i class="material-icons">transgender</i>
+            </a>
+          </li>
+          
+          <li>
+            <a class="btn-floating btn-oab-red tooltipped btn-hover-zoom" 
+              data-position="left" data-tooltip="Atualizar com site da OAB"
+              onclick="atualizarDadosOAB()">
+              <i class="material-icons">sync</i>
+            </a>
+          </li>
+          
+          <li>
+            <a class="btn-floating btn-oab-red tooltipped btn-hover-zoom" 
+              data-position="left" data-tooltip="Adicionar membro"
+              onclick="abrirModalMembro('novo')">
+              <i class="material-icons">person_add</i>
+            </a>
+          </li>
+        </ul>
       </div>
 
     <!-- MODAL DE CADASTRO / EDIÇÃO -->
@@ -67,7 +90,6 @@
                 <option value="" disabled selected>Selecione...</option>
                 <option value="Masculino">Masculino</option>
                 <option value="Feminino">Feminino</option>
-                <option value="Outro">Outro</option>
               </select>
               <label>Gênero *</label>
             </div>
@@ -109,4 +131,4 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
     <?!= HtmlService.createHtmlOutputFromFile('FormMembros-js').getContent(); ?>
   </body>
-</html> 
+</html>
