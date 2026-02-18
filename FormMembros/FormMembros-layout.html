@@ -1,72 +1,79 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <base target="_top">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <?!= HtmlService.createHtmlOutputFromFile('FormMembros-style').getContent(); ?>
-  </head>
-  <body>
 
-    <div class="main-container">
-      <!-- Cabeçalho e Busca FIXO -->
-      <div class="search-header-container">
-        <div class="search-card z-depth-2">
-          <div class="row" style="margin-bottom: 0;">
-            <div class="input-field col s12">
-              <i class="material-icons prefix">search</i>
-              <input type="text" id="inputBusca" oninput="filtrarListaMembros()" autocomplete="off">
-              <label for="inputBusca">Pesquisar por nome, cargo ou e-mail...</label>
+<head>
+  <base target="_top">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <?!= HtmlService.createHtmlOutputFromFile('FormMembros-style').getContent(); ?>
+</head>
+
+<body>
+
+  <div class="main-container">
+    <!-- Cabeçalho e Busca FIXO -->
+    <div class="search-header-container">
+      <div class="search-card z-depth-2">
+        <div class="row" style="margin-bottom: 0;">
+          <div class="input-field col s12">
+            <i class="material-icons prefix">search</i>
+            <input type="text" id="inputBusca" oninput="filtrarListaMembros()" autocomplete="off">
+            <label for="inputBusca">Pesquisar por nome, cargo ou e-mail...</label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Lista de Membros -->
+    <div class="list-wrapper">
+      <div id="loaderLista" class="center-align" style="padding: 20px; display: none;">
+        <div class="preloader-wrapper small active">
+          <div class="spinner-layer spinner-blue-only">
+            <div class="circle-clipper left">
+              <div class="circle"></div>
+            </div>
+            <div class="gap-patch">
+              <div class="circle"></div>
+            </div>
+            <div class="circle-clipper right">
+              <div class="circle"></div>
             </div>
           </div>
         </div>
       </div>
-
-      <!-- Lista de Membros -->
-      <div class="list-wrapper">
-        <div id="loaderLista" class="center-align" style="padding: 20px; display: none;">
-           <div class="preloader-wrapper small active">
-            <div class="spinner-layer spinner-blue-only">
-              <div class="circle-clipper left"><div class="circle"></div></div><div class="gap-patch"><div class="circle"></div></div><div class="circle-clipper right"><div class="circle"></div></div>
-            </div>
-          </div>
-        </div>
-        <div id="listaMembros" class="collection">
-          <!-- Itens carregados via JS -->
-        </div>
+      <div id="listaMembros" class="collection">
+        <!-- Itens carregados via JS -->
       </div>
+    </div>
 
-      <!-- Botão Adicionar Flutuante -->
-      <div class="fixed-action-btn">
-        <a class="btn-floating btn-large btn-oab-red">
-          <i class="large material-icons">menu</i>
-        </a>
-        <ul>
-          <li>
-            <a class="btn-floating btn-oab-red tooltipped btn-hover-zoom" 
-              data-position="left" data-tooltip="Inserir gênero"
-              onclick="abrirModalGenero()">
-              <i class="material-icons">transgender</i>
-            </a>
-          </li>
-          
-          <li>
-            <a class="btn-floating btn-oab-red tooltipped btn-hover-zoom" 
-              data-position="left" data-tooltip="Atualizar com site da OAB"
-              onclick="atualizarDadosOAB()">
-              <i class="material-icons">sync</i>
-            </a>
-          </li>
-          
-          <li>
-            <a class="btn-floating btn-oab-red tooltipped btn-hover-zoom" 
-              data-position="left" data-tooltip="Adicionar membro"
-              onclick="abrirModalMembro('novo')">
-              <i class="material-icons">person_add</i>
-            </a>
-          </li>
-        </ul>
-      </div>
+    <!-- Botão Adicionar Flutuante -->
+    <div class="fixed-action-btn">
+      <a class="btn-floating btn-large btn-oab-red">
+        <i class="large material-icons">menu</i>
+      </a>
+      <ul>
+        <li>
+          <a class="btn-floating btn-oab-red tooltipped btn-hover-zoom" data-position="left"
+            data-tooltip="Inserir gênero" onclick="abrirModalGenero()">
+            <i class="material-icons">transgender</i>
+          </a>
+        </li>
+
+        <li>
+          <a class="btn-floating btn-oab-red tooltipped btn-hover-zoom" data-position="left"
+            data-tooltip="Atualizar com site da OAB" onclick="atualizarDadosOAB()">
+            <i class="material-icons">sync</i>
+          </a>
+        </li>
+
+        <li>
+          <a class="btn-floating btn-oab-red tooltipped btn-hover-zoom" data-position="left"
+            data-tooltip="Adicionar membro" onclick="abrirModalMembro('novo')">
+            <i class="material-icons">person_add</i>
+          </a>
+        </li>
+      </ul>
+    </div>
 
     <!-- MODAL DE CADASTRO / EDIÇÃO -->
     <div id="modalMembro" class="modal">
@@ -76,10 +83,10 @@
             <h5 id="modalTitulo">Cadastrar Membro</h5>
           </div>
         </div>
-        
+
         <form id="formMembro" autocomplete="off">
           <input type="hidden" id="f_Id">
-          
+
           <div class="row">
             <div class="input-field col s12 m8">
               <input id="f_Nome" type="text" required>
@@ -115,6 +122,41 @@
       </div>
     </div>
 
+    <!-- MODAL PARA INSERÇÃO RÁPIDA DE GÊNERO -->
+    <div id="modalRapidoGenero" class="modal modal-pequena" style="border-radius: 8px;">
+      <div class="modal-content center-align">
+        <h5 style="border-left: 6px solid #004480; padding-left: 15px; color: #004480; font-weight: 700;">
+          Definição de Gênero
+        </h5>
+        <p class="grey-text">Use o teclado (F para Feminino; M para Masculino) ou clique nos botões abaixo.</p>
+
+        <div style="margin: 30px 0; background: #f5f5f5; padding: 20px; border-radius: 5px;">
+          <h6 id="nomeMembroRapido" style="font-weight: 700; font-size: 1.4rem; color: #333;">---</h6>
+        </div>
+
+        <div style="display: flex; justify-content: center; gap: 20px;">
+          <button class="btn-large waves-effect waves-light btn-hover-zoom"
+            style="background-color: #ff0000 !important;" onclick="atribuirGeneroRapido('Feminino')">
+            <i class="material-icons left">female</i>Feminino
+          </button>
+
+          <button class="btn-large waves-effect waves-light btn-hover-zoom"
+            style="background-color: #004480 !important;" onclick="atribuirGeneroRapido('Masculino')">
+            <i class="material-icons left">male</i>Masculino
+          </button>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="background-color: #fafafa; border-top: 1px solid #e0e0e0;">
+        <span class="left grey-text" id="progressoGenero"
+          style="padding-left: 20px; line-height: 50px; font-weight: 500;">0 de 0</span>
+        <button class="waves-effect waves-light btn-flat grey-text text-darken-2" onclick="finalizarAtribuicaoRapida()"
+          style="margin-top: 7px; margin-right: 15px; font-weight: 600;">
+          Parar e Salvar (Esc)
+        </button>
+      </div>
+    </div>
+
     <!-- MODAL DE CONFIRMAÇÃO GENÉRICO -->
     <div id="modalConfirmacao" class="modal modal-pequena">
       <div class="modal-content center-align">
@@ -122,7 +164,8 @@
         <h5 id="tituloConfirmacao">Confirmação</h5>
         <p id="msgConfirmacao">Deseja realmente prosseguir com esta ação?</p>
       </div>
-      <div class="modal-footer center-align" style="display: flex; justify-content: center; gap: 10px; padding-bottom: 20px;">
+      <div class="modal-footer center-align"
+        style="display: flex; justify-content: center; gap: 10px; padding-bottom: 20px;">
         <button class="modal-close waves-effect waves-grey btn-flat grey lighten-4">Cancelar</button>
         <button id="btnConfirmarAcao" class="waves-effect waves-light btn blue darken-4">Confirmar</button>
       </div>
@@ -130,5 +173,6 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
     <?!= HtmlService.createHtmlOutputFromFile('FormMembros-js').getContent(); ?>
-  </body>
+</body>
+
 </html>

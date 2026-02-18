@@ -13,7 +13,7 @@ function abrirFormMembros() {
     .setTitle('Gestão de Membros')
     .setWidth(900)
     .setHeight(600);
-  
+
   DocumentApp.getUi().showModalDialog(html, 'Membros cadastrados e empossados');
 }
 
@@ -23,23 +23,23 @@ function abrirFormMembros() {
 function buscarMembrosMacro() {
   try {
     // CORREÇÃO 1: Usar PLANILHA_DADOS_ID (conforme seu Startup.gs)
-    const ss = SpreadsheetApp.openById(PLANILHA_DADOS_ID); 
+    const ss = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
     const sheet = ss.getSheetByName("tabMembros");
-    
+
     if (!sheet) throw new Error("Aba 'tabMembros' não encontrada.");
 
     // CORREÇÃO 2: Passar o objeto 'sheet' para a função de mapeamento
-    const mapa = getMapaColunas(sheet); 
+    const mapa = getMapaColunas(sheet);
     const dadosPlena = sheet.getDataRange().getValues();
-    
+
     const listaMembros = [];
     const cargosSet = new Set();
 
     if (dadosPlena.length > 1) {
       const cabecalhos = dadosPlena[0];
-      
+
       // CORREÇÃO 3: Buscar o índice da coluna usando o mapa (que está em lowercase)
-      const colunaCargoIndex = mapa["cargo"] - 1; 
+      const colunaCargoIndex = mapa["cargo"] - 1;
 
       for (let i = 1; i < dadosPlena.length; i++) {
         let linha = {};
@@ -78,7 +78,7 @@ function salvarMembroMacro(dados) {
   try {
     const ss = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
     let sheet = ss.getSheetByName("tabMembros");
-    
+
     // No backend (salvarMembroMacro), a lista de colunas oficiais deve ser:
     const colunasOficiais = ["Id", "Nome", "Email", "Gênero", "Cargo"];
 
@@ -89,7 +89,7 @@ function salvarMembroMacro(dados) {
 
     const mapa = getMapaColunas(sheet);
     const fullData = sheet.getDataRange().getValues();
-    
+
     const buscarNoObjeto = (chavePlanilha) => {
       const alvo = chavePlanilha.toLowerCase().trim();
       const realKey = Object.keys(dados).find(k => k.toLowerCase().trim() === alvo);
@@ -127,7 +127,7 @@ function salvarMembroMacro(dados) {
       if (nomeColuna.toLowerCase().includes("data") && val) {
         val = new Date(val);
       }
-      
+
       valoresLinha[colIdx] = val || "";
     });
 
@@ -154,10 +154,10 @@ function excluirMembroMacro(id) {
 
     const data = sheet.getDataRange().getValues();
     const mapa = getMapaColunas(sheet);
-    
+
     const idColKey = Object.keys(mapa).find(k => k.toLowerCase().trim() === "id");
     if (!idColKey) throw new Error("Coluna de ID não mapeada na planilha.");
-    
+
     const idColIndex = mapa[idColKey] - 1;
     let registroExcluido = false;
 
@@ -165,7 +165,7 @@ function excluirMembroMacro(id) {
       if (String(data[i][idColIndex]).trim() === String(id).trim()) {
         sheet.deleteRow(i + 1);
         registroExcluido = true;
-        break; 
+        break;
       }
     }
 
@@ -187,7 +187,7 @@ function excluirMembroMacro(id) {
 function PainelLateral_abrirMembros() {
   // Fecha o painel lateral antes de abrir o modal (opcional)
   // SpreadsheetApp.getUi().showSidebar(HtmlService.createHtmlOutput(''));
-  
+
   abrirFormMembros();
   return true;
 }
@@ -200,7 +200,7 @@ function sincronizaMembrosSiteOAB() {
   const url = "https://www.oabgo.org.br/comissao/sistema-de-defesa-das-prerrogativas-sdp/";
   const ss = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
   const sheet = ss.getSheetByName("tabMembros");
-  
+
   let pageContent;
   try {
     pageContent = UrlFetchApp.fetch(url, { muteHttpExceptions: true }).getContentText();
@@ -215,10 +215,10 @@ function sincronizaMembrosSiteOAB() {
   const htmlLista = matchAba[1];
   const regexParagrafos = /<p>([\s\S]*?)<\/p>/gi;
   let parágrafo;
-  
+
   // Usaremos um objeto para guardar Arrays de cargos: { "Nome": ["Cargo1", "Cargo2"] }
   const dicionarioMembros = {};
-  let cargoAtual = "Membro"; 
+  let cargoAtual = "Membro";
 
   const cargoKeywords = [
     "vice", "presidente", "secretário", "secretários", "secretária", "secretaria",
@@ -230,7 +230,7 @@ function sincronizaMembrosSiteOAB() {
   while ((parágrafo = regexParagrafos.exec(htmlLista)) !== null) {
     let conteudo = parágrafo[1];
     const matchCargo = conteudo.match(/<strong>(.*?)<\/strong>/i);
-    
+
     if (matchCargo) {
       cargoAtual = matchCargo[1].replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
       conteudo = conteudo.replace(/<strong>.*?<\/strong>/i, '');
@@ -279,11 +279,11 @@ function sincronizaMembrosSiteOAB() {
 
     listaFinalNomes.forEach(nome => {
       idAtual = gerarProximoIdIncremental(idAtual);
-      
+
       // FORMATAÇÃO GRAMATICAL: "cargo1, cargo2 e cargo3"
       const listaCargos = dicionarioMembros[nome];
       let cargosFormatados = "";
-      
+
       if (listaCargos.length === 1) {
         cargosFormatados = listaCargos[0];
       } else if (listaCargos.length > 1) {
@@ -333,4 +333,28 @@ function novoIdTimeStamp() {
   const ano = new Date().getFullYear() - 2025;
   const ms = Date.now() % 46656000000;
   return ano.toString(36) + ms.toString(36).padStart(5, '0');
+}
+
+function salvarGenerosEmMassa(listaNovosGeneros) {
+  const ss = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
+  const sheet = ss.getSheetByName("tabMembros");
+  const dados = sheet.getDataRange().getValues();
+  const mapa = getMapaColunas(sheet);
+
+  const colId = mapa["id"] - 1;
+  const colGen = mapa["gênero"] - 1;
+
+  // Cria um objeto para busca rápida dos novos gêneros
+  const dePara = {};
+  listaNovosGeneros.forEach(item => dePara[item.id] = item.genero);
+
+  // Percorre a planilha e atualiza apenas os IDs que estão na lista
+  for (let i = 1; i < dados.length; i++) {
+    const idAtual = dados[i][colId];
+    if (dePara[idAtual]) {
+      sheet.getRange(i + 1, colGen + 1).setValue(dePara[idAtual]);
+    }
+  }
+
+  return "Gêneros atualizados com sucesso!";
 }

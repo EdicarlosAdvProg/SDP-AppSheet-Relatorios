@@ -6,7 +6,8 @@
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
 
   body {
-    background-color: #d1d8db; /* Fundo padrão OAB-GO */
+    background-color: #d1d8db;
+    /* Fundo padrão OAB-GO */
     font-family: 'Inter', sans-serif;
     margin: 0;
     padding: 0;
@@ -27,8 +28,10 @@
     position: sticky;
     top: 0;
     z-index: 1000;
-    background-color: rgba(209, 216, 219, 0.85); /* Cor do fundo com 85% de opacidade */
-    backdrop-filter: blur(5px); /* Efeito de vidro embaçado para o conteúdo que passa atrás */
+    background-color: rgba(209, 216, 219, 0.85);
+    /* Cor do fundo com 85% de opacidade */
+    backdrop-filter: blur(5px);
+    /* Efeito de vidro embaçado para o conteúdo que passa atrás */
     padding: 20px 0;
     margin-bottom: 5px;
   }
@@ -40,23 +43,24 @@
     border-radius: 12px;
     border: none;
     /* Sombra projetada para dar profundidade (efeito de elevação) */
-    box-shadow: 0 10px 25px rgba(0,0,0,0.15) !important;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
     transition: box-shadow 0.3s ease;
   }
 
   /* Efeito leve ao focar na busca */
   .search-card:focus-within {
-    box-shadow: 0 12px 30px rgba(0,47,93,0.2) !important;
+    box-shadow: 0 12px 30px rgba(0, 47, 93, 0.2) !important;
   }
 
-  .search-card .material-icons.prefix, 
+  .search-card .material-icons.prefix,
   .search-card input[type=text],
   .search-card label {
-    color: #004480 !important; /* Azul OAB da barra lateral */
+    color: #004480 !important;
+    /* Azul OAB da barra lateral */
   }
 
   /* Foco nos inputs */
-  .input-field input:focus + label {
+  .input-field input:focus+label {
     color: #004480 !important;
   }
 
@@ -79,13 +83,13 @@
     border-radius: 12px !important;
     margin-bottom: 12px !important;
     padding: 18px 25px !important;
-    
+
     /* Estado inicial do contorno (invisível para não dar salto no hover) */
     border: 2px solid transparent !important;
-    
+
     /* Transições suaves para todos os efeitos */
     transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
     position: relative;
     cursor: pointer;
   }
@@ -93,25 +97,28 @@
   /* Efeito de Hover: Movimento para cima + Contorno Azul OAB */
   .collection-item-membro:hover {
     background-color: #fff !important;
-    
+
     /* Movimento leve para cima (Lift effect) */
     transform: translateY(-5px);
-    
+
     /* Adiciona o contorno Azul OAB */
     border: 2px solid #002f5d !important;
-    
+
     /* Aumenta a sombra para acompanhar o movimento */
-    box-shadow: 0 12px 20px rgba(0,0,0,0.12);
+    box-shadow: 0 12px 20px rgba(0, 0, 0, 0.12);
   }
 
   /* Nome: Principal, maior e Azul Escuro */
   .membro-info-primary {
     display: block;
-    font-size: 1.3rem; /* Tamanho maior */
+    font-size: 1.3rem;
+    /* Tamanho maior */
     font-weight: 700;
-    color: #004480; /* Azul OAB */ 
+    color: #004480;
+    /* Azul OAB */
     margin-bottom: 2px;
-    padding-right: 80px; /* Espaço para não colidir com os botões à direita */
+    padding-right: 80px;
+    /* Espaço para não colidir com os botões à direita */
   }
 
   /* Cargo: Segundo, médio, cinza escuro, negrito e itálico */
@@ -120,7 +127,8 @@
     font-size: 1rem;
     font-weight: 700;
     font-style: italic;
-    color: #424242; /* Cinza escuro */
+    color: #424242;
+    /* Cinza escuro */
     margin-bottom: 4px;
   }
 
@@ -135,7 +143,8 @@
   .m-actions-right {
     position: absolute;
     right: 20px;
-    top: 18px; /* Alinhamento com o topo (mesma linha do Nome) */
+    top: 18px;
+    /* Alinhamento com o topo (mesma linha do Nome) */
     display: flex;
     gap: 10px;
   }
@@ -146,37 +155,59 @@
     transition: 0.2s;
   }
 
-  .btn-edit-color { color: #004480; }
-  .btn-delete-color { color: #ff0000; } /* Vermelho OAB */
-  .btn-action-flat:hover { transform: scale(1.2); }
+  .btn-edit-color {
+    color: #004480;
+  }
+
+  .btn-delete-color {
+    color: #ff0000;
+  }
+
+  /* Vermelho OAB */
+  .btn-action-flat:hover {
+    transform: scale(1.2);
+  }
 
   /* =====================================================
      4. COMPONENTES DE INTERFACE (TAGS E FAB)
      Cores institucionais aplicadas a elementos globais.
   ===================================================== */
-  .oab-blue-bg { 
-    background-color: #002f5d !important; 
+  .oab-blue-bg {
+    background-color: #002f5d !important;
   }
 
   .tag-custom {
     font-size: 0.7rem;
     padding: 3px 12px;
-    border-radius: 50px; /* Estilo Pílula */
+    border-radius: 50px;
+    /* Estilo Pílula */
     text-transform: uppercase;
     font-weight: 700;
     display: inline-flex;
     align-items: center;
   }
 
-  .tag-ativo { background: #e8f5e9; color: #2e7d32; }
-  .tag-inativo { background: #ffebee; color: #ff0000; }
-  .tag-licenciado { background: #fff3e0; color: #ef6c00; }
+  .tag-ativo {
+    background: #e8f5e9;
+    color: #2e7d32;
+  }
+
+  .tag-inativo {
+    background: #ffebee;
+    color: #ff0000;
+  }
+
+  .tag-licenciado {
+    background: #fff3e0;
+    color: #ef6c00;
+  }
 
   /* CONFIGURAÇÃO DO BOTÃO FLUTUANTE */
 
   /* Cor principal do FAB e sub-botões */
   .fixed-action-btn .btn-floating {
-    background-color: #ff0000 !important; /* Vermelho OAB Puro */
+    background-color: #ff0000 !important;
+    /* Vermelho OAB Puro */
   }
 
   /* Efeito de Crescidinha (Zoom) */
@@ -187,20 +218,21 @@
   .btn-hover-zoom:hover {
     transform: scale(1.2) !important;
     /* No hover, usamos o azul de interação da barra lateral */
-    background-color: #002f5d !important; 
+    background-color: #002f5d !important;
   }
 
   /* Ajuste para o botão principal também crescer levemente ao abrir */
-  .fixed-action-btn > a:hover {
+  .fixed-action-btn>a:hover {
     transform: scale(1.05);
   }
 
   /* Customização das Tooltips (Dicas) */
   .material-tooltip {
-    background-color: #004480 !important; /* Azul OAB */
+    background-color: #004480 !important;
+    /* Azul OAB */
   }
 
-/* =====================================================
+  /* =====================================================
      5. MODAIS (CADASTRO E CONFIRMAÇÃO)
      Design limpo com cabeçalhos em azul escuro.
   ===================================================== */
@@ -208,12 +240,14 @@
     border-radius: 12px !important;
     max-height: 85% !important;
     width: 90% !important;
-    max-width: 850px; /* Largura padrão para o cadastro */
+    max-width: 850px;
+    /* Largura padrão para o cadastro */
   }
 
   /* TAG FALTANTE: Modal de confirmação (tamanho reduzido) */
   .modal.modal-pequena {
-    max-width: 450px !important; /* Largura menor para alertas */
+    max-width: 450px !important;
+    /* Largura menor para alertas */
     height: auto !important;
     overflow-y: hidden !important;
   }
@@ -221,7 +255,8 @@
   .modal-content h5 {
     font-weight: 700;
     color: #004480;
-    border-left: 6px solid #ff0000; /* Detalhe em Vermelho Puro */
+    border-left: 6px solid #ff0000;
+    /* Detalhe em Vermelho Puro */
     margin-bottom: 25px;
     padding-left: 15px;
     text-transform: uppercase;
@@ -236,7 +271,8 @@
 
   /* Botão Salvar Estilo OAB */
   #btnSalvar {
-    background-color: #004480 !important; /* Azul OAB */
+    background-color: #004480 !important;
+    /* Azul OAB */
     border-radius: 50px;
     font-weight: 700;
     text-transform: none;
@@ -244,7 +280,8 @@
   }
 
   #btnSalvar:hover {
-    background-color: #002f5d !important; /* Azul de interação */
+    background-color: #002f5d !important;
+    /* Azul de interação */
   }
 
   /* Modal de confirmação (Estilo Alerta) */
@@ -253,5 +290,4 @@
     color: #ff0000;
     text-align: center;
   }
-  
 </style>
