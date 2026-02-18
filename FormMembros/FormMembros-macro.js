@@ -144,39 +144,60 @@ function salvarMembroMacro(dados) {
 }
 
 /**
- * Exclui um membro pelo ID
+ * Exclui um membro da tabela principal, mas garante que seus dados
+ * sejam salvos ou atualizados na tabMembrosArquivo antes de sumirem.
  */
 function excluirMembroMacro(id) {
-  try {
-    const ss = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
-    const sheet = ss.getSheetByName("tabMembros");
-    if (!sheet) throw new Error("Aba 'tabMembros' não encontrada.");
+  const ss = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
+  const sheetMembros = ss.getSheetByName("tabMembros");
+  const sheetArq = ss.getSheetByName("tabMembrosArquivo");
+  
+  const dadosMembros = sheetMembros.getDataRange().getValues();
+  const mapaM = getMapaColunas(sheetMembros);
+  const mapaA = getMapaColunas(sheetArq);
+  
+  let linhaParaExcluir = -1;
+  let dadosParaArquivar = null;
 
-    const data = sheet.getDataRange().getValues();
-    const mapa = getMapaColunas(sheet);
-
-    const idColKey = Object.keys(mapa).find(k => k.toLowerCase().trim() === "id");
-    if (!idColKey) throw new Error("Coluna de ID não mapeada na planilha.");
-
-    const idColIndex = mapa[idColKey] - 1;
-    let registroExcluido = false;
-
-    for (let i = 1; i < data.length; i++) {
-      if (String(data[i][idColIndex]).trim() === String(id).trim()) {
-        sheet.deleteRow(i + 1);
-        registroExcluido = true;
-        break;
-      }
+  // 1. Localiza o membro na tabela principal
+  for (let i = 1; i < dadosMembros.length; i++) {
+    if (dadosMembros[i][mapaM["id"] - 1] == id) {
+      linhaParaExcluir = i + 1;
+      dadosParaArquivar = {
+        nome: dadosMembros[i][mapaM["nome"] - 1],
+        email: dadosMembros[i][mapaM["email"] - 1],
+        genero: dadosMembros[i][mapaM["gênero"] - 1]
+      };
+      break;
     }
-
-    if (!registroExcluido) {
-      throw new Error("Registro com ID " + id + " não encontrado para exclusão.");
-    }
-
-    return true;
-  } catch (e) {
-    throw new Error("Erro na exclusão: " + e.message);
   }
+
+  if (linhaParaExcluir === -1) throw new Error("Membro não encontrado para exclusão.");
+
+  // 2. PROCEDIMENTO DE ARQUIVAMENTO (Antes de excluir)
+  const dadosArq = sheetArq.getDataRange().getValues();
+  const nomesNoArquivo = dadosArq.map(r => r[mapaA["nome"] - 1]);
+  const indexNoArq = nomesNoArquivo.indexOf(dadosParaArquivar.nome);
+
+  if (indexNoArq !== -1) {
+    // Já existe no arquivo: Atualiza Email e Gênero
+    sheetArq.getRange(indexNoArq + 1, mapaA["email"]).setValue(dadosParaArquivar.email);
+    sheetArq.getRange(indexNoArq + 1, mapaA["gênero"]).setValue(dadosParaArquivar.genero);
+  } else {
+    // Não existe no arquivo: Cria novo registro
+    const novoIdArq = "ARQ-" + novoIdTimeStamp();
+    const novaLinha = [];
+    novaLinha[mapaA["id"] - 1] = novoIdArq;
+    novaLinha[mapaA["nome"] - 1] = dadosParaArquivar.nome;
+    novaLinha[mapaA["email"] - 1] = dadosParaArquivar.email;
+    novaLinha[mapaA["gênero"] - 1] = dadosParaArquivar.genero;
+    sheetArq.appendRow(novaLinha);
+  }
+
+  // 3. EXCLUSÃO DA TABELA PRINCIPAL
+  sheetMembros.deleteRow(linhaParaExcluir);
+
+  return "Membro excluído e dados preservados no arquivo.";
 }
 
 /**
@@ -477,4 +498,31 @@ function salvarGenerosEmMassa(listaNovosGeneros) {
   }
 
   return "Gêneros atualizados com sucesso!";
+}
+
+/**
+ * Busca dados de um membro no arquivo pelo nome (case-insensitive).
+ */
+function buscarMembroNoArquivo(nomeParaBusca) {
+  const ss = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
+  const sheetArq = ss.getSheetByName("tabMembrosArquivo");
+  const dados = sheetArq.getDataRange().getValues();
+  const mapa = getMapaColunas(sheetArq);
+  
+  const nomeProcurado = nomeParaBusca.toLowerCase().trim();
+  
+  // Percorre o arquivo (pula o cabeçalho)
+  for (let i = 1; i < dados.length; i++) {
+    const nomeArquivo = dados[i][mapa["nome"] - 1].toString().toLowerCase().trim();
+    
+    if (nomeArquivo === nomeProcurado) {
+      return {
+        encontrado: true,
+        email: dados[i][mapa["email"] - 1],
+        genero: dados[i][mapa["gênero"] - 1]
+      };
+    }
+  }
+  
+  return { encontrado: false };
 }

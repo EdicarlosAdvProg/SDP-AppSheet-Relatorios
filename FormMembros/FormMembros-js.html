@@ -31,6 +31,44 @@
 
   });
 
+  // 1. Ouvinte de evento no campo Nome
+  document.getElementById('f_Nome').addEventListener('blur', function() {
+    // Formata o nome (Iniciais Maiúsculas e Preposições)
+    //this.value = formatarNomeCompleto(this.value);
+    
+    const nomeDigitado = this.value;
+    if (!nomeDigitado || nomeDigitado.trim().length < 5) return;
+
+    // 2. Função Unificada: Busca e Preenchimento
+    google.script.run
+      .withSuccessHandler(function(resultado) {
+        if (resultado && resultado.encontrado) {
+          const campoEmail = document.getElementById('f_Email');
+          const campoGenero = document.getElementById('f_Genero');
+
+          // Preenche Email se estiver vazio
+          if (campoEmail && !campoEmail.value) {
+            campoEmail.value = resultado.email || "";
+          }
+
+          // Preenche Gênero se estiver vazio ou não selecionado
+          if (campoGenero && (!campoGenero.value || campoGenero.value === "")) {
+            campoGenero.value = resultado.genero || "";
+            
+            // Re-inicializa o Select do Materialize para refletir a mudança
+            if (typeof M !== 'undefined' && M.FormSelect) {
+              M.FormSelect.init(campoGenero);
+            }
+          }
+
+          // Garante que as labels do Materialize subam (não fiquem em cima do texto)
+          M.updateTextFields();
+          M.toast({html: 'Dados recuperados do arquivo!', classes: 'blue darken-2'});
+        }
+      })
+      .buscarMembroNoArquivo(nomeDigitado);
+  });
+
   // Funções de "Placeholder" para as novas ferramentas não darem erro
   function abrirModalGenero() {
     M.toast({ html: 'Funcionalidade Inserir Gênero em breve...', classes: 'amber darken-4' });
@@ -200,10 +238,13 @@
   function salvarMembroJS() {
     const nome = document.getElementById('f_Nome').value;
     const genero = document.getElementById('f_Genero').value;
-    const cargo = document.getElementById('f_Cargo').value; // ESTA LINHA FALTAVA OU ESTAVA INCOMPLETA
+    const cargo = document.getElementById('f_Cargo').value;
+
+    // APLICAÇÃO DA FORMATAÇÃO: Iniciais Maiúsculas e Preposições Minúsculas
+    const nomeFormatado = formatarNomeCompleto(nome);
 
     // Validação: Apenas Nome e Gênero são obrigatórios
-    if (!nome || !genero) {
+    if (!nomeFormatado || !genero) {
       return M.toast({ html: 'Nome e Gênero são obrigatórios!', classes: 'red' });
     }
 
@@ -215,7 +256,7 @@
 
     const dados = {
       "Id": idFinal,
-      "Nome": nome,
+      "Nome": nomeFormatado,
       "Email": document.getElementById('f_Email').value,
       "Gênero": genero, // Usando a variável capturada acima
       "Cargo": cargo   // Usando a variável capturada acima
@@ -284,6 +325,13 @@
       function () {
         google.script.run.withSuccessHandler(function () {
           M.toast({ html: 'Registro removido com sucesso.' });
+          
+          // --- limpa o campo de pesquisa ---
+          const campoBusca = document.getElementById('inputBusca'); // Verifique se o ID é este
+          if (campoBusca) {
+            campoBusca.value = ''; 
+          }
+          
           carregarMembrosJS();
         }).excluirMembroMacro(id);
       }
@@ -406,6 +454,49 @@
     } else {
       M.toast({ html: 'Nenhuma alteração realizada.', classes: 'grey' });
     }
+  }
+
+  /**
+   * Formata um nome completo para o padrão: Iniciais maiúsculas para pessoas físicas.
+   * Se detectar marcadores de empresa, retorna o texto original.
+   * Utiliza mapeamento de preposições em vez de contagem de caracteres.
+   */
+  function formatarNomeCompleto(nome) {
+    if (!nome) return "";
+    const nomeLimpo = nome.trim();
+    const nomeMinusculo = nomeLimpo.toLowerCase();
+
+    // Marcadores de empresa (PJ)
+    const marcadoresEmpresa = [
+      "ltda", "s/a", "s.a", "eireli", "me", "epp", "mei", "cia", "companhia",
+      "sociedade", "comercial", "comércio", "comercio", "indústria", "industria", "serviços",
+      "servicos", "representação", "representacao", "representações", "representacoes",
+      "escritório", "escritorio", "advocacia", "associação", "associacao", "cooperativa",
+      "instituto", "fundação", "fundacao", "holding", "grupo", "banco", "caixa", "seguradora"
+    ];
+
+    // Verifica se é empresa (palavra isolada)
+    const ehEmpresa = marcadoresEmpresa.some(marcador => {
+      const regex = new RegExp("\\b" + marcador + "\\b", "i");
+      return regex.test(nomeMinusculo);
+    });
+
+    if (ehEmpresa) return nomeLimpo;
+
+    // Mapeamento explícito de preposições e conectores comuns em nomes
+    const preposicoes = ["da", "de", "di", "do", "dos", "das", "e", "del", "von"];
+
+    return nomeMinusculo.split(' ').map(palavra => {
+      // Se for uma preposição mapeada, mantém minúsculo
+      if (preposicoes.includes(palavra)) {
+        return palavra;
+      }
+      // Caso contrário, capitaliza (incluindo nomes curtos como 'Ana', 'Rui', etc)
+      if (palavra.length > 0) {
+        return palavra.charAt(0).toUpperCase() + palavra.slice(1);
+      }
+      return palavra;
+    }).join(' ').trim();
   }
 
 </script>
