@@ -193,14 +193,51 @@ function PainelLateral_abrirMembros() {
 }
 
 /**
- * Sincroniza a lista de membros com o site da OAB-GO.
- * Grava os dados na planilha de banco de dados do sistema.
+ * 1. FUNÇÃO PRINCIPAL PARA ATUALIZAR A TABELA DE MEMBROS CONFORME O SISTE DA OAB
  */
-function sincronizaMembrosSiteOAB() {
-  const url = "https://www.oabgo.org.br/comissao/sistema-de-defesa-das-prerrogativas-sdp/";
+function atualizarTabelaMembros() {
   const ss = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
-  const sheet = ss.getSheetByName("tabMembros");
+  
+  // A. Arquiva dados atuais e limpa a tabela principal
+  arquivarELimparMembros(ss);
+  
+  // B. Extrai dados do site usando sua lógica original intacta
+  const dicionarioMembrosBruto = extrairDadosSiteOAB();
+  
+  // C. Enriquece os nomes extraídos com E-mail e Gênero do Arquivo
+  const membrosEnriquecidos = enriquecerDadosComArquivo(ss, dicionarioMembrosBruto);
+  
+  // D. Gravação Final na tabMembros
+  const sheetMembros = ss.getSheetByName("tabMembros");
+  const mapa = getMapaColunas(sheetMembros);
+  const ultimaCol = sheetMembros.getLastColumn();
+  
+  if (membrosEnriquecidos.length > 0) {
+    let idAtual = "";
+    const matrixFinal = membrosEnriquecidos.map(m => {
+      idAtual = gerarProximoIdIncremental(idAtual);
+      let linha = new Array(ultimaCol).fill("");
+      
+      linha[mapa["id"] - 1] = idAtual;
+      linha[mapa["nome"] - 1] = m.nome;
+      linha[mapa["cargo"] - 1] = m.cargo;
+      linha[mapa["email"] - 1] = m.email;
+      linha[mapa["gênero"] - 1] = m.genero;
+      
+      return linha;
+    });
 
+    sheetMembros.getRange(2, 1, matrixFinal.length, ultimaCol).setValues(matrixFinal);
+    return "Sucesso! " + membrosEnriquecidos.length + " membros processados e sincronizados.";
+  }
+  return "Nenhum dado processado.";
+}
+
+/**
+ * 2. EXTRAÇÃO DOS NOMES E CARGOS DO SITE DA OAB
+ */
+function extrairDadosSiteOAB() {
+  const url = "https://www.oabgo.org.br/comissao/sistema-de-defesa-das-prerrogativas-sdp/";
   let pageContent;
   try {
     pageContent = UrlFetchApp.fetch(url, { muteHttpExceptions: true }).getContentText();
@@ -215,11 +252,10 @@ function sincronizaMembrosSiteOAB() {
   const htmlLista = matchAba[1];
   const regexParagrafos = /<p>([\s\S]*?)<\/p>/gi;
   let parágrafo;
-
-  // Usaremos um objeto para guardar Arrays de cargos: { "Nome": ["Cargo1", "Cargo2"] }
   const dicionarioMembros = {};
   let cargoAtual = "Membro";
 
+  // LISTA COMPLETA RESTAURADA
   const cargoKeywords = [
     "vice", "presidente", "secretário", "secretários", "secretária", "secretaria",
     "coordenador", "coordenadora", "procurador", "procuradora", "órgão", "membro",
@@ -247,62 +283,146 @@ function sincronizaMembrosSiteOAB() {
     nomesNoParagrafo.forEach(nome => {
       const nomeLimpo = nome.split('-')[0].trim();
       if (nomeLimpo) {
-        if (!dicionarioMembros[nomeLimpo]) {
-          dicionarioMembros[nomeLimpo] = [];
-        }
-        // Adiciona o cargo se ele ainda não estiver na lista deste membro
+        if (!dicionarioMembros[nomeLimpo]) dicionarioMembros[nomeLimpo] = [];
         if (dicionarioMembros[nomeLimpo].indexOf(cargoAtual) === -1) {
           dicionarioMembros[nomeLimpo].push(cargoAtual);
         }
       }
     });
   }
+  return dicionarioMembros;
+}
 
-  // --- Lógica de Formatação dos Cargos e Gravação ---
-  const mapa = getMapaColunas(sheet);
-  const colId = mapa["id"];
-  const colNome = mapa["nome"];
-  const colCargo = mapa["cargo"];
-  const ultimaCol = sheet.getLastColumn();
-
-  const lastRow = sheet.getLastRow();
-  if (lastRow >= 2) {
-    sheet.getRange(2, 1, lastRow - 1, ultimaCol).clearContent();
-    if (lastRow > 2) sheet.deleteRows(3, lastRow - 2);
+/**
+ * 3. ENRIQUECIMENTO DOS DADOS COM E-MAIL E GÊNERO PREVIAMENTE CADASTRADO
+ */
+function enriquecerDadosComArquivo(ss, dicionarioBruto) {
+  const sheetArq = ss.getSheetByName("tabMembrosArquivo");
+  const mapaArq = getMapaColunas(sheetArq);
+  const valoresArq = sheetArq.getDataRange().getValues();
+  
+  const cacheArquivo = {};
+  for (let i = 1; i < valoresArq.length; i++) {
+    const nomeArq = valoresArq[i][mapaArq["nome"] - 1];
+    cacheArquivo[nomeArq] = {
+      email: valoresArq[i][mapaArq["email"] - 1] || "",
+      genero: valoresArq[i][mapaArq["gênero"] - 1] || ""
+    };
   }
 
-  const listaFinalNomes = Object.keys(dicionarioMembros).sort((a, b) => a.localeCompare(b));
+  const nomesExtraidos = Object.keys(dicionarioBruto).sort((a, b) => a.localeCompare(b));
 
-  if (listaFinalNomes.length > 0) {
-    let idAtual = "";
-    const matrixFinal = [];
+  return nomesExtraidos.map(nome => {
+    const memoria = cacheArquivo[nome] || { email: "", genero: "" };
+    const genero = memoria.genero;
+    const listaCargosBrutos = dicionarioBruto[nome];
 
-    listaFinalNomes.forEach(nome => {
-      idAtual = gerarProximoIdIncremental(idAtual);
+    // Aplicar a flexão de gênero em cada cargo da lista
+    const listaCargosFlexionados = listaCargosBrutos.map(cargo => flexionarCargo(cargo, genero));
 
-      // FORMATAÇÃO GRAMATICAL: "cargo1, cargo2 e cargo3"
-      const listaCargos = dicionarioMembros[nome];
-      let cargosFormatados = "";
+    let cargosFormatados = "";
+    if (listaCargosFlexionados.length === 1) {
+      cargosFormatados = listaCargosFlexionados[0];
+    } else if (listaCargosFlexionados.length > 1) {
+      const copiaCargos = [...listaCargosFlexionados];
+      const ultItem = copiaCargos.pop();
+      cargosFormatados = copiaCargos.join(", ") + " e " + ultItem;
+    }
 
-      if (listaCargos.length === 1) {
-        cargosFormatados = listaCargos[0];
-      } else if (listaCargos.length > 1) {
-        // Pega todos menos o último e junta com vírgula
-        const ultItem = listaCargos.pop();
-        cargosFormatados = listaCargos.join(", ") + " e " + ultItem;
+    return {
+      nome: nome,
+      cargo: cargosFormatados,
+      email: memoria.email,
+      genero: genero
+    };
+  });
+}
+
+/**
+ * Função Auxiliar para tratar a gramática dos cargos com flexão composta
+ */
+function flexionarCargo(cargo, genero) {
+  let novoCargo = cargo;
+
+  // 1. Tratamento de Plurais e Padronização para o Singular Masculino (Base)
+  // Remove o plural independentemente do gênero para padronizar
+  novoCargo = novoCargo.replace(/Secretários-Gerais Executivos/gi, "Secretário-Geral Executivo");
+  novoCargo = novoCargo.replace(/Vice-Presidentes/gi, "Vice-Presidente");
+  
+  // Se não houver gênero definido, paramos por aqui (fica no singular masculino)
+  if (!genero || genero === "") return novoCargo;
+
+  // 2. Flexão para o Feminino
+  if (genero === "Feminino") {
+    // Substituições simples
+    novoCargo = novoCargo.replace(/\bMembro\b/g, "Membra");
+    novoCargo = novoCargo.replace(/\bCoordenador\b/g, "Coordenadora");
+    novoCargo = novoCargo.replace(/\bProcurador\b/g, "Procuradora");
+    novoCargo = novoCargo.replace(/\bDiretor\b/g, "Diretora");
+    novoCargo = novoCargo.replace(/\bConselheiro\b/g, "Conselheira");
+
+    // Substituição Composta: Secretário e Executivo
+    // A ordem importa: primeiro trocamos o radical para garantir a concordância
+    if (novoCargo.includes("Secretário")) {
+      novoCargo = novoCargo.replace(/\bSecretário\b/g, "Secretária");
+      
+      // Se houver a palavra Executivo acompanhando, flexiona também
+      if (novoCargo.includes("Executivo")) {
+        novoCargo = novoCargo.replace(/\bExecutivo\b/g, "Executiva");
       }
-
-      let linha = new Array(ultimaCol).fill("");
-      linha[colId - 1] = idAtual;
-      linha[colNome - 1] = nome;
-      linha[colCargo - 1] = cargosFormatados;
-      matrixFinal.push(linha);
-    });
-
-    sheet.getRange(2, 1, matrixFinal.length, ultimaCol).setValues(matrixFinal);
-    return "Sucesso! " + listaFinalNomes.length + " membros processados.";
+    }
   }
-  return "Nenhum dado processado.";
+
+  return novoCargo;
+}
+
+/**
+ * 4. ARQUIVAMENTO DOS DADOS ENRIQUECIDOS E EXCLUSÃO DOS DADOS DE TABMEMBROS
+ */
+function arquivarELimparMembros(ss) {
+  const sheetMembros = ss.getSheetByName("tabMembros");
+  const sheetArq = ss.getSheetByName("tabMembrosArquivo");
+  
+  const mapaM = getMapaColunas(sheetMembros);
+  const mapaA = getMapaColunas(sheetArq);
+  
+  const dadosMembros = sheetMembros.getDataRange().getValues();
+  if (dadosMembros.length < 2) return;
+
+  const dadosArq = sheetArq.getDataRange().getValues();
+  const nomesNoArquivo = dadosArq.map(r => r[mapaA["nome"] - 1]);
+
+  for (let i = 1; i < dadosMembros.length; i++) {
+    const nomeM = dadosMembros[i][mapaM["nome"] - 1];
+    const emailM = dadosMembros[i][mapaM["email"] - 1];
+    const generoM = dadosMembros[i][mapaM["gênero"] - 1];
+    
+    if (!nomeM) continue;
+
+    const indexNoArq = nomesNoArquivo.indexOf(nomeM);
+
+    if (indexNoArq !== -1) {
+      // Atualiza Email e Gênero na linha encontrada (index + 1)
+      sheetArq.getRange(indexNoArq + 1, mapaA["email"]).setValue(emailM);
+      sheetArq.getRange(indexNoArq + 1, mapaA["gênero"]).setValue(generoM);
+    } else {
+      // Adiciona novo registro com ID de arquivo exclusivo
+      const novoIdArq = "ARQ-" + novoIdTimeStamp();
+      const novaLinha = [];
+      novaLinha[mapaA["id"] - 1] = novoIdArq;
+      novaLinha[mapaA["nome"] - 1] = nomeM;
+      novaLinha[mapaA["email"] - 1] = emailM;
+      novaLinha[mapaA["gênero"] - 1] = generoM;
+      sheetArq.appendRow(novaLinha);
+    }
+  }
+
+  // Limpa a tabela principal
+  const lastRow = sheetMembros.getLastRow();
+  if (lastRow >= 2) {
+    sheetMembros.getRange(2, 1, lastRow - 1, sheetMembros.getLastColumn()).clearContent();
+    if (lastRow > 2) sheetMembros.deleteRows(3, lastRow - 2);
+  }
 }
 
 /**
