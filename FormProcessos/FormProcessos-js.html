@@ -1,0 +1,111 @@
+<script>
+  let baseProcessos = [];
+
+  document.addEventListener('DOMContentLoaded', function() {
+    M.AutoInit();
+    formProcessos_carregar();
+    
+    var fab = document.querySelectorAll('.fixed-action-btn');
+    M.FloatingActionButton.init(fab, { hoverEnabled: true });
+  });
+
+  function formProcessos_carregar() {
+    const loader = document.getElementById('loaderLista');
+    const container = document.getElementById('listaProcessos');
+    
+    loader.style.display = 'block';
+    container.style.opacity = '0.4';
+
+    google.script.run
+      .withSuccessHandler(function(res) {
+        loader.style.display = 'none';
+        container.style.opacity = '1';
+        
+        if(res.sucesso) {
+          baseProcessos = res.dados;
+          formProcessos_renderizar(baseProcessos);
+        } else {
+          M.toast({html: 'Erro ao carregar: ' + res.erro, classes: 'red'});
+        }
+      })
+      .withFailureHandler(function(err) {
+        loader.style.display = 'none';
+        M.toast({html: 'Falha crítica no servidor', classes: 'red'});
+      })
+      .formProcessos_buscarDadosCompletos();
+  }
+
+  function formProcessos_renderizar(lista) {
+    const container = document.getElementById('listaProcessos');
+    container.innerHTML = '';
+
+    if (lista.length === 0) {
+      container.innerHTML = '<div class="center" style="padding:40px">Nenhum processo encontrado.</div>';
+      return;
+    }
+
+    lista.forEach(p => {
+      const item = document.createElement('div');
+      item.className = 'collection-item-processo';
+      item.innerHTML = `
+        <div class="p-col-info">
+          <span class="lvl-1-proc">Processo: ${p.processo}</span>
+          <span class="lvl-2-partes">${p.requerente} <span style="color:#757575;font-style:normal;font-weight:400">x</span> ${p.requerido}</span>
+          <span class="lvl-3-procurador"><i class="material-icons left" style="font-size:16px">gavel</i> Procurador: ${p.procurador}</span>
+          <span class="lvl-4-relator"><i class="material-icons left" style="font-size:16px">person_outline</i> Relator: ${p.relator}</span>
+        </div>
+
+        <div class="p-col-hist">
+          <span class="hist-titulo">Último Evento</span>
+          <span class="hist-valor">${p.ultimaData}</span>
+        </div>
+
+        <div class="p-col-actions">
+          <i class="material-icons icon-action c-edit tooltipped" data-tooltip="Editar" onclick="abrirEditar('${p.id}')">edit</i>
+          <i class="material-icons icon-action c-view tooltipped" data-tooltip="Ver Resumo" onclick="abrirResumo('${p.id}')">description</i>
+          <i class="material-icons icon-action c-view tooltipped" data-tooltip="Ver Ementa" onclick="abrirEmenta('${p.id}')">subject</i>
+          <i class="material-icons icon-action c-pauta tooltipped" data-tooltip="Incluir na Pauta" onclick="incluirPauta('${p.id}')">event_note</i>
+          <i class="material-icons icon-action c-del tooltipped" data-tooltip="Deletar" onclick="deletarProc('${p.id}')">delete</i>
+        </div>
+      `;
+      container.appendChild(item);
+    });
+    
+    M.Tooltip.init(document.querySelectorAll('.tooltipped'));
+  }
+
+  function formProcessos_filtrar() {
+    // Captura o valor, remove espaços extras e converte para minúsculo
+    const termo = document.getElementById('inputBuscaProc').value.toLowerCase().trim();
+    
+    if (termo === "") {
+      formProcessos_renderizar(baseProcessos);
+      return;
+    }
+
+    const filtrados = baseProcessos.filter(p => {
+      // Verifica cada campo garantindo que ele exista como string antes de testar o 'includes'
+      const numProc = (p.processo || "").toString().toLowerCase();
+      const req = (p.requerente || "").toString().toLowerCase();
+      const res = (p.requerido || "").toString().toLowerCase();
+      const proc = (p.procurador || "").toString().toLowerCase();
+
+      return numProc.includes(termo) || 
+            req.includes(termo) || 
+            res.includes(termo) || 
+            proc.includes(termo);
+    });
+
+    formProcessos_renderizar(filtrados);
+  }
+
+  // PLACEHOLDERS PARA AÇÕES
+  function abrirEditar(id) { M.toast({html: 'Editar ID: ' + id}); }
+  function abrirResumo(id) { M.toast({html: 'Resumo ID: ' + id}); }
+  function abrirEmenta(id) { M.toast({html: 'Ementa ID: ' + id}); }
+  function incluirPauta(id) { M.toast({html: 'Pauta ID: ' + id}); }
+  function deletarProc(id) { 
+     document.getElementById('msgConfirmacao').innerText = 'Deseja excluir permanentemente o processo ' + id + '?';
+     M.Modal.getInstance(document.getElementById('modalConfirmacao')).open();
+  }
+</script>

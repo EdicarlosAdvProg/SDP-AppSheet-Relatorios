@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <?!= include('FormProcessos-style'); ?>
+</head>
+<body>
+
+  <div class="main-container">
+    <div class="search-header-container">
+      <div class="search-card z-depth-2">
+        <div class="row" style="margin-bottom: 0;">
+          <div class="input-field col s12">
+            <i class="material-icons prefix">search</i>
+            <input type="text" id="inputBuscaProc" oninput="formProcessos_filtrar()" autocomplete="off">
+            <label for="inputBuscaProc">Pesquisar por processo, requerente ou procurador...</label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="list-wrapper">
+      <div id="loaderLista" class="center-align" style="padding: 20px; display: none;">
+        <div class="preloader-wrapper small active">
+          <div class="spinner-layer spinner-blue-only">
+            <div class="circle-clipper left"><div class="circle"></div></div>
+            <div class="gap-patch"><div class="circle"></div></div>
+            <div class="circle-clipper right"><div class="circle"></div></div>
+          </div>
+        </div>
+      </div>
+      <div id="listaProcessos" class="collection" style="border: none;">
+        </div>
+    </div>
+
+    <div class="fixed-action-btn">
+      <a class="btn-floating btn-large btn-oab-red">
+        <i class="large material-icons">menu</i>
+      </a>
+      <ul>
+        <li><a class="btn-floating btn-oab-red tooltipped btn-hover-zoom" data-position="left" data-tooltip="Novo Processo"><i class="material-icons">add</i></a></li>
+        <li><a class="btn-floating btn-oab-red tooltipped btn-hover-zoom" data-position="left" data-tooltip="Sincronizar" onclick="formProcessos_carregar()"><i class="material-icons">refresh</i></a></li>
+      </ul>
+    </div>
+  </div>
+
+  <div id="modalConfirmacao" class="modal modal-pequena">
+    <div class="modal-content center-align">
+      <i id="iconConfirmacao" class="material-icons large amber-text text-darken-2">help_outline</i>
+      <h5 id="tituloConfirmacao">Confirmação</h5>
+      <p id="msgConfirmacao">Deseja realmente prosseguir?</p>
+    </div>
+    <div class="modal-footer center-align" style="display: flex; justify-content: center; gap: 10px; padding-bottom: 20px;">
+      <button class="modal-close waves-effect waves-grey btn-flat grey lighten-4">Cancelar</button>
+      <button id="btnConfirmarAcao" class="waves-effect waves-light btn blue darken-4">Confirmar</button>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+  <?!= include('FormProcessos-js'); ?>
+</body>
+</html>

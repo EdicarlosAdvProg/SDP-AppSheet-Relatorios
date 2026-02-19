@@ -1,0 +1,92 @@
+<style>
+  /* =====================================================
+     1. CONFIGURAÇÕES GERAIS E IDENTIDADE OAB-GO
+  ===================================================== */
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+  body {
+    background-color: #d1d8db;
+    font-family: 'Inter', sans-serif;
+    margin: 0; padding: 0;
+  }
+
+  .main-container {
+    padding: 0 20px 20px 20px;
+    max-width: 1400px; /* Largura ampliada */
+    margin: 0 auto;
+  }
+
+  /* =====================================================
+     2. CABEÇALHO E BARRA DE PESQUISA (FIXO)
+  ===================================================== */
+  .search-header-container {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    background-color: rgba(209, 216, 219, 0.85);
+    backdrop-filter: blur(8px);
+    padding: 20px 0;
+  }
+
+  .search-card {
+    background: #ffffff !important;
+    padding: 0 25px;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
+  }
+
+  /* =====================================================
+     3. CARDS TRIPARTITES (LISTA DE PROCESSOS)
+  ===================================================== */
+  .collection-item-processo {
+    background-color: #fff !important;
+    border-radius: 12px !important;
+    margin-bottom: 15px !important;
+    padding: 20px 25px !important;
+    border: 2px solid transparent !important;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    display: flex;
+    align-items: center;
+    position: relative;
+    cursor: default;
+  }
+
+  .collection-item-processo:hover {
+    transform: translateY(-5px);
+    border: 2px solid #002f5d !important;
+    box-shadow: 0 12px 20px rgba(0, 0, 0, 0.12);
+  }
+
+  /* Divisão das Colunas */
+  .p-col-info { width: 65%; border-right: 1px solid #f0f0f0; padding-right: 20px; }
+  .p-col-hist { width: 15%; padding: 0 15px; text-align: center; border-right: 1px solid #f0f0f0; }
+  .p-col-actions { width: 20%; display: flex; justify-content: space-evenly; padding-left: 15px; }
+
+  /* Níveis de Informação */
+  .lvl-1-proc { display: block; font-size: 1.35rem; font-weight: 800; color: #004480; }
+  .lvl-2-partes { display: block; font-size: 1rem; font-weight: 700; color: #ff0000; font-style: italic; margin: 2px 0; }
+  .lvl-3-procurador { display: block; font-size: 0.9rem; font-weight: 600; color: #424242; }
+  .lvl-4-relator { display: block; font-size: 0.85rem; font-weight: 500; color: #757575; }
+
+  .hist-titulo { font-size: 0.65rem; text-transform: uppercase; font-weight: 800; color: #a68945; display: block; }
+  .hist-valor { font-size: 1.1rem; font-weight: 700; color: #002f5d; }
+
+  /* =====================================================
+     4. BOTÕES, ÍCONES E COMPONENTES
+  ===================================================== */
+  .btn-oab-red { background-color: #ff0000 !important; }
+  .btn-hover-zoom:hover { transform: scale(1.2) !important; background-color: #002f5d !important; }
+
+  .icon-action { cursor: pointer; font-size: 22px; transition: 0.2s; }
+  .icon-action:hover { transform: scale(1.25); }
+  
+  .c-edit { color: #004480; }
+  .c-del { color: #ff0000; }
+  .c-view { color: #2e7d32; }
+  .c-pauta { color: #a68945; }
+
+  /* Modais */
+  .modal.modal-pequena { max-width: 450px !important; height: auto !important; }
+  .modal-content h5 { font-weight: 700; color: #004480; border-left: 6px solid #ff0000; padding-left: 15px; text-transform: uppercase; }
+</style>
