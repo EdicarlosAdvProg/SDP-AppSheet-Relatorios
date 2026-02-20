@@ -46,19 +46,55 @@
     color: #004480 !important;
   }
 
-  .input-field input:focus+label,
-  .input-field textarea:focus+label {
-    color: #004480 !important;
+  /* =====================================================
+     2. CABEÇALHO E BARRA DE PESQUISA (FIXO)
+  ===================================================== */
+  .search-header-container {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    background-color: rgba(209, 216, 219, 0.85);
+    backdrop-filter: blur(8px);
+    padding: 20px 0;
   }
 
+  /* PADRONIZAÇÃO DE LABELS (Rótulos) */
+  /* Cor e Tamanho Padrão (Sem Foco) */
+  .input-field label,
+  .input-field input:not([type]):+label,
+  .input-field input[type=text]:not(.browser-default)+label,
+  .input-field textarea.materialize-textarea+label {
+    color: #004480 !important; /* Azul OAB */
+    font-size: 0.9rem !important;
+  }
+
+  /* Cor e Tamanho quando Ativo/Focado */
+  .input-field input:focus+label,
+  .input-field textarea:focus+label,
+  .input-field input.validate+label,
+  .input-field .prefix.active ~ label,
+  .input-field label.active {
+    color: #002f5d !important; /* Azul Escuro (Destaque) */
+    font-size: 0.8rem !important; /* Leve redução ao subir */
+    font-weight: 700 !important;
+  }
+
+  /* Bordas dos Inputs em Foco */
   .input-field input:focus,
-  .input-field textarea:focus {
+  .input-field textarea:focus,
+  .input-field .autocomplete-content {
     border-bottom: 1px solid #004480 !important;
     box-shadow: 0 1px 0 0 #004480 !important;
   }
 
+  /* Ícones Prefixos */
+  .input-field .prefix {
+    color: #004480 !important;
+    transition: color .2s;
+  }
+
   .input-field .prefix.active {
-    color: #002f5d !important;
+    color: #ff0000 !important; /* Vermelho OAB no foco */
   }
 
   /* =====================================================
@@ -383,6 +419,22 @@
     min-height: 80px !important;
     font-size: 0.88rem;
     line-height: 1.55;
+  }
+
+  /* Estilo para campos que parecem inputs mas expandem se o texto for longo */
+  textarea.materialize-textarea.expandivel {
+    min-height: 3rem !important; /* Altura aproximada de um input comum */
+    padding-top: 0.8rem !important;
+    padding-bottom: 0.8rem !important;
+    font-size: 1rem; /* Mesma fonte do campo Processo */
+    line-height: 1.2;
+    overflow-y: hidden; /* Esconde barra de rolagem enquanto expande */
+    resize: none;
+  }
+
+  /* Garante que o rótulo (label) acompanhe a altura reduzida */
+  .input-field > textarea.materialize-textarea.expandivel + label {
+    top: 0;
   }
 
   /* =====================================================
@@ -743,4 +795,20 @@
   .datepicker-done {
     color: #004480 !important;
   }
+
+
+  /* =====================================================
+      13. MODAL DE DATA PICKER DO MATERIALIZE
+  ===================================================== */
+
+    /* Força o Datepicker a aparecer na frente de qualquer modal expansível */
+  .datepicker-modal {
+    z-index: 9999 !important; 
+  }
+
+  /* Ajuste específico para o painel expansível não cortar o calendário */
+  #pautaPainel_nova {
+    overflow: visible !important;
+  }
+
 </style>
