@@ -9,6 +9,8 @@
 <body>
 
   <div class="main-container">
+
+    <!-- Cabeçalho e Busca FIXO -->
     <div class="search-header-container">
       <div class="search-card z-depth-2">
         <div class="row" style="margin-bottom: 0;">
@@ -21,6 +23,7 @@
       </div>
     </div>
 
+    <!-- Lista de Processos -->
     <div class="list-wrapper">
       <div id="loaderLista" class="center-align" style="padding: 20px; display: none;">
         <div class="preloader-wrapper small active">
@@ -31,34 +34,321 @@
           </div>
         </div>
       </div>
-      <div id="listaProcessos" class="collection" style="border: none;">
-        </div>
+      <div id="listaProcessos" class="collection" style="border: none;"></div>
     </div>
 
+    <!-- FAB -->
     <div class="fixed-action-btn">
       <a class="btn-floating btn-large btn-oab-red">
         <i class="large material-icons">menu</i>
       </a>
       <ul>
-        <li><a class="btn-floating btn-oab-red tooltipped btn-hover-zoom" data-position="left" data-tooltip="Novo Processo"><i class="material-icons">add</i></a></li>
-        <li><a class="btn-floating btn-oab-red tooltipped btn-hover-zoom" data-position="left" data-tooltip="Sincronizar" onclick="formProcessos_carregar()"><i class="material-icons">refresh</i></a></li>
+        <li>
+          <a class="btn-floating btn-oab-red tooltipped btn-hover-zoom"
+             data-position="left" data-tooltip="Importar processos em massa"
+             onclick="abrirModalImportar()">
+            <i class="material-icons">auto_fix_high</i>
+          </a>
+        </li>
+        <li>
+          <a class="btn-floating btn-oab-red tooltipped btn-hover-zoom"
+             data-position="left" data-tooltip="Novo Processo"
+             onclick="abrirNovoProcesso()">
+            <i class="material-icons">add</i>
+          </a>
+        </li>
+        <li>
+          <a class="btn-floating btn-oab-red tooltipped btn-hover-zoom"
+             data-position="left" data-tooltip="Sincronizar lista"
+             onclick="formProcessos_carregar()">
+            <i class="material-icons">refresh</i>
+          </a>
+        </li>
       </ul>
+    </div>
+
+  </div><!-- /main-container -->
+
+
+  <!-- ============================================================
+       MODAL: CADASTRO / EDIÇÃO DE PROCESSO
+  ============================================================ -->
+  <div id="modalProcessoCad" class="modal">
+    <div class="modal-content">
+      <h5 id="procModalTitulo">Novo Processo</h5>
+      <form id="procForm" autocomplete="off">
+        <input type="hidden" id="proc_f_Id">
+
+        <div class="row" style="margin-bottom: 0;">
+          <div class="input-field col s12 m4">
+            <input id="proc_f_Processo" type="text" required>
+            <label for="proc_f_Processo">Número do Processo *</label>
+          </div>
+          <div class="input-field col s12 m5">
+            <input id="proc_f_Procurador" type="text" class="autocomplete">
+            <label for="proc_f_Procurador">Procurador(a) Responsável</label>
+          </div>
+          <div class="input-field col s12 m3">
+            <select id="proc_f_Status">
+              <option value="">(Sem status)</option>
+              <option value="Em tramitação">Em tramitação</option>
+              <option value="Na secretaria">Na secretaria</option>
+              <option value="Concluso">Concluso</option>
+              <option value="Arquivado">Arquivado</option>
+              <option value="Deferido">Deferido</option>
+              <option value="Indeferido">Indeferido</option>
+              <option value="Em recurso">Em recurso</option>
+              <option value="Em diligência">Em diligência</option>
+            </select>
+            <label>Status</label>
+          </div>
+        </div>
+
+        <div class="row" style="margin-bottom: 0;">
+          <div class="input-field col s12 m6">
+            <textarea id="proc_f_Requerente" class="materialize-textarea juridico" required></textarea>
+            <label for="proc_f_Requerente">Requerente *</label>
+          </div>
+          <div class="input-field col s12 m6">
+            <textarea id="proc_f_Requerido" class="materialize-textarea juridico"></textarea>
+            <label for="proc_f_Requerido">Requerido</label>
+          </div>
+        </div>
+
+        <div class="row" style="margin-bottom: 0;">
+          <div class="input-field col s12">
+            <input id="proc_f_Local" type="text">
+            <label for="proc_f_Local">Local da Ocorrência</label>
+          </div>
+        </div>
+
+        <div class="modal-secao">Conteúdo Jurídico</div>
+
+        <div class="row" style="margin-bottom: 0;">
+          <div class="input-field col s12">
+            <textarea id="proc_f_Ementa" class="materialize-textarea juridico"></textarea>
+            <label for="proc_f_Ementa">Ementa</label>
+          </div>
+        </div>
+
+        <div class="row" style="margin-bottom: 0;">
+          <div class="input-field col s12">
+            <textarea id="proc_f_Resumo" class="materialize-textarea juridico"></textarea>
+            <label for="proc_f_Resumo">Resumo</label>
+          </div>
+        </div>
+
+        <div class="row" style="margin-bottom: 0;">
+          <div class="input-field col s12">
+            <textarea id="proc_f_Provas" class="materialize-textarea juridico"></textarea>
+            <label for="proc_f_Provas">Provas (links ou descrição)</label>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-close waves-effect waves-grey btn-flat grey-text text-darken-1"
+        style="margin-right: 10px;">Cancelar</button>
+      <button id="procBtnSalvar" class="waves-effect waves-light btn btn-salvar-modal"
+        onclick="formProcessos_salvar()">
+        <i class="material-icons left">save</i>Salvar
+      </button>
     </div>
   </div>
 
-  <div id="modalConfirmacao" class="modal modal-pequena">
-    <div class="modal-content center-align">
-      <i id="iconConfirmacao" class="material-icons large amber-text text-darken-2">help_outline</i>
-      <h5 id="tituloConfirmacao">Confirmação</h5>
-      <p id="msgConfirmacao">Deseja realmente prosseguir?</p>
+
+  <!-- ============================================================
+       MODAL: HISTÓRICO DO PROCESSO
+  ============================================================ -->
+  <div id="modalHistorico" class="modal modal-historico">
+    <div class="modal-content">
+      <h5 id="histModalTitulo">Histórico</h5>
+      <div id="histLista" class="hist-lista-scroll">
+        <!-- Renderizado via JS -->
+      </div>
     </div>
-    <div class="modal-footer center-align" style="display: flex; justify-content: center; gap: 10px; padding-bottom: 20px;">
-      <button class="modal-close waves-effect waves-grey btn-flat grey lighten-4">Cancelar</button>
-      <button id="btnConfirmarAcao" class="waves-effect waves-light btn blue darken-4">Confirmar</button>
+    <div class="modal-footer">
+      <button class="modal-close waves-effect waves-grey btn-flat grey-text text-darken-1">Fechar</button>
     </div>
   </div>
+
+
+  <!-- ============================================================
+       MODAL: ALTERAÇÃO DE STATUS (Concluso ↔ Na secretaria)
+  ============================================================ -->
+  <div id="modalStatus" class="modal modal-status">
+    <div class="modal-content">
+      <h5>Alterar Status</h5>
+      <p id="statusProcNumero" style="margin-top:-14px; margin-bottom:18px; color:#555; font-size:0.88rem;"></p>
+
+      <div class="status-toggle-info">
+        <span id="statusDeChip" class="status-de s-vazio">
+          <span id="statusDeTexto">—</span>
+        </span>
+        <span class="status-seta">↓</span>
+        <span id="statusParaChip" class="status-para s-concluso">
+          <span id="statusParaTexto">—</span>
+        </span>
+      </div>
+
+      <div class="input-field" style="margin-top: 24px;">
+        <input id="proc_statusDataPicker" type="text" class="datepicker" readonly>
+        <label for="proc_statusDataPicker">Data da mudança de status *</label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-close waves-effect waves-grey btn-flat grey-text text-darken-1"
+        style="margin-right: 10px;">Cancelar</button>
+      <button id="statusBtnConfirmar" class="waves-effect waves-light btn btn-salvar-modal"
+        onclick="confirmarAlteracaoStatus()">
+        Confirmar
+      </button>
+    </div>
+  </div>
+
+
+  <!-- ============================================================
+       MODAL: ADICIONAR À PAUTA
+  ============================================================ -->
+  <div id="modalPauta" class="modal modal-pauta">
+    <div class="modal-content">
+      <h5>Incluir na Pauta</h5>
+      <p style="margin-top:-14px; margin-bottom:18px; color:#555; font-size:0.88rem;">
+        <strong id="pautaProcNumero">Processo</strong>
+      </p>
+
+      <div class="pauta-tabs">
+        <button class="pauta-tab-btn ativo" id="pautaTabBtn_existente"
+          onclick="pauta_trocarAba('existente')">
+          <i class="material-icons" style="font-size:15px">event_available</i>
+          Sessão existente
+        </button>
+        <button class="pauta-tab-btn" id="pautaTabBtn_nova"
+          onclick="pauta_trocarAba('nova')">
+          <i class="material-icons" style="font-size:15px">add_circle_outline</i>
+          Nova sessão
+        </button>
+      </div>
+
+      <!-- Painel: Sessão existente -->
+      <div id="pautaPainel_existente" class="pauta-painel ativo">
+        <div id="sessaoLista" class="sessao-lista"></div>
+        <p style="font-size:0.75rem; color:#aaa; margin-top:6px;">
+          Clique em uma sessão para selecioná-la. Ordenado da mais recente para a mais antiga.
+        </p>
+      </div>
+
+      <!-- Painel: Nova sessão -->
+      <div id="pautaPainel_nova" class="pauta-painel">
+        <div class="row" style="margin-bottom: 0;">
+          <div class="input-field col s12">
+            <select id="proc_novaSessaoOrgao">
+              <option value="" disabled selected>Selecione o órgão *</option>
+              <option value="Órgão Deliberativo do SDP">Órgão Deliberativo do SDP</option>
+              <option value="Pleno do SDP">Pleno do SDP</option>
+            </select>
+            <label>Órgão Deliberativo *</label>
+          </div>
+        </div>
+        <div class="row" style="margin-bottom: 0;">
+          <div class="input-field col s12 m6">
+            <input id="proc_novaDataPicker" type="text" class="datepicker" readonly>
+            <label for="proc_novaDataPicker">Data da Sessão *</label>
+          </div>
+          <div class="input-field col s12 m6">
+            <input id="proc_novaSessaoLocal" type="text">
+            <label for="proc_novaSessaoLocal">Sala / Local</label>
+          </div>
+        </div>
+        <p style="font-size:0.78rem; color:#aaa; margin-top:-8px;">
+          Sala/Local é opcional. Os demais campos podem ser preenchidos na gestão de sessões.
+        </p>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-close waves-effect waves-grey btn-flat grey-text text-darken-1"
+        style="margin-right: 10px;">Cancelar</button>
+      <button id="pautaBtnConfirmar" class="waves-effect waves-light btn btn-salvar-modal"
+        onclick="pauta_confirmar()">Confirmar</button>
+    </div>
+  </div>
+
+
+  <!-- ============================================================
+       MODAL: IMPORTAÇÃO EM MASSA (PINCEL MÁGICO)
+  ============================================================ -->
+  <div id="modalImportar" class="modal modal-importar">
+    <div class="modal-content">
+      <h5>Importação em Massa</h5>
+
+      <div class="importar-instrucoes">
+        Cole abaixo o texto com a lista de processos. As colunas devem estar separadas por
+        <strong>TAB</strong> ou <strong>dois ou mais espaços</strong>, na seguinte ordem:<br>
+        <strong>Processo &nbsp;·&nbsp; Data &nbsp;·&nbsp; Hora &nbsp;·&nbsp; Requerente</strong><br><br>
+        Linhas de cabeçalho são detectadas e ignoradas automaticamente.<br>
+        <strong>Regra:</strong> se o número já existir, o status será alterado para
+        <em>Concluso</em> e um registro de histórico será criado. Se não existir, um novo
+        processo será cadastrado com status <em>Concluso</em>.
+      </div>
+
+      <textarea id="importarTexto"
+        placeholder="Cole aqui o texto copiado da tabela..."
+        oninput="importar_parsear()"></textarea>
+
+      <div id="importarContagem" class="importar-contagem"></div>
+
+      <!-- Preview dos dados reconhecidos -->
+      <div id="importarPreview" class="importar-preview" style="display:none;">
+        <table>
+          <thead>
+            <tr>
+              <th>Processo</th>
+              <th>Data / Hora</th>
+              <th>Requerente</th>
+            </tr>
+          </thead>
+          <tbody id="importarTbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-close waves-effect waves-grey btn-flat grey-text text-darken-1"
+        style="margin-right: 10px;">Cancelar</button>
+      <button id="importarBtnConfirmar" class="waves-effect waves-light btn btn-salvar-modal"
+        onclick="importar_confirmar()">
+        <i class="material-icons left">auto_fix_high</i>Importar
+      </button>
+    </div>
+  </div>
+
+
+  <!-- ============================================================
+       MODAL: CONFIRMAÇÃO DE EXCLUSÃO
+  ============================================================ -->
+  <div id="modalConfirmacao" class="modal modal-pequena">
+    <div class="modal-content center-align">
+      <i class="material-icons large red-text text-darken-2"
+        style="font-size:52px; margin-bottom:8px;">delete_forever</i>
+      <h5 id="tituloConfirmacao" style="border-left:none; color:#c62828; text-align:center;">
+        Confirmar exclusão
+      </h5>
+      <p id="msgConfirmacao" style="color:#555; font-size:0.9rem; white-space:pre-line;">
+        Esta ação não pode ser desfeita.
+      </p>
+    </div>
+    <div class="modal-footer" style="justify-content: center; gap: 12px; padding-bottom: 20px !important;">
+      <button class="modal-close waves-effect waves-grey btn-flat grey lighten-4"
+        style="border-radius: 50px;">Cancelar</button>
+      <button id="btnConfirmarAcao" class="waves-effect waves-light btn"
+        style="background:#c62828; border-radius:50px; font-weight:700;">
+        Excluir definitivamente
+      </button>
+    </div>
+  </div>
+
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
   <?!= include('FormProcessos-js'); ?>
+
 </body>
 </html>

@@ -1,36 +1,125 @@
 <script>
-  let baseProcessos = [];
+  /**
+   * Frontend — FormProcessos
+   * SDP OAB/GO — Gestão de Processos
+   */
 
-  document.addEventListener('DOMContentLoaded', function() {
+  // ============================================================
+  // ESTADO GLOBAL
+  // ============================================================
+  let baseProcessos = [];
+  let baseSessoes = [];
+  let baseMembros = {};
+  let pautandoId = null;
+  let sessaoSelecionId = null;
+  let statusProcId = null;  // Id do processo sendo alternado de status
+  let statusNovoValor = null;  // Novo status calculado antes de abrir o datepicker
+  let dataISOPauta = "";    // Data para nova sessão (datepicker de pauta)
+  let dataISOStatus = "";    // Data para alteração de status (datepicker de status)
+  let itensParsedImport = [];    // Itens parseados antes da confirmação de importação
+
+  const STATUS_MAP = {
+    "Em tramitação": { icone: "pending", classe: "s-tramitacao" },
+    "Arquivado": { icone: "archive", classe: "s-arquivado" },
+    "Deferido": { icone: "check_circle", classe: "s-deferido" },
+    "Indeferido": { icone: "cancel", classe: "s-indeferido" },
+    "Em recurso": { icone: "refresh", classe: "s-recurso" },
+    "Em diligência": { icone: "manage_search", classe: "s-diligencia" },
+    "Concluso": { icone: "task_alt", classe: "s-concluso" },
+    "Na secretaria": { icone: "inbox", classe: "s-secretaria" }
+  };
+
+  // ============================================================
+  // INICIALIZAÇÃO
+  // ============================================================
+  document.addEventListener('DOMContentLoaded', function () {
     M.AutoInit();
+    M.FloatingActionButton.init(document.querySelectorAll('.fixed-action-btn'), { hoverEnabled: true });
+
+    // Modais não dismissíveis por clique externo
+    ['modalConfirmacao', 'modalPauta', 'modalStatus', 'modalImportar'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) M.Modal.init(el, { dismissible: false });
+    });
+
+    _initDatepickerPauta();
+    _initDatepickerStatus();
+
     formProcessos_carregar();
-    
-    var fab = document.querySelectorAll('.fixed-action-btn');
-    M.FloatingActionButton.init(fab, { hoverEnabled: true });
   });
+
+  // Datepicker para data de nova sessão no modal de pauta
+  function _initDatepickerPauta() {
+    const el = document.getElementById('proc_novaDataPicker');
+    if (!el) return;
+    M.Datepicker.init(el, {
+      format: 'dd/mm/yyyy', autoClose: true,
+      i18n: _i18nPtBR(),
+      onSelect: function (d) {
+        dataISOPauta = _dateToISO(d);
+      }
+    });
+  }
+
+  // Datepicker para data de mudança de status
+  function _initDatepickerStatus() {
+    const el = document.getElementById('proc_statusDataPicker');
+    if (!el) return;
+    M.Datepicker.init(el, {
+      format: 'dd/mm/yyyy', autoClose: true,
+      i18n: _i18nPtBR(),
+      onSelect: function (d) {
+        dataISOStatus = _dateToISO(d);
+      }
+    });
+  }
+
+  function _i18nPtBR() {
+    return {
+      cancel: 'Cancelar', clear: 'Limpar', done: 'OK',
+      months: ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'],
+      monthsShort: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'],
+      weekdays: ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'],
+      weekdaysShort: ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'],
+      weekdaysAbbrev: ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']
+    };
+  }
+
+  function _dateToISO(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  // ============================================================
+  // CARREGAMENTO E RENDERIZAÇÃO
+  // ============================================================
 
   function formProcessos_carregar() {
     const loader = document.getElementById('loaderLista');
     const container = document.getElementById('listaProcessos');
-    
     loader.style.display = 'block';
     container.style.opacity = '0.4';
 
     google.script.run
-      .withSuccessHandler(function(res) {
+      .withSuccessHandler(function (res) {
         loader.style.display = 'none';
         container.style.opacity = '1';
-        
-        if(res.sucesso) {
-          baseProcessos = res.dados;
+        if (res.sucesso) {
+          baseProcessos = res.dados || [];
+          baseSessoes = res.sessoes || [];
+          baseMembros = res.membros || {};
           formProcessos_renderizar(baseProcessos);
         } else {
-          M.toast({html: 'Erro ao carregar: ' + res.erro, classes: 'red'});
+          M.toast({ html: 'Erro ao carregar: ' + res.erro, classes: 'red darken-2' });
         }
       })
-      .withFailureHandler(function(err) {
+      .withFailureHandler(function () {
         loader.style.display = 'none';
-        M.toast({html: 'Falha crítica no servidor', classes: 'red'});
+        container.style.opacity = '1';
+        M.toast({ html: 'Falha crítica no servidor.', classes: 'red darken-2' });
       })
       .formProcessos_buscarDadosCompletos();
   }
@@ -39,73 +128,577 @@
     const container = document.getElementById('listaProcessos');
     container.innerHTML = '';
 
-    if (lista.length === 0) {
-      container.innerHTML = '<div class="center" style="padding:40px">Nenhum processo encontrado.</div>';
+    if (!lista || lista.length === 0) {
+      container.innerHTML = `
+        <div style="text-align:center; padding:50px; color:#aaa;">
+          <i class="material-icons" style="font-size:48px; display:block; margin-bottom:14px;">gavel</i>
+          <p>Nenhum processo encontrado.</p>
+        </div>`;
       return;
     }
 
     lista.forEach(p => {
-      const item = document.createElement('div');
-      item.className = 'collection-item-processo';
-      item.innerHTML = `
+      const reqCl = !p.requerente ? 'text-missing' : '';
+      const resCl = !p.requerido ? 'text-missing' : '';
+      const procCl = !p.procurador ? 'text-missing' : '';
+
+      // Chip de status
+      const statusCfg = STATUS_MAP[p.status] || null;
+      const chipHTML = statusCfg
+        ? `<span class="status-chip ${statusCfg.classe}">
+             <i class="material-icons" style="font-size:11px">${statusCfg.icone}</i>${p.status}
+           </span>`
+        : (p.status ? `<span class="status-chip s-vazio">${p.status}</span>` : '');
+
+      // Ícone e tooltip do botão de toggle de status
+      const isConcl = p.status === 'Concluso';
+      const isSec = p.status === 'Na secretaria';
+      const statusIcone = isConcl ? 'inbox' : 'task_alt';
+      const statusClasse = isConcl ? 'c-secretaria' : 'c-concluso';
+      const statusTooltip = isConcl ? 'Mover para Na secretaria' : 'Marcar como Concluso';
+      const novoStatusCalc = isConcl ? 'Na secretaria' : 'Concluso';
+
+      const idSafe = _esc(p.id);
+      const numSafe = _esc(p.processo);
+      const reqSafe = _esc(p.requerente.substring(0, 60));
+      const descSafe = _esc(p.ultimaDesc).substring(0, 120);
+
+      const card = document.createElement('div');
+      card.className = 'collection-item-processo';
+      card.innerHTML = `
         <div class="p-col-info">
-          <span class="lvl-1-proc">Processo: ${p.processo}</span>
-          <span class="lvl-2-partes">${p.requerente} <span style="color:#757575;font-style:normal;font-weight:400">x</span> ${p.requerido}</span>
-          <span class="lvl-3-procurador"><i class="material-icons left" style="font-size:16px">gavel</i> Procurador: ${p.procurador}</span>
-          <span class="lvl-4-relator"><i class="material-icons left" style="font-size:16px">person_outline</i> Relator: ${p.relator}</span>
+          <span class="lvl-1">
+            ${p.processo || '<span class="text-missing">S/N</span>'}
+            ${chipHTML}
+          </span>
+          <span class="lvl-2 ${reqCl}">
+            <i class="material-icons lvl-icon">arrow_forward</i>
+            <b>Requerente:</b> ${p.requerente || 'Não informado'}
+          </span>
+          <span class="lvl-3 ${resCl}">
+            <i class="material-icons lvl-icon">arrow_back</i>
+            <b>Requerido:</b> ${p.requerido || 'Não informado'}
+          </span>
+          <span class="lvl-4 ${procCl}">
+            <i class="material-icons lvl-icon">gavel</i>
+            <b>Procurador:</b> ${p.procurador || 'Pendente'}
+          </span>
+          <span class="lvl-5">
+            <i class="material-icons lvl-icon">location_on</i>
+            ${p.local || '<span style="color:#bbb">Local não informado</span>'}
+          </span>
         </div>
 
         <div class="p-col-hist">
-          <span class="hist-titulo">Último Evento</span>
-          <span class="hist-valor">${p.ultimaData}</span>
+          <span class="h-lvl-1">Último Evento</span>
+          <span class="h-lvl-2">${p.ultimaData}</span>
+          <span class="h-lvl-3" title="${descSafe}">${p.ultimaDesc || 'Sem registros'}</span>
         </div>
 
         <div class="p-col-actions">
-          <i class="material-icons icon-action c-edit tooltipped" data-tooltip="Editar" onclick="abrirEditar('${p.id}')">edit</i>
-          <i class="material-icons icon-action c-view tooltipped" data-tooltip="Ver Resumo" onclick="abrirResumo('${p.id}')">description</i>
-          <i class="material-icons icon-action c-view tooltipped" data-tooltip="Ver Ementa" onclick="abrirEmenta('${p.id}')">subject</i>
-          <i class="material-icons icon-action c-pauta tooltipped" data-tooltip="Incluir na Pauta" onclick="incluirPauta('${p.id}')">event_note</i>
-          <i class="material-icons icon-action c-del tooltipped" data-tooltip="Deletar" onclick="deletarProc('${p.id}')">delete</i>
+          <i class="material-icons act-btn c-edit tooltipped"
+             data-tooltip="Visualizar / Editar"
+             onclick="abrirEditar('${idSafe}')">visibility</i>
+
+          <i class="material-icons act-btn c-hist tooltipped"
+             data-tooltip="Ver histórico"
+             onclick="abrirHistorico('${idSafe}', '${numSafe}')">history</i>
+
+          <i class="material-icons act-btn ${statusClasse} tooltipped"
+             data-tooltip="${statusTooltip}"
+             onclick="abrirModalStatus('${idSafe}', '${numSafe}', '${_esc(novoStatusCalc)}', '${_esc(p.status)}')">
+             ${statusIcone}
+          </i>
+
+          <i class="material-icons act-btn c-pauta tooltipped"
+             data-tooltip="Incluir na pauta"
+             onclick="incluirPauta('${idSafe}', '${numSafe}')">event_note</i>
+
+          <i class="material-icons act-btn c-del tooltipped"
+             data-tooltip="Excluir"
+             onclick="deletarProc('${idSafe}', '${numSafe}')">delete</i>
         </div>
       `;
-      container.appendChild(item);
+      container.appendChild(card);
     });
-    
+
     M.Tooltip.init(document.querySelectorAll('.tooltipped'));
   }
 
+  // ============================================================
+  // FILTRO
+  // ============================================================
+
   function formProcessos_filtrar() {
-    // Captura o valor, remove espaços extras e converte para minúsculo
-    const termo = document.getElementById('inputBuscaProc').value.toLowerCase().trim();
-    
-    if (termo === "") {
-      formProcessos_renderizar(baseProcessos);
-      return;
-    }
+    const termo = (document.getElementById('inputBuscaProc').value || '').toLowerCase().trim();
+    if (!termo) { formProcessos_renderizar(baseProcessos); return; }
 
-    const filtrados = baseProcessos.filter(p => {
-      // Verifica cada campo garantindo que ele exista como string antes de testar o 'includes'
-      const numProc = (p.processo || "").toString().toLowerCase();
-      const req = (p.requerente || "").toString().toLowerCase();
-      const res = (p.requerido || "").toString().toLowerCase();
-      const proc = (p.procurador || "").toString().toLowerCase();
-
-      return numProc.includes(termo) || 
-            req.includes(termo) || 
-            res.includes(termo) || 
-            proc.includes(termo);
-    });
-
+    const filtrados = baseProcessos.filter(p =>
+      (p.processo || "").toLowerCase().includes(termo) ||
+      (p.requerente || "").toLowerCase().includes(termo) ||
+      (p.requerido || "").toLowerCase().includes(termo) ||
+      (p.procurador || "").toLowerCase().includes(termo) ||
+      (p.status || "").toLowerCase().includes(termo)
+    );
     formProcessos_renderizar(filtrados);
   }
 
-  // PLACEHOLDERS PARA AÇÕES
-  function abrirEditar(id) { M.toast({html: 'Editar ID: ' + id}); }
-  function abrirResumo(id) { M.toast({html: 'Resumo ID: ' + id}); }
-  function abrirEmenta(id) { M.toast({html: 'Ementa ID: ' + id}); }
-  function incluirPauta(id) { M.toast({html: 'Pauta ID: ' + id}); }
-  function deletarProc(id) { 
-     document.getElementById('msgConfirmacao').innerText = 'Deseja excluir permanentemente o processo ' + id + '?';
-     M.Modal.getInstance(document.getElementById('modalConfirmacao')).open();
+  // ============================================================
+  // MODAL DE CADASTRO / EDIÇÃO
+  // ============================================================
+
+  function abrirNovoProcesso() {
+    document.getElementById('procForm').reset();
+    document.getElementById('proc_f_Id').value = '';
+    document.getElementById('procModalTitulo').innerText = 'Novo Processo';
+    _autocompleteInit();
+    M.updateTextFields();
+    M.FormSelect.init(document.querySelectorAll('#modalProcessoCad select'));
+    _abrirModal('modalProcessoCad');
+  }
+
+  function abrirEditar(id) {
+    const p = baseProcessos.find(x => x.id === id);
+    if (!p) return M.toast({ html: 'Processo não encontrado.', classes: 'orange darken-3' });
+
+    document.getElementById('procForm').reset();
+    document.getElementById('procModalTitulo').innerText = 'Visualizar / Editar Processo';
+
+    document.getElementById('proc_f_Id').value = p.id;
+    document.getElementById('proc_f_Processo').value = p.processo;
+    document.getElementById('proc_f_Status').value = p.status;
+    document.getElementById('proc_f_Requerente').value = p.requerente;
+    document.getElementById('proc_f_Requerido').value = p.requerido;
+    document.getElementById('proc_f_Procurador').value = p.procurador;
+    document.getElementById('proc_f_Local').value = p.local;
+    document.getElementById('proc_f_Resumo').value = p.resumo;
+    document.getElementById('proc_f_Ementa').value = p.ementa;
+    document.getElementById('proc_f_Provas').value = p.provas;
+
+    _autocompleteInit();
+    M.updateTextFields();
+    M.FormSelect.init(document.querySelectorAll('#modalProcessoCad select'));
+    ['proc_f_Requerente', 'proc_f_Requerido', 'proc_f_Resumo', 'proc_f_Ementa', 'proc_f_Provas']
+      .forEach(fid => M.textareaAutoResize(document.getElementById(fid)));
+
+    _abrirModal('modalProcessoCad');
+  }
+
+  function _autocompleteInit() {
+    M.Autocomplete.init(document.getElementById('proc_f_Procurador'), {
+      data: baseMembros, minLength: 2, limit: 6
+    });
+  }
+
+  function formProcessos_salvar() {
+    const numero = (document.getElementById('proc_f_Processo').value || '').trim();
+    const requerente = (document.getElementById('proc_f_Requerente').value || '').trim();
+
+    if (!numero || !requerente) {
+      return M.toast({ html: 'Número do processo e Requerente são obrigatórios.', classes: 'red darken-2' });
+    }
+
+    const btn = document.getElementById('procBtnSalvar');
+    btn.disabled = true;
+    btn.innerHTML = 'Processando...';
+
+    const obj = {
+      id: document.getElementById('proc_f_Id').value || '',
+      processo: numero,
+      requerente: requerente,
+      requerido: document.getElementById('proc_f_Requerido').value,
+      procurador: document.getElementById('proc_f_Procurador').value,
+      local: document.getElementById('proc_f_Local').value,
+      status: document.getElementById('proc_f_Status').value,
+      resumo: document.getElementById('proc_f_Resumo').value,
+      ementa: document.getElementById('proc_f_Ementa').value,
+      provas: document.getElementById('proc_f_Provas').value
+    };
+
+    google.script.run
+      .withSuccessHandler(function () {
+        M.toast({ html: 'Processo salvo com sucesso!', classes: 'green darken-2' });
+        btn.disabled = false;
+        btn.innerHTML = '<i class="material-icons left">save</i>Salvar';
+        M.Modal.getInstance(document.getElementById('modalProcessoCad')).close();
+        formProcessos_carregar();
+      })
+      .withFailureHandler(function (err) {
+        M.toast({ html: 'Erro: ' + err.message, classes: 'red darken-2' });
+        btn.disabled = false;
+        btn.innerHTML = '<i class="material-icons left">save</i>Salvar';
+      })
+      .formProcessos_salvarRegistro(obj);
+  }
+
+  // ============================================================
+  // MODAL DE HISTÓRICO
+  // ============================================================
+
+  function abrirHistorico(id, numero) {
+    document.getElementById('histModalTitulo').textContent = 'Histórico — Processo nº ' + (numero || id);
+    const lista = document.getElementById('histLista');
+    lista.innerHTML = `<div class="hist-vazio"><i class="material-icons" style="font-size:32px;display:block;margin-bottom:8px;color:#ccc">hourglass_empty</i>Carregando...</div>`;
+
+    _abrirModal('modalHistorico');
+
+    google.script.run
+      .withSuccessHandler(function (res) {
+        if (!res.sucesso) {
+          lista.innerHTML = `<div class="hist-vazio">${res.erro}</div>`;
+          return;
+        }
+        _renderizarHistorico(res.registros);
+      })
+      .withFailureHandler(function (err) {
+        lista.innerHTML = `<div class="hist-vazio">Erro: ${err.message}</div>`;
+      })
+      .formProcessos_buscarHistorico(id);
+  }
+
+  function _renderizarHistorico(registros) {
+    const lista = document.getElementById('histLista');
+
+    if (!registros || registros.length === 0) {
+      lista.innerHTML = `<div class="hist-vazio"><i class="material-icons" style="font-size:36px;display:block;color:#ccc;margin-bottom:10px;">history_toggle_off</i>Nenhum registro de histórico encontrado.</div>`;
+      return;
+    }
+
+    const tipoClasse = (tipo) => {
+      const t = (tipo || "").toLowerCase();
+      if (t.includes('andamento')) return 'tipo-andamento';
+      if (t.includes('sessão') || t.includes('sessao')) return 'tipo-sessao';
+      if (t.includes('ato')) return 'tipo-ato';
+      return 'tipo-outro';
+    };
+
+    const itensHTML = registros.map(r => `
+      <div class="hist-item">
+        <div class="h-col-data">${r.data}</div>
+        <div class="h-col-tipo">
+          <span class="hist-tipo-chip ${tipoClasse(r.tipo)}">${r.tipo || '—'}</span>
+        </div>
+        <div class="h-col-desc">${r.descricao || '—'}</div>
+      </div>
+    `).join('');
+
+    lista.innerHTML = `
+      <div class="hist-header">
+        <span class="h-col-data">Data</span>
+        <span class="h-col-tipo">Tipo</span>
+        <span class="h-col-desc">Descrição</span>
+      </div>
+      ${itensHTML}
+    `;
+  }
+
+  // ============================================================
+  // MODAL DE ALTERAÇÃO DE STATUS (Concluso ↔ Na secretaria)
+  // ============================================================
+
+  function abrirModalStatus(id, numero, novoStatus, statusAtual) {
+    statusProcId = id;
+    statusNovoValor = novoStatus;
+    dataISOStatus = "";
+
+    // Limpa o datepicker
+    const dpEl = document.getElementById('proc_statusDataPicker');
+    if (dpEl) { dpEl.value = ''; M.updateTextFields(); }
+
+    // Atualiza o display visual dentro do modal
+    const cfgDe = STATUS_MAP[statusAtual] || { classe: 's-vazio' };
+    const cfgPara = STATUS_MAP[novoStatus] || { classe: 's-concluso' };
+
+    document.getElementById('statusDeTexto').textContent = statusAtual || '(sem status)';
+    document.getElementById('statusParaTexto').textContent = novoStatus;
+    document.getElementById('statusDeChip').className = 'status-de ' + cfgDe.classe;
+    document.getElementById('statusParaChip').className = 'status-para ' + cfgPara.classe;
+    document.getElementById('statusProcNumero').textContent = 'Processo nº ' + (numero || id);
+
+    _abrirModal('modalStatus');
+  }
+
+  function confirmarAlteracaoStatus() {
+    if (!dataISOStatus) {
+      return M.toast({ html: 'Selecione a data da mudança de status.', classes: 'orange darken-3' });
+    }
+
+    const btn = document.getElementById('statusBtnConfirmar');
+    btn.disabled = true;
+    btn.textContent = 'Processando...';
+
+    google.script.run
+      .withSuccessHandler(function () {
+        M.toast({ html: 'Status alterado com sucesso!', classes: 'green darken-2' });
+        M.Modal.getInstance(document.getElementById('modalStatus')).close();
+        btn.disabled = false;
+        btn.textContent = 'Confirmar';
+        formProcessos_carregar();
+      })
+      .withFailureHandler(function (err) {
+        M.toast({ html: 'Erro: ' + err.message, classes: 'red darken-2' });
+        btn.disabled = false;
+        btn.textContent = 'Confirmar';
+      })
+      .formProcessos_alterarStatus(statusProcId, statusNovoValor, dataISOStatus);
+  }
+
+  // ============================================================
+  // MODAL DE PAUTA
+  // ============================================================
+
+  function incluirPauta(id, numero) {
+    pautandoId = id;
+    sessaoSelecionId = null;
+    dataISOPauta = "";
+
+    document.getElementById('pautaProcNumero').textContent = 'Processo nº ' + (numero || id);
+
+    // Limpa campos da aba Nova Sessão
+    document.getElementById('proc_novaSessaoOrgao').value = '';
+    document.getElementById('proc_novaSessaoLocal').value = '';
+    const dpPauta = document.getElementById('proc_novaDataPicker');
+    if (dpPauta) { dpPauta.value = ''; }
+    M.updateTextFields();
+    M.FormSelect.init(document.getElementById('proc_novaSessaoOrgao'));
+
+    _renderizarListaSessoes();
+    pauta_trocarAba('existente');
+    _abrirModal('modalPauta');
+  }
+
+  function _renderizarListaSessoes() {
+    const container = document.getElementById('sessaoLista');
+    container.innerHTML = '';
+
+    if (!baseSessoes || baseSessoes.length === 0) {
+      container.innerHTML = '<div class="sessao-lista-vazia">Nenhuma sessão cadastrada ainda.</div>';
+      return;
+    }
+
+    baseSessoes.forEach(s => {
+      const item = document.createElement('div');
+      item.className = 'sessao-item';
+      item.setAttribute('data-id', s.id);
+      item.innerHTML = `
+        <div class="sessao-item-data"><span>${s.data}</span></div>
+        <div>
+          <div class="sessao-item-orgao">${s.orgao}</div>
+          ${s.local ? `<span class="sessao-item-local">${s.local}</span>` : ''}
+        </div>
+      `;
+      item.onclick = function () {
+        document.querySelectorAll('.sessao-item').forEach(el => el.classList.remove('selecionado'));
+        this.classList.add('selecionado');
+        sessaoSelecionId = this.getAttribute('data-id');
+      };
+      container.appendChild(item);
+    });
+  }
+
+  function pauta_trocarAba(aba) {
+    document.querySelectorAll('.pauta-tab-btn').forEach(b => b.classList.remove('ativo'));
+    document.querySelectorAll('.pauta-painel').forEach(p => p.classList.remove('ativo'));
+    document.getElementById('pautaTabBtn_' + aba).classList.add('ativo');
+    document.getElementById('pautaPainel_' + aba).classList.add('ativo');
+  }
+
+  function pauta_confirmar() {
+    const abaAtiva = document.querySelector('.pauta-painel.ativo');
+    if (!abaAtiva) return;
+
+    const btn = document.getElementById('pautaBtnConfirmar');
+    btn.disabled = true;
+    btn.textContent = 'Processando...';
+    const reset = () => { btn.disabled = false; btn.textContent = 'Confirmar'; };
+
+    if (abaAtiva.id === 'pautaPainel_existente') {
+      if (!sessaoSelecionId) { reset(); return M.toast({ html: 'Selecione uma sessão da lista.', classes: 'orange darken-3' }); }
+
+      google.script.run
+        .withSuccessHandler(function (res) {
+          M.toast({ html: res.mensagem || 'Adicionado!', classes: 'green darken-2' });
+          M.Modal.getInstance(document.getElementById('modalPauta')).close();
+          reset();
+        })
+        .withFailureHandler(function (err) {
+          M.toast({ html: err.message, classes: 'red darken-2' });
+          reset();
+        })
+        .formProcessos_adicionarAPauta(pautandoId, sessaoSelecionId);
+
+    } else {
+      const orgao = document.getElementById('proc_novaSessaoOrgao').value;
+      const local = document.getElementById('proc_novaSessaoLocal').value;
+
+      if (!orgao) { reset(); return M.toast({ html: 'Selecione o Órgão.', classes: 'orange darken-3' }); }
+      if (!dataISOPauta) { reset(); return M.toast({ html: 'Selecione a Data da sessão.', classes: 'orange darken-3' }); }
+
+      google.script.run
+        .withSuccessHandler(function (res) {
+          M.toast({ html: res.mensagem || 'Sessão criada!', classes: 'green darken-2' });
+          M.Modal.getInstance(document.getElementById('modalPauta')).close();
+          formProcessos_carregar();
+          reset();
+        })
+        .withFailureHandler(function (err) {
+          M.toast({ html: err.message, classes: 'red darken-2' });
+          reset();
+        })
+        .formProcessos_criarSessaoEPautar(pautandoId, orgao, dataISOPauta, local);
+    }
+  }
+
+  // ============================================================
+  // MODAL DE IMPORTAÇÃO EM MASSA (PINCEL MÁGICO)
+  // ============================================================
+
+  function abrirModalImportar() {
+    document.getElementById('importarTexto').value = '';
+    document.getElementById('importarPreview').style.display = 'none';
+    document.getElementById('importarContagem').textContent = '';
+    itensParsedImport = [];
+    _abrirModal('modalImportar');
+  }
+
+  /**
+   * Faz o parse do texto colado pelo usuário.
+   * Formato esperado: colunas separadas por TAB ou múltiplos espaços.
+   * Ordem: Processo | Data | Hora | Requerente
+   * Linhas de cabeçalho e vazias são ignoradas automaticamente.
+   */
+  function importar_parsear() {
+    const texto = (document.getElementById('importarTexto').value || '').trim();
+    const contagem = document.getElementById('importarContagem');
+    const preview = document.getElementById('importarPreview');
+
+    if (!texto) {
+      contagem.textContent = '';
+      preview.style.display = 'none';
+      itensParsedImport = [];
+      return;
+    }
+
+    const linhas = texto.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    const itens = [];
+
+    linhas.forEach(linha => {
+      // Divide por TAB primeiro; se não houver TAB, divide por 2+ espaços consecutivos
+      let partes = linha.includes('\t')
+        ? linha.split('\t').map(p => p.trim())
+        : linha.split(/\s{2,}/).map(p => p.trim());
+
+      // Precisa ter pelo menos 4 colunas (Processo, Data, Hora, Requerente)
+      if (partes.length < 4) return;
+
+      // Ignora linhas de cabeçalho (primeira coluna contém "processo" ou similar)
+      const primCol = partes[0].toLowerCase();
+      if (primCol === 'processo' || primCol === 'n°' || primCol === 'nº' || primCol === 'num') return;
+
+      // A coluna de requerente pode conter espaços — junta tudo a partir da 4ª coluna
+      const requerente = partes.slice(3).join(' ');
+
+      itens.push({
+        processo: partes[0],
+        data: partes[1],   // Formato dd/mm/yyyy que vem do texto
+        hora: partes[2],
+        requerente: requerente
+      });
+    });
+
+    itensParsedImport = itens;
+
+    if (itens.length === 0) {
+      contagem.className = 'importar-contagem erro';
+      contagem.textContent = 'Nenhuma linha válida reconhecida. Verifique o formato.';
+      preview.style.display = 'none';
+      return;
+    }
+
+    contagem.className = 'importar-contagem';
+    contagem.textContent = `${itens.length} linha(s) reconhecida(s).`;
+
+    // Monta preview (máx 8 linhas visíveis)
+    const linhasPreview = itens.slice(0, 50);
+    const tbody = linhasPreview.map(it => `
+      <tr>
+        <td>${it.processo}</td>
+        <td>${it.data} ${it.hora}</td>
+        <td>${it.requerente}</td>
+      </tr>
+    `).join('');
+
+    document.getElementById('importarTbody').innerHTML = tbody;
+    preview.style.display = 'block';
+  }
+
+  function importar_confirmar() {
+    if (!itensParsedImport || itensParsedImport.length === 0) {
+      return M.toast({ html: 'Nenhum dado para importar. Cole o texto e clique em Processar.', classes: 'orange darken-3' });
+    }
+
+    const btn = document.getElementById('importarBtnConfirmar');
+    btn.disabled = true;
+    btn.textContent = 'Importando...';
+
+    google.script.run
+      .withSuccessHandler(function (res) {
+        M.toast({ html: res.mensagem, classes: 'green darken-2' });
+        M.Modal.getInstance(document.getElementById('modalImportar')).close();
+        btn.disabled = false;
+        btn.textContent = 'Importar';
+        formProcessos_carregar();
+      })
+      .withFailureHandler(function (err) {
+        M.toast({ html: 'Erro: ' + err.message, classes: 'red darken-2' });
+        btn.disabled = false;
+        btn.textContent = 'Importar';
+      })
+      .formProcessos_importarEmMassa(itensParsedImport);
+  }
+
+  // ============================================================
+  // EXCLUSÃO COM CONFIRMAÇÃO
+  // ============================================================
+
+  function deletarProc(id, numero) {
+    document.getElementById('msgConfirmacao').innerText =
+      `O processo nº ${numero || id} será removido permanentemente.\nEsta ação não pode ser desfeita.`;
+
+    const btnConf = document.getElementById('btnConfirmarAcao');
+    const novoBtn = btnConf.cloneNode(true);
+    btnConf.parentNode.replaceChild(novoBtn, btnConf);
+
+    novoBtn.onclick = function () {
+      M.Modal.getInstance(document.getElementById('modalConfirmacao')).close();
+      google.script.run
+        .withSuccessHandler(function () {
+          M.toast({ html: 'Processo excluído.', classes: 'blue-grey darken-2' });
+          formProcessos_carregar();
+        })
+        .withFailureHandler(function (err) {
+          M.toast({ html: 'Erro: ' + err.message, classes: 'red darken-2' });
+        })
+        .formProcessos_excluirRegistro(id);
+    };
+
+    M.Modal.getInstance(document.getElementById('modalConfirmacao')).open();
+  }
+
+  // ============================================================
+  // UTILITÁRIOS
+  // ============================================================
+
+  function _abrirModal(id) {
+    const el = document.getElementById(id);
+    const inst = M.Modal.getInstance(el) || M.Modal.init(el);
+    inst.open();
+  }
+
+  function _esc(str) {
+    return (str || '').toString()
+      .replace(/\\/g, '\\\\')
+      .replace(/'/g, "\\'")
+      .replace(/"/g, '&quot;');
   }
 </script>
