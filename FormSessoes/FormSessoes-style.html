@@ -68,7 +68,6 @@
     box-shadow: 0 12px 24px rgba(0, 0, 0, 0.13);
   }
 
-  /* Coluna de data (lateral esquerda colorida) */
   .sess-col-data {
     background: linear-gradient(160deg, #002f5d 0%, #004480 100%);
     color: #fff;
@@ -105,7 +104,6 @@
     margin-top: 2px;
   }
 
-  /* Coluna de informações principais */
   .sess-col-info {
     flex: 1;
     padding: 16px 20px;
@@ -138,7 +136,6 @@
     font-style: italic;
   }
 
-  /* Coluna de métricas */
   .sess-col-metricas {
     min-width: 120px;
     max-width: 130px;
@@ -167,7 +164,6 @@
     margin-top: 4px;
   }
 
-  /* Coluna de ações */
   .sess-col-actions {
     min-width: 90px;
     max-width: 90px;
@@ -179,6 +175,9 @@
     padding: 16px 10px;
   }
 
+  /* =====================================================
+     4. BOTÕES DE AÇÃO DOS CARDS
+  ===================================================== */
   .act-btn {
     cursor: pointer;
     font-size: 22px;
@@ -189,12 +188,12 @@
 
   .act-btn:hover { transform: scale(1.3); }
 
-  .c-edit     { color: #004480; }
-  .c-fichas   { color: #a68945; }
-  .c-del      { color: #ff0000; }
+  .c-edit   { color: #004480; }
+  .c-fichas { color: #a68945; }
+  .c-del    { color: #ff0000; }
 
   /* =====================================================
-     4. FAB E TOOLTIPS
+     5. FAB PRINCIPAL E TOOLTIPS
   ===================================================== */
   .btn-oab-red { background-color: #ff0000 !important; }
 
@@ -210,7 +209,7 @@
   .material-tooltip { background-color: #004480 !important; }
 
   /* =====================================================
-     5. BOTÕES AUXILIARES
+     6. BOTÕES AUXILIARES
   ===================================================== */
   .btn-oab-blue {
     background-color: #004480 !important;
@@ -231,7 +230,7 @@
   .btn-oab-gold:hover { background-color: #7a6330 !important; }
 
   /* =====================================================
-     6. MODAIS — BASE
+     7. MODAIS — BASE
   ===================================================== */
   .modal {
     border-radius: 12px !important;
@@ -246,9 +245,7 @@
     overflow-y: hidden !important;
   }
 
-  .modal.modal-sessao-cad {
-    max-width: 680px !important;
-  }
+  .modal.modal-sessao-cad { max-width: 680px !important; }
 
   .modal-content h5 {
     font-weight: 700;
@@ -280,7 +277,7 @@
   .btn-salvar-modal:hover { background-color: #002f5d !important; }
 
   /* =====================================================
-     7. MODAL DE FICHAS (PAINEL DIVIDIDO)
+     8. MODAL DE FICHAS — ESTRUTURA PRINCIPAL
   ===================================================== */
   .modal.modal-fichas {
     max-width: 1050px !important;
@@ -299,14 +296,15 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    height: 100%;
   }
 
-  /* Cabeçalho do modal fichas */
+  /* Cabeçalho fixo do modal fichas */
   .fichas-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 16px 20px 14px 20px;
+    padding: 14px 20px 12px 20px;
     border-bottom: 2px solid #f0f0f0;
     background: #fff;
     flex-shrink: 0;
@@ -322,22 +320,26 @@
     text-transform: uppercase;
   }
 
-  /* Corpo dividido */
+  /* Corpo dividido — ocupa todo o espaço restante */
   .fichas-body {
     display: flex;
     flex: 1;
     overflow: hidden;
+    min-height: 0; /* essencial para flex + overflow funcionar */
   }
 
-  /* Painel esquerdo: lista de processos */
+  /* =====================================================
+     9. PAINEL ESQUERDO — LISTA DE PROCESSOS
+  ===================================================== */
   .fichas-painel-esq {
-    width: 280px;
-    min-width: 250px;
+    width: 270px;
+    min-width: 240px;
     flex-shrink: 0;
     border-right: 2px solid #f0f0f0;
     display: flex;
     flex-direction: column;
     background: #f8f9fa;
+    min-height: 0;
   }
 
   .fichas-painel-titulo {
@@ -367,6 +369,7 @@
   .fichas-lista-proc {
     flex: 1;
     overflow-y: auto;
+    min-height: 0;
   }
 
   .ficha-proc-item {
@@ -381,6 +384,7 @@
   .ficha-proc-item.selecionado {
     background: #e8f0fe;
     border-left: 4px solid #004480;
+    padding-left: 10px;
   }
 
   .ficha-proc-num {
@@ -406,19 +410,24 @@
     font-weight: 700;
     padding: 1px 6px;
     border-radius: 50px;
-    margin-top: 3px;
+    margin-top: 4px;
     text-transform: uppercase;
   }
 
-  /* Painel direito: detalhes da ficha */
+  /* =====================================================
+     10. PAINEL DIREITO — ESTRUTURA
+  ===================================================== */
   .fichas-painel-dir {
     flex: 1;
     display: flex;
     flex-direction: column;
     overflow: hidden;
     background: #fff;
+    position: relative; /* ancora o FAB interno */
+    min-height: 0;
   }
 
+  /* Estado vazio */
   .fichas-vazio-msg {
     flex: 1;
     display: flex;
@@ -431,7 +440,7 @@
     font-size: 0.9rem;
   }
 
-  /* Bloco de informações do processo no painel direito */
+  /* Cabeçalho azul do processo — FIXO no topo do painel direito */
   .ficha-proc-info {
     background: linear-gradient(135deg, #002f5d 0%, #004480 100%);
     padding: 14px 20px;
@@ -439,7 +448,7 @@
   }
 
   .ficha-proc-numero {
-    font-size: 1.3rem;
+    font-size: 1.2rem;
     font-weight: 800;
     color: #fff;
   }
@@ -470,138 +479,392 @@
     letter-spacing: 0.05em;
   }
 
-  /* Separador de seção dentro do painel direito */
-  .ficha-secao-titulo {
+  /* Área scrollável: campos da ficha + votos */
+  .fichas-dir-scroll {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+    padding-bottom: 80px; /* espaço para FAB não cobrir conteúdo */
+  }
+
+  /* Campos editáveis (relator, expediente) */
+  .ficha-campos {
+    padding: 4px 20px 0 20px;
+    border-bottom: 2px solid #f0f0f0;
+  }
+
+  /* Label da seção votos */
+  .ficha-secao-votos {
     font-size: 0.68rem;
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: #888;
-    border-top: 2px solid #f0f0f0;
-    border-bottom: 1px solid #f0f0f0;
-    padding: 8px 20px;
+    padding: 12px 20px 8px 20px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    flex-shrink: 0;
   }
 
-  /* Painel expansível para adicionar voto */
-  .painel-add-voto {
-    background: #f1f4f9;
-    border: 1.5px dashed #004480;
-    border-radius: 8px;
-    margin: 10px 20px;
-    padding: 12px 16px 4px 16px;
-    flex-shrink: 0;
+  .ficha-secao-votos-total {
+    background: #f0f4f8;
+    color: #666;
+    font-size: 0.65rem;
+    padding: 2px 8px;
+    border-radius: 50px;
   }
 
-  /* Lista de votos */
-  .fichas-lista-votos {
-    flex: 1;
-    overflow-y: auto;
-    padding: 0 20px 20px 20px;
+  /* =====================================================
+     11. VOTOS — LISTA ACCORDION
+  ===================================================== */
+  .votos-lista {
+    padding: 0 16px 4px 16px;
   }
 
-  .voto-item {
+  .voto-accordion {
+    border: 1.5px solid #eee;
+    border-radius: 10px;
+    margin-bottom: 8px;
+    overflow: hidden;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .voto-accordion.aberto {
+    border-color: #004480;
+    box-shadow: 0 4px 12px rgba(0,68,128,0.1);
+  }
+
+  /* Cabeçalho clicável do voto */
+  .voto-accordion-header {
     display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    padding: 12px 0;
-    border-bottom: 1px solid #f5f5f5;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    cursor: pointer;
+    background: #fff;
+    transition: background 0.15s;
+    user-select: none;
   }
 
-  .voto-item:last-child { border-bottom: none; }
+  .voto-accordion-header:hover { background: #f8f9fa; }
+
+  .voto-accordion.aberto .voto-accordion-header {
+    background: #f0f4ff;
+    border-bottom: 1px solid #e0e8ff;
+  }
 
   .voto-tipo-chip {
     flex-shrink: 0;
-    font-size: 0.65rem;
+    font-size: 0.62rem;
     font-weight: 700;
     text-transform: uppercase;
     padding: 3px 9px;
     border-radius: 50px;
     letter-spacing: 0.04em;
+    white-space: nowrap;
   }
 
-  .voto-tipo-relator   { background: #e3f2fd; color: #1565c0; }
-  .voto-tipo-membro    { background: #f3e5f5; color: #6a1b9a; }
-  .voto-tipo-minerva   { background: #fff3e0; color: #e65100; }
-  .voto-tipo-vogal     { background: #e8f5e9; color: #2e7d32; }
-  .voto-tipo-default   { background: #f5f5f5; color: #666; }
+  .voto-tipo-relator { background: #e3f2fd; color: #1565c0; }
+  .voto-tipo-membro  { background: #f3e5f5; color: #6a1b9a; }
+  .voto-tipo-minerva { background: #fff3e0; color: #e65100; }
+  .voto-tipo-vogal   { background: #e8f5e9; color: #2e7d32; }
+  .voto-tipo-default { background: #f5f5f5; color: #666; }
 
-  .voto-info { flex: 1; }
+  .voto-header-info {
+    flex: 1;
+    min-width: 0;
+  }
 
-  .voto-votante {
+  .voto-header-votante {
     font-size: 0.82rem;
     font-weight: 700;
     color: #333;
     display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
-  .voto-decisao {
-    font-size: 0.78rem;
-    color: #555;
+  .voto-header-decisao {
+    font-size: 0.75rem;
+    color: #777;
     display: block;
-    margin-top: 2px;
+    margin-top: 1px;
   }
 
-  .voto-resultado {
-    font-size: 0.72rem;
-    font-weight: 700;
-    color: #a68945;
-    display: block;
-    margin-top: 2px;
-  }
-
-  .voto-pdf-link {
-    font-size: 0.72rem;
-    color: #004480;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-    margin-top: 3px;
-  }
-
-  .voto-pdf-link:hover { text-decoration: underline; }
-
-  .voto-actions {
-    display: flex;
-    gap: 4px;
+  /* Seta de expansão */
+  .voto-chevron {
+    font-size: 20px;
+    color: #aaa;
+    transition: transform 0.25s ease;
     flex-shrink: 0;
   }
 
-  .voto-btn-del {
-    cursor: pointer;
-    color: #ff0000;
-    font-size: 18px;
-    transition: transform 0.15s;
-    opacity: 0.6;
+  .voto-accordion.aberto .voto-chevron { transform: rotate(180deg); }
+
+  /* Corpo do voto expandido */
+  .voto-accordion-body {
+    display: none;
+    padding: 12px 14px 12px 14px;
+    background: #f8f9fa;
   }
 
-  .voto-btn-del:hover { transform: scale(1.2); opacity: 1; }
+  .voto-accordion.aberto .voto-accordion-body { display: block; }
+
+  .voto-detalhe-linha {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 8px;
+    align-items: baseline;
+  }
+
+  .voto-detalhe-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #aaa;
+    letter-spacing: 0.06em;
+    min-width: 72px;
+    flex-shrink: 0;
+  }
+
+  .voto-detalhe-valor {
+    font-size: 0.82rem;
+    color: #333;
+    font-weight: 600;
+  }
+
+  .voto-resultado-chip {
+    display: inline-block;
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 2px 10px;
+    border-radius: 50px;
+    background: #e8f5e9;
+    color: #2e7d32;
+  }
+
+  .voto-pdf-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #004480;
+    text-decoration: none;
+    background: #e8f0fe;
+    padding: 5px 12px;
+    border-radius: 50px;
+    transition: background 0.15s;
+    margin-top: 4px;
+  }
+
+  .voto-pdf-link:hover { background: #c8d8f8; text-decoration: none; }
+
+  .voto-accordion-footer {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid #eee;
+  }
+
+  .btn-voto-del {
+    background: none;
+    border: 1px solid #ffcdd2;
+    color: #c62828;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 50px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: background 0.15s;
+  }
+
+  .btn-voto-del:hover { background: #ffebee; }
 
   .votos-vazio {
     text-align: center;
-    padding: 30px;
+    padding: 30px 20px;
     color: #bbb;
     font-size: 0.85rem;
   }
 
-  /* Upload indicator */
-  .upload-progress {
-    display: none;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 20px;
-    background: #e8f0fe;
-    font-size: 0.82rem;
-    color: #004480;
-    font-weight: 600;
-    flex-shrink: 0;
+  /* =====================================================
+     12. FAB INTERNO DO PAINEL DIREITO
+  ===================================================== */
+  .fichas-fab-interno {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    z-index: 10;
   }
 
-  /* Input field styling dentro dos modais */
+  .fichas-fab-btn-principal {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: #ff0000;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 16px rgba(255,0,0,0.45);
+    transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    color: #fff;
+  }
+
+  .fichas-fab-btn-principal:hover {
+    background: #002f5d;
+    transform: scale(1.08);
+    box-shadow: 0 6px 20px rgba(0,47,93,0.35);
+  }
+
+  .fichas-fab-btn-principal .material-icons {
+    font-size: 24px;
+    transition: transform 0.3s ease;
+  }
+
+  .fichas-fab-interno.aberto .fichas-fab-btn-principal { background: #002f5d; }
+  .fichas-fab-interno.aberto .fichas-fab-btn-principal .material-icons { transform: rotate(45deg); }
+
+  /* Sub-opções do FAB */
+  .fichas-fab-opcoes {
+    position: absolute;
+    bottom: 58px;
+    right: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 10px;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(10px);
+    transition: all 0.2s ease;
+  }
+
+  .fichas-fab-interno.aberto .fichas-fab-opcoes {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+  }
+
+  .fichas-fab-opcao {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+  }
+
+  .fichas-fab-opcao-label {
+    background: #002f5d;
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 5px 12px;
+    border-radius: 50px;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  }
+
+  .fichas-fab-opcao-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+    transition: transform 0.2s;
+    color: #fff;
+  }
+
+  .fichas-fab-opcao-btn:hover { transform: scale(1.15); }
+  .fichas-fab-opcao-btn.cor-azul    { background: #004480; }
+  .fichas-fab-opcao-btn.cor-dourado { background: #a68945; }
+
+  /* =====================================================
+     13. FORMULÁRIO DE NOVO VOTO (EXPANSÍVEL)
+  ===================================================== */
+  .painel-novo-voto {
+    margin: 6px 16px 12px 16px;
+    background: #f1f4f9;
+    border: 1.5px dashed #004480;
+    border-radius: 10px;
+    padding: 14px 16px 6px 16px;
+    animation: slideDown 0.2s ease;
+  }
+
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .painel-novo-voto-titulo {
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #004480;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  /* Área de upload de PDF */
+  .upload-area {
+    border: 1.5px dashed #a68945;
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin: 4px 0 8px 0;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .upload-area:hover {
+    background: #fdf6e3;
+    border-color: #7a6330;
+  }
+
+  .upload-area .material-icons {
+    font-size: 26px;
+    color: #a68945;
+  }
+
+  .upload-area p {
+    font-size: 0.72rem;
+    color: #888;
+    margin: 0;
+    line-height: 1.3;
+  }
+
+  .upload-area p strong { color: #a68945; font-weight: 700; }
+
+  .upload-area.selecionado {
+    background: #f0f4ff;
+    border-color: #004480;
+    border-style: solid;
+  }
+
+  .upload-area.selecionado .material-icons { color: #004480; }
+  .upload-area.selecionado p { color: #004480; }
+
+  /* =====================================================
+     14. INPUT FIELDS DENTRO DOS MODAIS
+  ===================================================== */
   .input-field label,
   .input-field input:not([type]):+label,
   .input-field input[type=text]:not(.browser-default)+label,
@@ -627,7 +890,9 @@
   .input-field .prefix { color: #004480 !important; }
   .input-field .prefix.active { color: #ff0000 !important; }
 
-  /* Estado vazio na lista principal */
+  /* =====================================================
+     15. MISCELÂNEA
+  ===================================================== */
   .lista-vazia-msg {
     text-align: center;
     padding: 60px 20px;
@@ -639,22 +904,5 @@
     display: block;
     margin-bottom: 14px;
     color: #ccc;
-  }
-
-  /* Loader overlay para upload */
-  .upload-overlay {
-    position: absolute;
-    inset: 0;
-    background: rgba(255,255,255,0.85);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 14px;
-    font-size: 0.9rem;
-    font-weight: 700;
-    color: #004480;
-    border-radius: 12px;
-    z-index: 10;
   }
 </style>

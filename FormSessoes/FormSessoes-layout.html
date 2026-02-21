@@ -37,7 +37,7 @@
       <div id="listaSessoes" class="collection" style="border: none;"></div>
     </div>
 
-    <!-- FAB -->
+    <!-- FAB principal -->
     <div class="fixed-action-btn">
       <a class="btn-floating btn-large btn-oab-red">
         <i class="large material-icons">menu</i>
@@ -135,15 +135,15 @@
        MODAL: FICHAS DE VOTAÇÃO (PAINEL DIVIDIDO)
   ================================================================== -->
   <div id="modalFichas" class="modal modal-fichas">
-    <div class="modal-content" style="padding: 0; height: 100%; display: flex; flex-direction: column;">
+    <div class="modal-content">
 
-      <!-- Cabeçalho do modal -->
+      <!-- Cabeçalho fixo -->
       <div class="fichas-header">
         <div>
-          <h5 id="fichasModalTitulo" style="margin: 0; border-left: none; text-transform: none; font-size: 1.1rem;">Fichas de Votação</h5>
-          <span id="fichasModalSubtitulo" class="grey-text" style="font-size: 0.8rem;"></span>
+          <h5 id="fichasModalTitulo">Fichas de Votação</h5>
+          <span id="fichasModalSubtitulo" class="grey-text" style="font-size: 0.8rem; display:block; margin-top: 2px;"></span>
         </div>
-        <button class="modal-close waves-effect waves-grey btn-flat grey-text">
+        <button class="modal-close waves-effect waves-grey btn-flat grey-text" style="padding: 0 8px;">
           <i class="material-icons">close</i>
         </button>
       </div>
@@ -151,11 +151,11 @@
       <!-- Corpo dividido -->
       <div class="fichas-body">
 
-        <!-- Painel Esquerdo: Lista de Processos -->
+        <!-- PAINEL ESQUERDO: Lista de processos pautados -->
         <div class="fichas-painel-esq">
           <div class="fichas-painel-titulo">
-            <i class="material-icons" style="font-size:16px; vertical-align:middle; margin-right:4px;">gavel</i>
-            Processos Pautados
+            <i class="material-icons" style="font-size:15px;">gavel</i>
+            Processos pautados
             <span id="fichasContagem" class="badge-count">0</span>
           </div>
           <div id="fichasListaProcessos" class="fichas-lista-proc">
@@ -163,136 +163,172 @@
           </div>
         </div>
 
-        <!-- Painel Direito: Detalhes da Ficha -->
+        <!-- PAINEL DIREITO: Detalhes da ficha selecionada -->
         <div class="fichas-painel-dir" id="fichasPainelDir">
 
-          <!-- Estado vazio (nenhuma ficha selecionada) -->
+          <!-- Estado vazio -->
           <div id="fichasVazio" class="fichas-vazio-msg">
             <i class="material-icons" style="font-size: 48px; color: #ddd; display:block; margin-bottom: 12px;">touch_app</i>
             <p>Selecione um processo ao lado para visualizar a ficha de votação.</p>
           </div>
 
-          <!-- Conteúdo da ficha (fica oculto até selecionar) -->
-          <div id="fichasConteudo" style="display:none; height: 100%; display: none; flex-direction: column;">
+          <!-- Conteúdo da ficha (exibido ao selecionar um processo) -->
+          <div id="fichasConteudo" style="display: none; flex-direction: column; flex: 1; overflow: hidden; min-height: 0;">
 
-            <!-- Info do processo -->
+            <!-- Cabeçalho azul: info do processo (FIXO) -->
             <div class="ficha-proc-info">
               <div class="ficha-proc-numero" id="fichaNumProc">---</div>
               <div class="ficha-proc-req" id="fichaReqProc">---</div>
               <div class="ficha-proc-local" id="fichaLocalProc"></div>
-              <span id="fichaStatusChip" class="ficha-status-chip"></span>
+              <span id="fichaStatusChip" class="ficha-status-chip" style="display:none;"></span>
             </div>
 
-            <!-- Campos editáveis da ficha -->
-            <div class="ficha-campos" style="padding: 0 20px;">
-              <input type="hidden" id="ficha_f_Id">
-              <input type="hidden" id="ficha_f_IdProcesso">
+            <!-- Área scrollável: campos da ficha + votos -->
+            <div class="fichas-dir-scroll">
 
-              <div class="row" style="margin-bottom: 0; margin-top: 12px;">
-                <div class="input-field col s12 m7">
-                  <input id="ficha_f_Relator" type="text" class="autocomplete">
-                  <label for="ficha_f_Relator">Relator(a)</label>
+              <!-- Campos editáveis: relator e expediente -->
+              <div class="ficha-campos">
+                <input type="hidden" id="ficha_f_Id">
+                <input type="hidden" id="ficha_f_IdProcesso">
+
+                <div class="row" style="margin-bottom: 0; margin-top: 8px;">
+                  <div class="input-field col s12 m8">
+                    <input id="ficha_f_Relator" type="text" class="autocomplete">
+                    <label for="ficha_f_Relator">Relator(a)</label>
+                  </div>
+                  <div class="col s12 m4" style="padding-top: 18px; text-align:right;">
+                    <button class="btn btn-small btn-oab-gold waves-effect waves-light"
+                      onclick="formSessoes_salvarFicha()">
+                      <i class="material-icons left" style="font-size:15px;">save</i>Salvar
+                    </button>
+                  </div>
                 </div>
-                <div class="col s12 m5" style="padding-top: 12px; text-align:right;">
-                  <button class="btn btn-small btn-oab-gold waves-effect waves-light"
-                    onclick="formSessoes_salvarFicha()" title="Salvar Relator e Expediente">
-                    <i class="material-icons left" style="font-size:16px;">save</i>Salvar Ficha
+
+                <div class="row" style="margin-bottom: 0;">
+                  <div class="input-field col s12">
+                    <textarea id="ficha_f_Expediente" class="materialize-textarea"
+                      style="min-height:40px; font-size: 0.88rem;"></textarea>
+                    <label for="ficha_f_Expediente">Expediente / Observações</label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Seção de votos -->
+              <div class="ficha-secao-votos">
+                <span>Votos registrados</span>
+                <span id="fichaVotosTotal" class="ficha-secao-votos-total">0 voto(s)</span>
+              </div>
+
+              <!-- Formulário de novo voto (aparece aqui ao clicar no FAB) -->
+              <div id="painelNovoVoto" style="display: none;">
+                <div class="painel-novo-voto">
+                  <div class="painel-novo-voto-titulo">
+                    <span><i class="material-icons" style="font-size:14px; vertical-align:middle; margin-right:4px;">how_to_vote</i>Novo Voto</span>
+                    <button class="btn-flat btn-small grey-text" style="padding: 0;" onclick="formSessoes_fecharNovoVoto()">
+                      <i class="material-icons" style="font-size:18px;">close</i>
+                    </button>
+                  </div>
+
+                  <input type="hidden" id="voto_f_Id">
+
+                  <div class="row" style="margin-bottom: 0;">
+                    <div class="input-field col s12 m5">
+                      <select id="voto_f_Tipo">
+                        <option value="" disabled selected>Selecione *</option>
+                        <option value="Voto do relator">Voto do relator</option>
+                        <option value="Voto do membro">Voto do membro</option>
+                        <option value="Voto de minerva">Voto de minerva</option>
+                        <option value="Voto vogal">Voto vogal</option>
+                      </select>
+                      <label>Tipo de Voto *</label>
+                    </div>
+                    <div class="input-field col s12 m7">
+                      <input id="voto_f_Relator" type="text" class="autocomplete">
+                      <label for="voto_f_Relator">Votante (Membro)</label>
+                    </div>
+                  </div>
+
+                  <div class="row" style="margin-bottom: 0;">
+                    <div class="input-field col s12 m6">
+                      <select id="voto_f_Voto">
+                        <option value="" disabled selected>Decisão *</option>
+                        <option value="Pelo deferimento">Pelo deferimento</option>
+                        <option value="Pelo indeferimento">Pelo indeferimento</option>
+                        <option value="Pelo arquivamento">Pelo arquivamento</option>
+                        <option value="Diligência">Diligência</option>
+                        <option value="Abstenção">Abstenção</option>
+                      </select>
+                      <label>Decisão *</label>
+                    </div>
+                    <div class="input-field col s12 m6">
+                      <select id="voto_f_Resultado">
+                        <option value="" disabled selected>Resultado</option>
+                        <option value="Deferido">Deferido</option>
+                        <option value="Indeferido">Indeferido</option>
+                        <option value="Arquivado">Arquivado</option>
+                        <option value="Em diligência">Em diligência</option>
+                        <option value="Por maioria">Por maioria</option>
+                        <option value="Por unanimidade">Por unanimidade</option>
+                      </select>
+                      <label>Resultado Final</label>
+                    </div>
+                  </div>
+
+                  <!-- Área de upload do PDF -->
+                  <div class="upload-area" id="uploadAreaVoto" onclick="document.getElementById('inputPDFVoto').click()">
+                    <i class="material-icons">upload_file</i>
+                    <p><strong>Clique para anexar o relatório em PDF</strong><br>Opcional · máx. 15 MB</p>
+                  </div>
+                  <input type="file" id="inputPDFVoto" accept=".pdf" style="display:none;"
+                    onchange="formSessoes_selecionarPDF(this)">
+
+                  <div class="right-align" style="padding-bottom: 10px;">
+                    <button class="btn btn-oab-blue waves-effect waves-light" onclick="formSessoes_salvarVoto()">
+                      <i class="material-icons left">save</i>Salvar Voto
+                    </button>
+                  </div>
+                </div>
+              </div><!-- /painelNovoVoto -->
+
+              <!-- Lista de votos em accordion -->
+              <div id="fichasListaVotos" class="votos-lista">
+                <!-- Renderizado via JS -->
+              </div>
+
+            </div><!-- /fichas-dir-scroll -->
+
+            <!-- FAB interno: adicionar novo voto -->
+            <div class="fichas-fab-interno" id="fichasFabInterno">
+              <div class="fichas-fab-opcoes">
+                <div class="fichas-fab-opcao" onclick="formSessoes_abrirUploadAvulso()">
+                  <span class="fichas-fab-opcao-label">Enviar PDF avulso</span>
+                  <button class="fichas-fab-opcao-btn cor-dourado">
+                    <i class="material-icons" style="font-size:18px;">picture_as_pdf</i>
+                  </button>
+                </div>
+                <div class="fichas-fab-opcao" onclick="formSessoes_abrirNovoVoto()">
+                  <span class="fichas-fab-opcao-label">Adicionar voto</span>
+                  <button class="fichas-fab-opcao-btn cor-azul">
+                    <i class="material-icons" style="font-size:18px;">how_to_vote</i>
                   </button>
                 </div>
               </div>
-
-              <div class="row" style="margin-bottom: 0;">
-                <div class="input-field col s12">
-                  <textarea id="ficha_f_Expediente" class="materialize-textarea" style="min-height:50px;"></textarea>
-                  <label for="ficha_f_Expediente">Expediente / Observações</label>
-                </div>
-              </div>
-            </div>
-
-            <!-- Separador de seção -->
-            <div class="ficha-secao-titulo">
-              <span>Votos</span>
-              <div>
-                <button class="btn btn-small btn-oab-blue waves-effect waves-light btn-hover-zoom"
-                  onclick="formSessoes_toggleAddVoto()"
-                  id="btnToggleVoto" title="Adicionar Voto">
-                  <i class="material-icons left" style="font-size:16px;">how_to_vote</i>+ Voto
-                </button>
-                <button class="btn btn-small btn-oab-gold waves-effect waves-light btn-hover-zoom"
-                  onclick="formSessoes_abrirUploadPDF()" title="Fazer upload do relatório em PDF"
-                  style="margin-left: 8px;">
-                  <i class="material-icons left" style="font-size:16px;">upload_file</i>PDF
-                </button>
-              </div>
-            </div>
-
-            <!-- Formulário Expansível: Adicionar Voto -->
-            <div id="painelAddVoto" class="painel-add-voto" style="display:none;">
-              <input type="hidden" id="voto_f_Id">
-              <div class="row" style="margin-bottom: 0;">
-                <div class="input-field col s12 m5">
-                  <select id="voto_f_Tipo">
-                    <option value="" disabled selected>Selecione *</option>
-                    <option value="Voto do relator">Voto do relator</option>
-                    <option value="Voto do membro">Voto do membro</option>
-                    <option value="Voto de minerva">Voto de minerva</option>
-                    <option value="Voto vogal">Voto vogal</option>
-                  </select>
-                  <label>Tipo de Voto *</label>
-                </div>
-                <div class="input-field col s12 m7">
-                  <input id="voto_f_Relator" type="text" class="autocomplete">
-                  <label for="voto_f_Relator">Votante (Membro)</label>
-                </div>
-              </div>
-              <div class="row" style="margin-bottom: 0;">
-                <div class="input-field col s12 m6">
-                  <select id="voto_f_Voto">
-                    <option value="" disabled selected>Voto *</option>
-                    <option value="Pelo deferimento">Pelo deferimento</option>
-                    <option value="Pelo indeferimento">Pelo indeferimento</option>
-                    <option value="Pelo arquivamento">Pelo arquivamento</option>
-                    <option value="Diligência">Diligência</option>
-                    <option value="Abstenção">Abstenção</option>
-                  </select>
-                  <label>Decisão *</label>
-                </div>
-                <div class="input-field col s12 m6">
-                  <select id="voto_f_Resultado">
-                    <option value="" disabled selected>Resultado</option>
-                    <option value="Deferido">Deferido</option>
-                    <option value="Indeferido">Indeferido</option>
-                    <option value="Arquivado">Arquivado</option>
-                    <option value="Em diligência">Em diligência</option>
-                    <option value="Por maioria">Por maioria</option>
-                    <option value="Por unanimidade">Por unanimidade</option>
-                  </select>
-                  <label>Resultado Final</label>
-                </div>
-              </div>
-              <div class="right-align" style="padding: 0 0 10px 0;">
-                <button class="btn-flat grey-text waves-effect" onclick="formSessoes_cancelarVoto()"
-                  style="margin-right:8px;">Cancelar</button>
-                <button class="btn btn-oab-blue waves-effect waves-light" onclick="formSessoes_salvarVoto()">
-                  <i class="material-icons left">save</i>Salvar Voto
-                </button>
-              </div>
-            </div>
-
-            <!-- Upload PDF (Input oculto) -->
-            <input type="file" id="inputPDFRelatorio" accept=".pdf" style="display:none;"
-              onchange="formSessoes_processarPDF(this)">
-
-            <!-- Lista de votos -->
-            <div id="fichasListaVotos" class="fichas-lista-votos">
-              <!-- Renderizado via JS -->
+              <button class="fichas-fab-btn-principal" onclick="formSessoes_toggleFab()">
+                <i class="material-icons">add</i>
+              </button>
             </div>
 
           </div><!-- /fichasConteudo -->
+
         </div><!-- /fichas-painel-dir -->
       </div><!-- /fichas-body -->
-    </div>
-  </div>
+
+    </div><!-- /modal-content -->
+  </div><!-- /modalFichas -->
+
+  <!-- Input de PDF avulso (sem voto vinculado) -->
+  <input type="file" id="inputPDFAvulso" accept=".pdf" style="display:none;"
+    onchange="formSessoes_processarPDFAvulso(this)">
 
 
   <!-- ==================================================================

@@ -7,13 +7,12 @@
   // ============================================================
   // ESTADO GLOBAL
   // ============================================================
-  let baseSessoes       = [];
-  let baseMembros       = {};
-  let sessaoDataISO     = '';
-  let fichaAtualId      = '';
-  let fichaAtualIdProc  = '';
-  let fichaAtualSessaoId = '';
-  let votoEditandoId    = '';
+  let baseSessoes        = [];
+  let baseMembros        = {};
+  let sessaoDataISO      = '';
+  let fichaAtualId       = '';
+  let fichaAtualIdProc   = '';
+  let pdfSelecionado     = null; // { file, base64 } do PDF do novo voto
 
   const MESES_PT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
@@ -22,17 +21,13 @@
   // ============================================================
   document.addEventListener('DOMContentLoaded', function () {
     M.AutoInit();
-
-    // FAB
     M.FloatingActionButton.init(document.querySelectorAll('.fixed-action-btn'), { hoverEnabled: true });
 
-    // Modais não dismissíveis por clique externo
     ['modalConfirmacao'].forEach(id => {
       const el = document.getElementById(id);
       if (el) M.Modal.init(el, { dismissible: false });
     });
 
-    // Modal fichas: permite fechar clicando fora
     const elFichas = document.getElementById('modalFichas');
     if (elFichas) M.Modal.init(elFichas, { dismissible: true });
 
@@ -40,7 +35,7 @@
   });
 
   // ============================================================
-  // CARREGAMENTO E RENDERIZAÇÃO
+  // CARREGAMENTO E RENDERIZAÇÃO DA LISTA DE SESSÕES
   // ============================================================
 
   function formSessoes_carregar() {
@@ -84,19 +79,16 @@
 
     lista.forEach(s => {
       const partes = s.datasessao && s.datasessao !== 'Data não informada'
-        ? s.datasessao.split('/')
-        : null;
+        ? s.datasessao.split('/') : null;
 
-      const dia  = partes ? partes[0] : '--';
-      const mes  = partes ? MESES_PT[parseInt(partes[1], 10) - 1] || '' : '';
-      const ano  = partes ? partes[2] : '';
+      const dia = partes ? partes[0] : '--';
+      const mes = partes ? (MESES_PT[parseInt(partes[1], 10) - 1] || '') : '';
+      const ano = partes ? partes[2] : '';
 
-      const participantes = [s.presidente, s.secretario]
-        .filter(Boolean)
-        .join(' · ');
-
+      const participantes = [s.presidente, s.secretario].filter(Boolean).join(' · ');
       const idSafe = _esc(s.id);
-      const card   = document.createElement('div');
+
+      const card = document.createElement('div');
       card.className = 'collection-item-sessao';
       card.innerHTML = `
         <div class="sess-col-data">
@@ -104,7 +96,6 @@
           <span class="sess-data-mes">${mes}</span>
           <span class="sess-data-ano">${ano}</span>
         </div>
-
         <div class="sess-col-info">
           <span class="sess-orgao">${s.orgao || 'Órgão não informado'}</span>
           <span class="sess-local">
@@ -113,21 +104,17 @@
           </span>
           ${participantes ? `<span class="sess-participantes">${participantes}</span>` : ''}
         </div>
-
         <div class="sess-col-metricas">
           <span class="sess-metrica-num">${s.totalFichas}</span>
           <span class="sess-metrica-label">Processo${s.totalFichas !== 1 ? 's' : ''}<br>pautado${s.totalFichas !== 1 ? 's' : ''}</span>
         </div>
-
         <div class="sess-col-actions">
           <i class="material-icons act-btn c-fichas tooltipped"
              data-tooltip="Fichas de Votação"
              onclick="formSessoes_abrirFichas('${idSafe}')">ballot</i>
-
           <i class="material-icons act-btn c-edit tooltipped"
              data-tooltip="Editar Sessão"
              onclick="formSessoes_abrirEditar('${idSafe}')">edit</i>
-
           <i class="material-icons act-btn c-del tooltipped"
              data-tooltip="Excluir Sessão"
              onclick="formSessoes_confirmarExclusao('${idSafe}', '${_esc(s.datasessao)}')">delete</i>
@@ -166,7 +153,6 @@
     document.getElementById('sess_f_Id').value = '';
     document.getElementById('sessaoModalTitulo').innerText = 'Nova Sessão';
     sessaoDataISO = '';
-
     _initDatepickerSessao('');
     M.FormSelect.init(document.querySelectorAll('#modalSessaoCad select'));
     _autocompleteMembrosSessao();
@@ -184,16 +170,14 @@
     document.getElementById('sess_f_Local').value      = s.local || '';
     document.getElementById('sess_f_Presidente').value = s.presidente || '';
     document.getElementById('sess_f_Secretario').value = s.secretario || '';
-
     sessaoDataISO = s.dataiso || '';
 
     _initDatepickerSessao(s.datasessao || '');
 
-    // Aguarda o DOM do select estabilizar antes de definir o valor
     setTimeout(() => {
-      const selOrgao = document.getElementById('sess_f_Orgao');
-      selOrgao.value = s.orgao || '';
-      M.FormSelect.init(selOrgao);
+      const sel = document.getElementById('sess_f_Orgao');
+      sel.value = s.orgao || '';
+      M.FormSelect.init(sel);
     }, 80);
 
     _autocompleteMembrosSessao();
@@ -204,15 +188,10 @@
   function _initDatepickerSessao(valorExibido) {
     const el = document.getElementById('sess_f_Data');
     if (!el) return;
-
-    // Destrói instância anterior se existir
     const instAnterior = M.Datepicker.getInstance(el);
     if (instAnterior) instAnterior.destroy();
-
     M.Datepicker.init(el, {
-      format: 'dd/mm/yyyy',
-      autoClose: true,
-      i18n: _i18nPtBR(),
+      format: 'dd/mm/yyyy', autoClose: true, i18n: _i18nPtBR(),
       onSelect: function (d) {
         const y   = d.getFullYear();
         const m   = String(d.getMonth() + 1).padStart(2, '0');
@@ -220,11 +199,7 @@
         sessaoDataISO = `${y}-${m}-${day}`;
       }
     });
-
-    if (valorExibido) {
-      el.value = valorExibido;
-      M.updateTextFields();
-    }
+    if (valorExibido) { el.value = valorExibido; M.updateTextFields(); }
   }
 
   function _autocompleteMembrosSessao() {
@@ -236,26 +211,12 @@
 
   function formSessoes_salvar() {
     const orgao = document.getElementById('sess_f_Orgao').value;
-
-    if (!orgao) {
-      return M.toast({ html: 'Selecione o Órgão Deliberativo.', classes: 'orange darken-3' });
-    }
-    if (!sessaoDataISO) {
-      return M.toast({ html: 'Selecione a Data da Sessão.', classes: 'orange darken-3' });
-    }
+    if (!orgao) return M.toast({ html: 'Selecione o Órgão Deliberativo.', classes: 'orange darken-3' });
+    if (!sessaoDataISO) return M.toast({ html: 'Selecione a Data da Sessão.', classes: 'orange darken-3' });
 
     const btn = document.getElementById('sessBtnSalvar');
     btn.disabled  = true;
     btn.innerHTML = 'Processando...';
-
-    const obj = {
-      id:          document.getElementById('sess_f_Id').value || '',
-      datasessao:  sessaoDataISO,
-      orgao:       orgao,
-      local:       document.getElementById('sess_f_Local').value,
-      presidente:  document.getElementById('sess_f_Presidente').value,
-      secretario:  document.getElementById('sess_f_Secretario').value
-    };
 
     google.script.run
       .withSuccessHandler(function () {
@@ -270,7 +231,14 @@
         btn.disabled  = false;
         btn.innerHTML = '<i class="material-icons left">save</i>Salvar';
       })
-      .formSessoes_salvarRegistro(obj);
+      .formSessoes_salvarRegistro({
+        id:         document.getElementById('sess_f_Id').value || '',
+        datasessao: sessaoDataISO,
+        orgao:      orgao,
+        local:      document.getElementById('sess_f_Local').value,
+        presidente: document.getElementById('sess_f_Presidente').value,
+        secretario: document.getElementById('sess_f_Secretario').value
+      });
   }
 
   // ============================================================
@@ -281,11 +249,10 @@
     document.getElementById('msgConfirmacao').innerText =
       `A sessão de ${data} será removida permanentemente.\n\nOs processos pautados e votos vinculados serão preservados.\nEsta ação não pode ser desfeita.`;
 
-    const btnConf  = document.getElementById('btnConfirmarAcao');
-    const novoBtn  = btnConf.cloneNode(true);
-    btnConf.parentNode.replaceChild(novoBtn, btnConf);
+    const btnConf = document.getElementById('btnConfirmarAcao');
+    const novoBtn = btnConf.cloneNode(true);
     novoBtn.innerHTML = 'Excluir Sessão';
-
+    btnConf.parentNode.replaceChild(novoBtn, btnConf);
     novoBtn.onclick = function () {
       M.Modal.getInstance(document.getElementById('modalConfirmacao')).close();
       google.script.run
@@ -298,7 +265,6 @@
         })
         .formSessoes_excluirRegistro(id);
     };
-
     _abrirModal('modalConfirmacao');
   }
 
@@ -307,25 +273,31 @@
   // ============================================================
 
   function formSessoes_abrirFichas(idSessao) {
-    fichaAtualSessaoId = idSessao;
-    fichaAtualId       = '';
-    fichaAtualIdProc   = '';
+    fichaAtualId     = '';
+    fichaAtualIdProc = '';
+    pdfSelecionado   = null;
 
     const sessao = baseSessoes.find(s => s.id === idSessao);
-    document.getElementById('fichasModalTitulo').textContent = 'Fichas de Votação';
-    document.getElementById('fichasModalSubtitulo').textContent =
+    document.getElementById('fichasModalTitulo').textContent     = 'Fichas de Votação';
+    document.getElementById('fichasModalSubtitulo').textContent  =
       sessao ? `${sessao.orgao} · ${sessao.datasessao}` : '';
 
-    // Reseta painel direito
     _fichasPainelVazio();
+    _fecharFab();
 
-    // Mostra loader na lista de processos
-    document.getElementById('fichasListaProcessos').innerHTML =
-      '<div style="text-align:center; padding: 30px;"><div class="preloader-wrapper small active"><div class="spinner-layer spinner-blue-only"><div class="circle-clipper left"><div class="circle"></div></div><div class="gap-patch"><div class="circle"></div></div><div class="circle-clipper right"><div class="circle"></div></div></div></div></div>';
+    document.getElementById('fichasListaProcessos').innerHTML = `
+      <div style="text-align:center; padding: 30px;">
+        <div class="preloader-wrapper small active">
+          <div class="spinner-layer spinner-blue-only">
+            <div class="circle-clipper left"><div class="circle"></div></div>
+            <div class="gap-patch"><div class="circle"></div></div>
+            <div class="circle-clipper right"><div class="circle"></div></div>
+          </div>
+        </div>
+      </div>`;
 
     _abrirModal('modalFichas');
 
-    // Carrega fichas do servidor
     google.script.run
       .withSuccessHandler(function (res) {
         if (!res.sucesso) {
@@ -348,7 +320,7 @@
 
     if (!fichas || fichas.length === 0) {
       container.innerHTML = `
-        <div style="padding: 30px; text-align:center; color:#bbb; font-size:0.85rem;">
+        <div style="padding:30px; text-align:center; color:#bbb; font-size:0.85rem;">
           <i class="material-icons" style="font-size:36px; display:block; margin-bottom:8px; color:#ddd;">gavel</i>
           Nenhum processo pautado nesta sessão.
         </div>`;
@@ -378,27 +350,24 @@
 
       container.appendChild(item);
 
-      // Seleciona automaticamente o primeiro
-      if (idx === 0) {
-        setTimeout(() => {
-          item.click();
-        }, 100);
-      }
+      // Seleciona o primeiro automaticamente
+      if (idx === 0) setTimeout(() => item.click(), 120);
     });
   }
 
   function _carregarPainelFicha(ficha) {
     fichaAtualId     = ficha.id;
     fichaAtualIdProc = ficha.idprocesso;
+    pdfSelecionado   = null;
 
-    // Preenche bloco de informações do processo
+    // Preenche cabeçalho azul
     document.getElementById('fichaNumProc').textContent   = `Processo nº ${ficha.proc.numero || 'S/N'}`;
     document.getElementById('fichaReqProc').textContent   = ficha.proc.requerente || 'Requerente não informado';
     document.getElementById('fichaLocalProc').textContent = ficha.proc.local || '';
 
-    const statusChip = document.getElementById('fichaStatusChip');
-    statusChip.textContent  = ficha.proc.status || '';
-    statusChip.style.display = ficha.proc.status ? 'inline-block' : 'none';
+    const chip = document.getElementById('fichaStatusChip');
+    chip.textContent    = ficha.proc.status || '';
+    chip.style.display  = ficha.proc.status ? 'inline-block' : 'none';
 
     // Preenche campos editáveis
     document.getElementById('ficha_f_Id').value          = ficha.id;
@@ -406,16 +375,15 @@
     document.getElementById('ficha_f_Relator').value     = ficha.relator || '';
     document.getElementById('ficha_f_Expediente').value  = ficha.expediente || '';
 
-    // Autocomplete do relator com membros
     M.Autocomplete.init(document.getElementById('ficha_f_Relator'), {
       data: baseMembros, minLength: 2, limit: 7
     });
-
     M.updateTextFields();
     M.textareaAutoResize(document.getElementById('ficha_f_Expediente'));
 
     // Fecha formulário de novo voto se estiver aberto
-    formSessoes_cancelarVoto();
+    formSessoes_fecharNovoVoto();
+    _fecharFab();
 
     // Exibe o conteúdo
     _fichasExibirConteudo();
@@ -439,10 +407,7 @@
   // ============================================================
 
   function formSessoes_salvarFicha() {
-    const id         = document.getElementById('ficha_f_Id').value;
-    const relator    = document.getElementById('ficha_f_Relator').value;
-    const expediente = document.getElementById('ficha_f_Expediente').value;
-
+    const id = document.getElementById('ficha_f_Id').value;
     if (!id) return M.toast({ html: 'Nenhuma ficha selecionada.', classes: 'orange darken-3' });
 
     google.script.run
@@ -452,7 +417,68 @@
       .withFailureHandler(function (err) {
         M.toast({ html: 'Erro: ' + err.message, classes: 'red darken-2' });
       })
-      .formSessoes_salvarFicha({ id, relator, expediente });
+      .formSessoes_salvarFicha({
+        id:          id,
+        relator:     document.getElementById('ficha_f_Relator').value,
+        expediente:  document.getElementById('ficha_f_Expediente').value
+      });
+  }
+
+  // ============================================================
+  // FAB INTERNO
+  // ============================================================
+
+  function formSessoes_toggleFab() {
+    const fab = document.getElementById('fichasFabInterno');
+    fab.classList.toggle('aberto');
+  }
+
+  function _fecharFab() {
+    const fab = document.getElementById('fichasFabInterno');
+    if (fab) fab.classList.remove('aberto');
+  }
+
+  // Ação 1: Abrir formulário de novo voto (rola para ele)
+  function formSessoes_abrirNovoVoto() {
+    _fecharFab();
+
+    if (!fichaAtualId) return M.toast({ html: 'Selecione um processo primeiro.', classes: 'orange darken-3' });
+
+    const painel = document.getElementById('painelNovoVoto');
+    painel.style.display = 'block';
+
+    // Reseta o formulário
+    document.getElementById('voto_f_Id').value = '';
+    pdfSelecionado = null;
+    const uploadArea = document.getElementById('uploadAreaVoto');
+    uploadArea.className = 'upload-area';
+    uploadArea.innerHTML = `
+      <i class="material-icons">upload_file</i>
+      <p><strong>Clique para anexar o relatório em PDF</strong><br>Opcional · máx. 15 MB</p>`;
+
+    M.FormSelect.init(document.querySelectorAll('#painelNovoVoto select'));
+    M.Autocomplete.init(document.getElementById('voto_f_Relator'), {
+      data: baseMembros, minLength: 2, limit: 7
+    });
+    M.updateTextFields();
+
+    // Rola para o formulário
+    setTimeout(() => {
+      painel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 60);
+  }
+
+  function formSessoes_fecharNovoVoto() {
+    const painel = document.getElementById('painelNovoVoto');
+    if (painel) painel.style.display = 'none';
+    pdfSelecionado = null;
+  }
+
+  // Ação 2: Upload de PDF avulso (sem criar voto)
+  function formSessoes_abrirUploadAvulso() {
+    _fecharFab();
+    if (!fichaAtualId) return M.toast({ html: 'Selecione um processo primeiro.', classes: 'orange darken-3' });
+    document.getElementById('inputPDFAvulso').click();
   }
 
   // ============================================================
@@ -461,7 +487,16 @@
 
   function _carregarVotos(idFicha) {
     const container = document.getElementById('fichasListaVotos');
-    container.innerHTML = `<div class="votos-vazio"><div class="preloader-wrapper small active"><div class="spinner-layer spinner-blue-only"><div class="circle-clipper left"><div class="circle"></div></div><div class="gap-patch"><div class="circle"></div></div><div class="circle-clipper right"><div class="circle"></div></div></div></div></div>`;
+    container.innerHTML = `
+      <div class="votos-vazio">
+        <div class="preloader-wrapper small active">
+          <div class="spinner-layer spinner-blue-only">
+            <div class="circle-clipper left"><div class="circle"></div></div>
+            <div class="gap-patch"><div class="circle"></div></div>
+            <div class="circle-clipper right"><div class="circle"></div></div>
+          </div>
+        </div>
+      </div>`;
 
     google.script.run
       .withSuccessHandler(function (res) {
@@ -479,59 +514,86 @@
 
   function _renderizarVotos(votos) {
     const container = document.getElementById('fichasListaVotos');
+    document.getElementById('fichaVotosTotal').textContent = `${votos.length} voto${votos.length !== 1 ? 's' : ''}`;
 
     if (!votos || votos.length === 0) {
       container.innerHTML = `
         <div class="votos-vazio">
           <i class="material-icons" style="font-size:32px; display:block; margin-bottom:8px; color:#ddd;">how_to_vote</i>
-          Nenhum voto registrado para este processo nesta sessão.
+          Nenhum voto registrado. Use o botão + para adicionar.
         </div>`;
       return;
     }
 
     container.innerHTML = '';
-    votos.forEach(v => {
+    votos.forEach((v, idx) => {
       const tipoClass = _votoTipoClasse(v.tipovoto);
-      const item = document.createElement('div');
-      item.className = 'voto-item';
-      item.innerHTML = `
-        <span class="voto-tipo-chip ${tipoClass}">${v.tipovoto || '—'}</span>
-        <div class="voto-info">
-          <span class="voto-votante">${v.relator || 'Votante não informado'}</span>
-          <span class="voto-decisao">${v.voto || '—'}</span>
-          ${v.resultado ? `<span class="voto-resultado"><i class="material-icons" style="font-size:11px;vertical-align:middle;">verified</i> ${v.resultado}</span>` : ''}
-          ${v.urlvoto ? `<a href="${_esc(v.urlvoto)}" target="_blank" class="voto-pdf-link"><i class="material-icons" style="font-size:14px;">picture_as_pdf</i>Ver Relatório</a>` : ''}
+      const acc = document.createElement('div');
+      acc.className = 'voto-accordion';
+      acc.setAttribute('data-voto-id', v.id);
+
+      acc.innerHTML = `
+        <!-- Cabeçalho clicável -->
+        <div class="voto-accordion-header" onclick="formSessoes_toggleVoto(this)">
+          <span class="voto-tipo-chip ${tipoClass}">${v.tipovoto || '—'}</span>
+          <div class="voto-header-info">
+            <span class="voto-header-votante">${v.relator || 'Votante não informado'}</span>
+            <span class="voto-header-decisao">${v.voto || '—'}</span>
+          </div>
+          <i class="material-icons voto-chevron">expand_more</i>
         </div>
-        <div class="voto-actions">
-          <i class="material-icons voto-btn-del" title="Excluir voto"
-             onclick="formSessoes_excluirVoto('${_esc(v.id)}')">delete_outline</i>
+
+        <!-- Corpo expandido -->
+        <div class="voto-accordion-body">
+          ${v.relator ? `
+            <div class="voto-detalhe-linha">
+              <span class="voto-detalhe-label">Votante</span>
+              <span class="voto-detalhe-valor">${v.relator}</span>
+            </div>` : ''}
+
+          <div class="voto-detalhe-linha">
+            <span class="voto-detalhe-label">Decisão</span>
+            <span class="voto-detalhe-valor">${v.voto || '—'}</span>
+          </div>
+
+          ${v.resultado ? `
+            <div class="voto-detalhe-linha">
+              <span class="voto-detalhe-label">Resultado</span>
+              <span class="voto-resultado-chip">${v.resultado}</span>
+            </div>` : ''}
+
+          ${v.urlvoto ? `
+            <div class="voto-detalhe-linha">
+              <span class="voto-detalhe-label">Relatório</span>
+              <a href="${_esc(v.urlvoto)}" target="_blank" class="voto-pdf-link">
+                <i class="material-icons" style="font-size:15px;">picture_as_pdf</i>
+                Abrir PDF
+              </a>
+            </div>` : ''}
+
+          <div class="voto-accordion-footer">
+            <button class="btn-voto-del" onclick="formSessoes_excluirVoto('${_esc(v.id)}')">
+              <i class="material-icons" style="font-size:14px;">delete_outline</i>
+              Excluir voto
+            </button>
+          </div>
         </div>
       `;
-      container.appendChild(item);
+
+      container.appendChild(acc);
+
+      // Abre o primeiro automaticamente
+      if (idx === 0) acc.classList.add('aberto');
     });
   }
 
-  function formSessoes_toggleAddVoto() {
-    const painel = document.getElementById('painelAddVoto');
-    const visivel = painel.style.display !== 'none';
-    if (visivel) {
-      formSessoes_cancelarVoto();
-    } else {
-      painel.style.display = 'block';
-      votoEditandoId = '';
-      document.getElementById('voto_f_Id').value = '';
-      M.FormSelect.init(document.querySelectorAll('#painelAddVoto select'));
-      M.Autocomplete.init(document.getElementById('voto_f_Relator'), {
-        data: baseMembros, minLength: 2, limit: 7
-      });
-      M.updateTextFields();
-    }
-  }
-
-  function formSessoes_cancelarVoto() {
-    const painel = document.getElementById('painelAddVoto');
-    painel.style.display = 'none';
-    votoEditandoId = '';
+  function formSessoes_toggleVoto(header) {
+    const acc = header.closest('.voto-accordion');
+    const estaAberto = acc.classList.contains('aberto');
+    // Fecha todos
+    document.querySelectorAll('.voto-accordion.aberto').forEach(el => el.classList.remove('aberto'));
+    // Abre o clicado (se estava fechado)
+    if (!estaAberto) acc.classList.add('aberto');
   }
 
   function formSessoes_salvarVoto() {
@@ -555,14 +617,35 @@
       urlvoto:        ''
     };
 
+    M.toast({ html: 'Salvando voto...', classes: 'blue darken-2' });
+
     google.script.run
       .withSuccessHandler(function (res) {
-        M.toast({ html: 'Voto salvo!', classes: 'green darken-2' });
-        formSessoes_cancelarVoto();
-        _carregarVotos(fichaAtualId);
+        const idVoto = res.id;
+
+        // Se tem PDF selecionado, faz o upload agora
+        if (pdfSelecionado && pdfSelecionado.base64) {
+          M.toast({ html: 'Enviando PDF para o Drive...', classes: 'blue darken-2' });
+          google.script.run
+            .withSuccessHandler(function () {
+              M.toast({ html: 'Voto e PDF salvos com sucesso!', classes: 'green darken-2' });
+              formSessoes_fecharNovoVoto();
+              _carregarVotos(fichaAtualId);
+            })
+            .withFailureHandler(function (err) {
+              M.toast({ html: 'Voto salvo, mas erro no upload do PDF: ' + err.message, classes: 'orange darken-3' });
+              formSessoes_fecharNovoVoto();
+              _carregarVotos(fichaAtualId);
+            })
+            .formSessoes_uploadRelatorio(idVoto, pdfSelecionado.base64, pdfSelecionado.nome);
+        } else {
+          M.toast({ html: 'Voto salvo!', classes: 'green darken-2' });
+          formSessoes_fecharNovoVoto();
+          _carregarVotos(fichaAtualId);
+        }
       })
       .withFailureHandler(function (err) {
-        M.toast({ html: 'Erro: ' + err.message, classes: 'red darken-2' });
+        M.toast({ html: 'Erro ao salvar voto: ' + err.message, classes: 'red darken-2' });
       })
       .formSessoes_salvarVoto(obj);
   }
@@ -582,73 +665,86 @@
   }
 
   // ============================================================
-  // UPLOAD DE RELATÓRIO EM PDF
+  // SELEÇÃO E UPLOAD DE PDF
   // ============================================================
 
-  function formSessoes_abrirUploadPDF() {
-    if (!fichaAtualId) return M.toast({ html: 'Selecione um processo na ficha primeiro.', classes: 'orange darken-3' });
-    document.getElementById('inputPDFRelatorio').click();
-  }
-
-  function formSessoes_processarPDF(input) {
+  /**
+   * Chamado quando o usuário seleciona um PDF no input do formulário de novo voto.
+   * Apenas armazena o arquivo em memória — o upload acontece ao salvar o voto.
+   */
+  function formSessoes_selecionarPDF(input) {
     const file = input.files[0];
     if (!file) return;
 
     if (file.type !== 'application/pdf') {
       return M.toast({ html: 'Selecione um arquivo PDF válido.', classes: 'red darken-2' });
     }
-
     if (file.size > 15 * 1024 * 1024) {
       return M.toast({ html: 'Arquivo muito grande. Limite: 15 MB.', classes: 'red darken-2' });
     }
 
-    M.toast({ html: 'Carregando arquivo...', classes: 'blue darken-2' });
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      pdfSelecionado = {
+        base64: e.target.result.split(',')[1],
+        nome:   file.name
+      };
+
+      // Atualiza a aparência da área de upload
+      const uploadArea = document.getElementById('uploadAreaVoto');
+      uploadArea.className = 'upload-area selecionado';
+      uploadArea.innerHTML = `
+        <i class="material-icons">check_circle</i>
+        <p><strong>${file.name}</strong><br>${(file.size / 1024).toFixed(0)} KB selecionado</p>`;
+
+      M.toast({ html: 'PDF pronto para envio.', classes: 'blue darken-2' });
+    };
+    reader.readAsDataURL(file);
+    input.value = ''; // reseta para permitir selecionar o mesmo arquivo novamente
+  }
+
+  /**
+   * Upload de PDF avulso — cria um voto do tipo "Relatório" automaticamente.
+   */
+  function formSessoes_processarPDFAvulso(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    if (file.type !== 'application/pdf') {
+      return M.toast({ html: 'Selecione um arquivo PDF válido.', classes: 'red darken-2' });
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      return M.toast({ html: 'Arquivo muito grande. Limite: 15 MB.', classes: 'red darken-2' });
+    }
+
+    M.toast({ html: 'Preparando envio...', classes: 'blue darken-2' });
 
     const reader = new FileReader();
     reader.onload = function (e) {
-      // Extrai apenas o base64 puro (sem o prefixo data:...)
-      const base64Full = e.target.result;
-      const base64Data = base64Full.split(',')[1];
+      const base64Data = e.target.result.split(',')[1];
 
-      M.toast({ html: 'Enviando para o Google Drive...', classes: 'blue darken-2' });
-
-      // Cria um voto placeholder para vincular o PDF
-      // (O backend irá criar o voto se não existir, com URL preenchida)
-      const obj = {
-        id:             '',
-        idfichavotacao: fichaAtualId,
-        idprocesso:     fichaAtualIdProc,
-        tipovoto:       'Relatório',
-        relator:        '',
-        voto:           'Relatório em PDF',
-        resultado:      '',
-        urlvoto:        ''
-      };
-
+      // Cria um voto "Relatório" para vincular o PDF
       google.script.run
-        .withSuccessHandler(function (resVoto) {
-          // Após criar/recuperar o ID do voto, faz o upload do PDF
+        .withSuccessHandler(function (res) {
           google.script.run
-            .withSuccessHandler(function (resUpload) {
-              M.toast({ html: 'Relatório enviado com sucesso!', classes: 'green darken-2' });
-              input.value = ''; // reseta o input
+            .withSuccessHandler(function () {
+              M.toast({ html: 'PDF enviado e vinculado com sucesso!', classes: 'green darken-2' });
+              input.value = '';
               _carregarVotos(fichaAtualId);
             })
             .withFailureHandler(function (err) {
               M.toast({ html: 'Erro no upload: ' + err.message, classes: 'red darken-2' });
             })
-            .formSessoes_uploadRelatorio(resVoto.id, base64Data, file.name);
+            .formSessoes_uploadRelatorio(res.id, base64Data, file.name);
         })
         .withFailureHandler(function (err) {
-          M.toast({ html: 'Erro ao preparar registro: ' + err.message, classes: 'red darken-2' });
+          M.toast({ html: 'Erro ao criar registro: ' + err.message, classes: 'red darken-2' });
         })
-        .formSessoes_salvarVoto(obj);
+        .formSessoes_salvarVoto({
+          id: '', idfichavotacao: fichaAtualId, idprocesso: fichaAtualIdProc,
+          tipovoto: 'Relatório', relator: '', voto: 'Relatório em PDF', resultado: '', urlvoto: ''
+        });
     };
-
-    reader.onerror = function () {
-      M.toast({ html: 'Erro ao ler o arquivo.', classes: 'red darken-2' });
-    };
-
     reader.readAsDataURL(file);
   }
 
@@ -694,14 +790,10 @@
 
   function _statusCor(status) {
     const mapa = {
-      'Em tramitação': 's-tramitacao',
-      'Arquivado':     's-arquivado',
-      'Deferido':      's-deferido',
-      'Indeferido':    's-indeferido',
-      'Em recurso':    's-recurso',
-      'Em diligência': 's-diligencia',
-      'Concluso':      's-concluso',
-      'Na secretaria': 's-secretaria'
+      'Em tramitação': 's-tramitacao', 'Arquivado': 's-arquivado',
+      'Deferido': 's-deferido',        'Indeferido': 's-indeferido',
+      'Em recurso': 's-recurso',       'Em diligência': 's-diligencia',
+      'Concluso': 's-concluso',        'Na secretaria': 's-secretaria'
     };
     return mapa[status] || 's-vazio';
   }
