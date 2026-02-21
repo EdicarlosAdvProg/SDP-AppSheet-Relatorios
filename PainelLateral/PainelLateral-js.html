@@ -1,0 +1,20 @@
+<script>
+  function PainelLateral_JS_toggleFab() {
+    const options = document.getElementById('fabOptions');
+    const btn = document.getElementById('fabMain');
+    options.classList.toggle('show');
+    btn.classList.toggle('active');
+  }
+
+  function PainelLateral_JS_navegar(destino) {
+    console.log("Navegando para: " + destino);
+    // Chamada ao backend para carregar tela do módulo
+    google.script.run.PainelLateral_processarAcessoModulo(destino);
+  }
+
+  function PainelLateral_JS_acaoRapida(acao) {
+    console.log("Ação rápida executada: " + acao);
+    PainelLateral_JS_toggleFab(); // Fecha o menu
+    google.script.run.PainelLateral_processarAcaoRapida(acao);
+  }
+</script>

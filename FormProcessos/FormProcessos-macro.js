@@ -12,15 +12,6 @@ function formProcessos_abrirModal() {
   DocumentApp.getUi().showModalDialog(html, ' ');
 }
 
-function PainelLateral_abrirProcessos() {
-  formProcessos_abrirModal();
-  return true;
-}
-
-function sdp_abrirFormProcessos() {
-  formProcessos_abrirModal();
-}
-
 /**
  * Payload inicial: processos (cruzados com último evento do histórico),
  * sessões para o modal de pauta e membros para autocomplete.

@@ -1,0 +1,717 @@
+<script>
+  /**
+   * Frontend — FormSessoes
+   * SDP OAB/GO — Gestão de Sessões
+   */
+
+  // ============================================================
+  // ESTADO GLOBAL
+  // ============================================================
+  let baseSessoes       = [];
+  let baseMembros       = {};
+  let sessaoDataISO     = '';
+  let fichaAtualId      = '';
+  let fichaAtualIdProc  = '';
+  let fichaAtualSessaoId = '';
+  let votoEditandoId    = '';
+
+  const MESES_PT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+  // ============================================================
+  // INICIALIZAÇÃO
+  // ============================================================
+  document.addEventListener('DOMContentLoaded', function () {
+    M.AutoInit();
+
+    // FAB
+    M.FloatingActionButton.init(document.querySelectorAll('.fixed-action-btn'), { hoverEnabled: true });
+
+    // Modais não dismissíveis por clique externo
+    ['modalConfirmacao'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) M.Modal.init(el, { dismissible: false });
+    });
+
+    // Modal fichas: permite fechar clicando fora
+    const elFichas = document.getElementById('modalFichas');
+    if (elFichas) M.Modal.init(elFichas, { dismissible: true });
+
+    formSessoes_carregar();
+  });
+
+  // ============================================================
+  // CARREGAMENTO E RENDERIZAÇÃO
+  // ============================================================
+
+  function formSessoes_carregar() {
+    const loader    = document.getElementById('loaderLista');
+    const container = document.getElementById('listaSessoes');
+    loader.style.display    = 'block';
+    container.style.opacity = '0.4';
+
+    google.script.run
+      .withSuccessHandler(function (res) {
+        loader.style.display    = 'none';
+        container.style.opacity = '1';
+        if (res.sucesso) {
+          baseSessoes = res.sessoes || [];
+          baseMembros = res.membros || {};
+          formSessoes_renderizar(baseSessoes);
+        } else {
+          M.toast({ html: 'Erro ao carregar: ' + res.erro, classes: 'red darken-2' });
+        }
+      })
+      .withFailureHandler(function () {
+        loader.style.display    = 'none';
+        container.style.opacity = '1';
+        M.toast({ html: 'Falha crítica no servidor.', classes: 'red darken-2' });
+      })
+      .formSessoes_buscarDadosCompletos();
+  }
+
+  function formSessoes_renderizar(lista) {
+    const container = document.getElementById('listaSessoes');
+    container.innerHTML = '';
+
+    if (!lista || lista.length === 0) {
+      container.innerHTML = `
+        <div class="lista-vazia-msg">
+          <i class="material-icons">event_busy</i>
+          <p>Nenhuma sessão encontrada para esta busca.</p>
+        </div>`;
+      return;
+    }
+
+    lista.forEach(s => {
+      const partes = s.datasessao && s.datasessao !== 'Data não informada'
+        ? s.datasessao.split('/')
+        : null;
+
+      const dia  = partes ? partes[0] : '--';
+      const mes  = partes ? MESES_PT[parseInt(partes[1], 10) - 1] || '' : '';
+      const ano  = partes ? partes[2] : '';
+
+      const participantes = [s.presidente, s.secretario]
+        .filter(Boolean)
+        .join(' · ');
+
+      const idSafe = _esc(s.id);
+      const card   = document.createElement('div');
+      card.className = 'collection-item-sessao';
+      card.innerHTML = `
+        <div class="sess-col-data">
+          <span class="sess-data-dia">${dia}</span>
+          <span class="sess-data-mes">${mes}</span>
+          <span class="sess-data-ano">${ano}</span>
+        </div>
+
+        <div class="sess-col-info">
+          <span class="sess-orgao">${s.orgao || 'Órgão não informado'}</span>
+          <span class="sess-local">
+            <i class="material-icons" style="font-size:13px; vertical-align:middle; margin-right:3px;">location_on</i>
+            ${s.local || 'Local não informado'}
+          </span>
+          ${participantes ? `<span class="sess-participantes">${participantes}</span>` : ''}
+        </div>
+
+        <div class="sess-col-metricas">
+          <span class="sess-metrica-num">${s.totalFichas}</span>
+          <span class="sess-metrica-label">Processo${s.totalFichas !== 1 ? 's' : ''}<br>pautado${s.totalFichas !== 1 ? 's' : ''}</span>
+        </div>
+
+        <div class="sess-col-actions">
+          <i class="material-icons act-btn c-fichas tooltipped"
+             data-tooltip="Fichas de Votação"
+             onclick="formSessoes_abrirFichas('${idSafe}')">ballot</i>
+
+          <i class="material-icons act-btn c-edit tooltipped"
+             data-tooltip="Editar Sessão"
+             onclick="formSessoes_abrirEditar('${idSafe}')">edit</i>
+
+          <i class="material-icons act-btn c-del tooltipped"
+             data-tooltip="Excluir Sessão"
+             onclick="formSessoes_confirmarExclusao('${idSafe}', '${_esc(s.datasessao)}')">delete</i>
+        </div>
+      `;
+      container.appendChild(card);
+    });
+
+    M.Tooltip.init(document.querySelectorAll('.tooltipped'));
+  }
+
+  // ============================================================
+  // FILTRO
+  // ============================================================
+
+  function formSessoes_filtrar() {
+    const termo = (document.getElementById('inputBuscaSessao').value || '').toLowerCase().trim();
+    if (!termo) { formSessoes_renderizar(baseSessoes); return; }
+
+    const filtrados = baseSessoes.filter(s =>
+      (s.datasessao  || '').toLowerCase().includes(termo) ||
+      (s.orgao       || '').toLowerCase().includes(termo) ||
+      (s.local       || '').toLowerCase().includes(termo) ||
+      (s.presidente  || '').toLowerCase().includes(termo) ||
+      (s.secretario  || '').toLowerCase().includes(termo)
+    );
+    formSessoes_renderizar(filtrados);
+  }
+
+  // ============================================================
+  // MODAL DE CADASTRO / EDIÇÃO DE SESSÃO
+  // ============================================================
+
+  function formSessoes_abrirNova() {
+    document.getElementById('sessaoForm').reset();
+    document.getElementById('sess_f_Id').value = '';
+    document.getElementById('sessaoModalTitulo').innerText = 'Nova Sessão';
+    sessaoDataISO = '';
+
+    _initDatepickerSessao('');
+    M.FormSelect.init(document.querySelectorAll('#modalSessaoCad select'));
+    _autocompleteMembrosSessao();
+    M.updateTextFields();
+    _abrirModal('modalSessaoCad');
+  }
+
+  function formSessoes_abrirEditar(id) {
+    const s = baseSessoes.find(x => x.id === id);
+    if (!s) return M.toast({ html: 'Sessão não encontrada.', classes: 'orange darken-3' });
+
+    document.getElementById('sessaoForm').reset();
+    document.getElementById('sessaoModalTitulo').innerText = 'Editar Sessão';
+    document.getElementById('sess_f_Id').value         = s.id;
+    document.getElementById('sess_f_Local').value      = s.local || '';
+    document.getElementById('sess_f_Presidente').value = s.presidente || '';
+    document.getElementById('sess_f_Secretario').value = s.secretario || '';
+
+    sessaoDataISO = s.dataiso || '';
+
+    _initDatepickerSessao(s.datasessao || '');
+
+    // Aguarda o DOM do select estabilizar antes de definir o valor
+    setTimeout(() => {
+      const selOrgao = document.getElementById('sess_f_Orgao');
+      selOrgao.value = s.orgao || '';
+      M.FormSelect.init(selOrgao);
+    }, 80);
+
+    _autocompleteMembrosSessao();
+    M.updateTextFields();
+    _abrirModal('modalSessaoCad');
+  }
+
+  function _initDatepickerSessao(valorExibido) {
+    const el = document.getElementById('sess_f_Data');
+    if (!el) return;
+
+    // Destrói instância anterior se existir
+    const instAnterior = M.Datepicker.getInstance(el);
+    if (instAnterior) instAnterior.destroy();
+
+    M.Datepicker.init(el, {
+      format: 'dd/mm/yyyy',
+      autoClose: true,
+      i18n: _i18nPtBR(),
+      onSelect: function (d) {
+        const y   = d.getFullYear();
+        const m   = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        sessaoDataISO = `${y}-${m}-${day}`;
+      }
+    });
+
+    if (valorExibido) {
+      el.value = valorExibido;
+      M.updateTextFields();
+    }
+  }
+
+  function _autocompleteMembrosSessao() {
+    ['sess_f_Presidente', 'sess_f_Secretario'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) M.Autocomplete.init(el, { data: baseMembros, minLength: 2, limit: 7 });
+    });
+  }
+
+  function formSessoes_salvar() {
+    const orgao = document.getElementById('sess_f_Orgao').value;
+
+    if (!orgao) {
+      return M.toast({ html: 'Selecione o Órgão Deliberativo.', classes: 'orange darken-3' });
+    }
+    if (!sessaoDataISO) {
+      return M.toast({ html: 'Selecione a Data da Sessão.', classes: 'orange darken-3' });
+    }
+
+    const btn = document.getElementById('sessBtnSalvar');
+    btn.disabled  = true;
+    btn.innerHTML = 'Processando...';
+
+    const obj = {
+      id:          document.getElementById('sess_f_Id').value || '',
+      datasessao:  sessaoDataISO,
+      orgao:       orgao,
+      local:       document.getElementById('sess_f_Local').value,
+      presidente:  document.getElementById('sess_f_Presidente').value,
+      secretario:  document.getElementById('sess_f_Secretario').value
+    };
+
+    google.script.run
+      .withSuccessHandler(function () {
+        M.toast({ html: 'Sessão salva com sucesso!', classes: 'green darken-2' });
+        btn.disabled  = false;
+        btn.innerHTML = '<i class="material-icons left">save</i>Salvar';
+        M.Modal.getInstance(document.getElementById('modalSessaoCad')).close();
+        formSessoes_carregar();
+      })
+      .withFailureHandler(function (err) {
+        M.toast({ html: 'Erro: ' + err.message, classes: 'red darken-2' });
+        btn.disabled  = false;
+        btn.innerHTML = '<i class="material-icons left">save</i>Salvar';
+      })
+      .formSessoes_salvarRegistro(obj);
+  }
+
+  // ============================================================
+  // EXCLUSÃO DE SESSÃO
+  // ============================================================
+
+  function formSessoes_confirmarExclusao(id, data) {
+    document.getElementById('msgConfirmacao').innerText =
+      `A sessão de ${data} será removida permanentemente.\n\nOs processos pautados e votos vinculados serão preservados.\nEsta ação não pode ser desfeita.`;
+
+    const btnConf  = document.getElementById('btnConfirmarAcao');
+    const novoBtn  = btnConf.cloneNode(true);
+    btnConf.parentNode.replaceChild(novoBtn, btnConf);
+    novoBtn.innerHTML = 'Excluir Sessão';
+
+    novoBtn.onclick = function () {
+      M.Modal.getInstance(document.getElementById('modalConfirmacao')).close();
+      google.script.run
+        .withSuccessHandler(function () {
+          M.toast({ html: 'Sessão excluída.', classes: 'blue-grey darken-2' });
+          formSessoes_carregar();
+        })
+        .withFailureHandler(function (err) {
+          M.toast({ html: 'Erro: ' + err.message, classes: 'red darken-2' });
+        })
+        .formSessoes_excluirRegistro(id);
+    };
+
+    _abrirModal('modalConfirmacao');
+  }
+
+  // ============================================================
+  // MODAL DE FICHAS DE VOTAÇÃO
+  // ============================================================
+
+  function formSessoes_abrirFichas(idSessao) {
+    fichaAtualSessaoId = idSessao;
+    fichaAtualId       = '';
+    fichaAtualIdProc   = '';
+
+    const sessao = baseSessoes.find(s => s.id === idSessao);
+    document.getElementById('fichasModalTitulo').textContent = 'Fichas de Votação';
+    document.getElementById('fichasModalSubtitulo').textContent =
+      sessao ? `${sessao.orgao} · ${sessao.datasessao}` : '';
+
+    // Reseta painel direito
+    _fichasPainelVazio();
+
+    // Mostra loader na lista de processos
+    document.getElementById('fichasListaProcessos').innerHTML =
+      '<div style="text-align:center; padding: 30px;"><div class="preloader-wrapper small active"><div class="spinner-layer spinner-blue-only"><div class="circle-clipper left"><div class="circle"></div></div><div class="gap-patch"><div class="circle"></div></div><div class="circle-clipper right"><div class="circle"></div></div></div></div></div>';
+
+    _abrirModal('modalFichas');
+
+    // Carrega fichas do servidor
+    google.script.run
+      .withSuccessHandler(function (res) {
+        if (!res.sucesso) {
+          document.getElementById('fichasListaProcessos').innerHTML =
+            `<div style="padding:20px; color:#c62828; font-size:0.85rem;">${res.erro}</div>`;
+          return;
+        }
+        _renderizarListaFichas(res.fichas || []);
+      })
+      .withFailureHandler(function (err) {
+        document.getElementById('fichasListaProcessos').innerHTML =
+          `<div style="padding:20px; color:#c62828; font-size:0.85rem;">Erro: ${err.message}</div>`;
+      })
+      .formSessoes_buscarFichas(idSessao);
+  }
+
+  function _renderizarListaFichas(fichas) {
+    const container = document.getElementById('fichasListaProcessos');
+    document.getElementById('fichasContagem').textContent = fichas.length;
+
+    if (!fichas || fichas.length === 0) {
+      container.innerHTML = `
+        <div style="padding: 30px; text-align:center; color:#bbb; font-size:0.85rem;">
+          <i class="material-icons" style="font-size:36px; display:block; margin-bottom:8px; color:#ddd;">gavel</i>
+          Nenhum processo pautado nesta sessão.
+        </div>`;
+      return;
+    }
+
+    container.innerHTML = '';
+    fichas.forEach((f, idx) => {
+      const item = document.createElement('div');
+      item.className = 'ficha-proc-item';
+      item.setAttribute('data-ficha-id', f.id);
+
+      const reqShort = (f.proc.requerente || '').substring(0, 55);
+      const statusCfg = _statusCor(f.proc.status);
+
+      item.innerHTML = `
+        <span class="ficha-proc-num">${f.proc.numero || 'S/N'}</span>
+        <span class="ficha-proc-req-short" title="${_esc(f.proc.requerente)}">${reqShort || 'Requerente não informado'}</span>
+        ${f.proc.status ? `<span class="ficha-proc-status-mini ${statusCfg}">${f.proc.status}</span>` : ''}
+      `;
+
+      item.onclick = function () {
+        document.querySelectorAll('.ficha-proc-item').forEach(el => el.classList.remove('selecionado'));
+        this.classList.add('selecionado');
+        _carregarPainelFicha(f);
+      };
+
+      container.appendChild(item);
+
+      // Seleciona automaticamente o primeiro
+      if (idx === 0) {
+        setTimeout(() => {
+          item.click();
+        }, 100);
+      }
+    });
+  }
+
+  function _carregarPainelFicha(ficha) {
+    fichaAtualId     = ficha.id;
+    fichaAtualIdProc = ficha.idprocesso;
+
+    // Preenche bloco de informações do processo
+    document.getElementById('fichaNumProc').textContent   = `Processo nº ${ficha.proc.numero || 'S/N'}`;
+    document.getElementById('fichaReqProc').textContent   = ficha.proc.requerente || 'Requerente não informado';
+    document.getElementById('fichaLocalProc').textContent = ficha.proc.local || '';
+
+    const statusChip = document.getElementById('fichaStatusChip');
+    statusChip.textContent  = ficha.proc.status || '';
+    statusChip.style.display = ficha.proc.status ? 'inline-block' : 'none';
+
+    // Preenche campos editáveis
+    document.getElementById('ficha_f_Id').value          = ficha.id;
+    document.getElementById('ficha_f_IdProcesso').value  = ficha.idprocesso;
+    document.getElementById('ficha_f_Relator').value     = ficha.relator || '';
+    document.getElementById('ficha_f_Expediente').value  = ficha.expediente || '';
+
+    // Autocomplete do relator com membros
+    M.Autocomplete.init(document.getElementById('ficha_f_Relator'), {
+      data: baseMembros, minLength: 2, limit: 7
+    });
+
+    M.updateTextFields();
+    M.textareaAutoResize(document.getElementById('ficha_f_Expediente'));
+
+    // Fecha formulário de novo voto se estiver aberto
+    formSessoes_cancelarVoto();
+
+    // Exibe o conteúdo
+    _fichasExibirConteudo();
+
+    // Carrega votos
+    _carregarVotos(ficha.id);
+  }
+
+  function _fichasPainelVazio() {
+    document.getElementById('fichasVazio').style.display    = 'flex';
+    document.getElementById('fichasConteudo').style.display = 'none';
+  }
+
+  function _fichasExibirConteudo() {
+    document.getElementById('fichasVazio').style.display    = 'none';
+    document.getElementById('fichasConteudo').style.display = 'flex';
+  }
+
+  // ============================================================
+  // SALVAR FICHA (RELATOR + EXPEDIENTE)
+  // ============================================================
+
+  function formSessoes_salvarFicha() {
+    const id         = document.getElementById('ficha_f_Id').value;
+    const relator    = document.getElementById('ficha_f_Relator').value;
+    const expediente = document.getElementById('ficha_f_Expediente').value;
+
+    if (!id) return M.toast({ html: 'Nenhuma ficha selecionada.', classes: 'orange darken-3' });
+
+    google.script.run
+      .withSuccessHandler(function () {
+        M.toast({ html: 'Ficha atualizada!', classes: 'green darken-2' });
+      })
+      .withFailureHandler(function (err) {
+        M.toast({ html: 'Erro: ' + err.message, classes: 'red darken-2' });
+      })
+      .formSessoes_salvarFicha({ id, relator, expediente });
+  }
+
+  // ============================================================
+  // VOTOS
+  // ============================================================
+
+  function _carregarVotos(idFicha) {
+    const container = document.getElementById('fichasListaVotos');
+    container.innerHTML = `<div class="votos-vazio"><div class="preloader-wrapper small active"><div class="spinner-layer spinner-blue-only"><div class="circle-clipper left"><div class="circle"></div></div><div class="gap-patch"><div class="circle"></div></div><div class="circle-clipper right"><div class="circle"></div></div></div></div></div>`;
+
+    google.script.run
+      .withSuccessHandler(function (res) {
+        if (!res.sucesso) {
+          container.innerHTML = `<div class="votos-vazio">Erro ao carregar votos.</div>`;
+          return;
+        }
+        _renderizarVotos(res.votos || []);
+      })
+      .withFailureHandler(function () {
+        container.innerHTML = `<div class="votos-vazio">Falha ao carregar votos.</div>`;
+      })
+      .formSessoes_buscarVotos(idFicha);
+  }
+
+  function _renderizarVotos(votos) {
+    const container = document.getElementById('fichasListaVotos');
+
+    if (!votos || votos.length === 0) {
+      container.innerHTML = `
+        <div class="votos-vazio">
+          <i class="material-icons" style="font-size:32px; display:block; margin-bottom:8px; color:#ddd;">how_to_vote</i>
+          Nenhum voto registrado para este processo nesta sessão.
+        </div>`;
+      return;
+    }
+
+    container.innerHTML = '';
+    votos.forEach(v => {
+      const tipoClass = _votoTipoClasse(v.tipovoto);
+      const item = document.createElement('div');
+      item.className = 'voto-item';
+      item.innerHTML = `
+        <span class="voto-tipo-chip ${tipoClass}">${v.tipovoto || '—'}</span>
+        <div class="voto-info">
+          <span class="voto-votante">${v.relator || 'Votante não informado'}</span>
+          <span class="voto-decisao">${v.voto || '—'}</span>
+          ${v.resultado ? `<span class="voto-resultado"><i class="material-icons" style="font-size:11px;vertical-align:middle;">verified</i> ${v.resultado}</span>` : ''}
+          ${v.urlvoto ? `<a href="${_esc(v.urlvoto)}" target="_blank" class="voto-pdf-link"><i class="material-icons" style="font-size:14px;">picture_as_pdf</i>Ver Relatório</a>` : ''}
+        </div>
+        <div class="voto-actions">
+          <i class="material-icons voto-btn-del" title="Excluir voto"
+             onclick="formSessoes_excluirVoto('${_esc(v.id)}')">delete_outline</i>
+        </div>
+      `;
+      container.appendChild(item);
+    });
+  }
+
+  function formSessoes_toggleAddVoto() {
+    const painel = document.getElementById('painelAddVoto');
+    const visivel = painel.style.display !== 'none';
+    if (visivel) {
+      formSessoes_cancelarVoto();
+    } else {
+      painel.style.display = 'block';
+      votoEditandoId = '';
+      document.getElementById('voto_f_Id').value = '';
+      M.FormSelect.init(document.querySelectorAll('#painelAddVoto select'));
+      M.Autocomplete.init(document.getElementById('voto_f_Relator'), {
+        data: baseMembros, minLength: 2, limit: 7
+      });
+      M.updateTextFields();
+    }
+  }
+
+  function formSessoes_cancelarVoto() {
+    const painel = document.getElementById('painelAddVoto');
+    painel.style.display = 'none';
+    votoEditandoId = '';
+  }
+
+  function formSessoes_salvarVoto() {
+    if (!fichaAtualId) return M.toast({ html: 'Selecione uma ficha primeiro.', classes: 'orange darken-3' });
+
+    const tipo    = document.getElementById('voto_f_Tipo').value;
+    const decisao = document.getElementById('voto_f_Voto').value;
+
+    if (!tipo || !decisao) {
+      return M.toast({ html: 'Tipo de Voto e Decisão são obrigatórios.', classes: 'orange darken-3' });
+    }
+
+    const obj = {
+      id:             document.getElementById('voto_f_Id').value || '',
+      idfichavotacao: fichaAtualId,
+      idprocesso:     fichaAtualIdProc,
+      tipovoto:       tipo,
+      relator:        document.getElementById('voto_f_Relator').value,
+      voto:           decisao,
+      resultado:      document.getElementById('voto_f_Resultado').value,
+      urlvoto:        ''
+    };
+
+    google.script.run
+      .withSuccessHandler(function (res) {
+        M.toast({ html: 'Voto salvo!', classes: 'green darken-2' });
+        formSessoes_cancelarVoto();
+        _carregarVotos(fichaAtualId);
+      })
+      .withFailureHandler(function (err) {
+        M.toast({ html: 'Erro: ' + err.message, classes: 'red darken-2' });
+      })
+      .formSessoes_salvarVoto(obj);
+  }
+
+  function formSessoes_excluirVoto(idVoto) {
+    if (!confirm('Remover este voto permanentemente?')) return;
+
+    google.script.run
+      .withSuccessHandler(function () {
+        M.toast({ html: 'Voto removido.', classes: 'blue-grey darken-2' });
+        _carregarVotos(fichaAtualId);
+      })
+      .withFailureHandler(function (err) {
+        M.toast({ html: 'Erro: ' + err.message, classes: 'red darken-2' });
+      })
+      .formSessoes_excluirVoto(idVoto);
+  }
+
+  // ============================================================
+  // UPLOAD DE RELATÓRIO EM PDF
+  // ============================================================
+
+  function formSessoes_abrirUploadPDF() {
+    if (!fichaAtualId) return M.toast({ html: 'Selecione um processo na ficha primeiro.', classes: 'orange darken-3' });
+    document.getElementById('inputPDFRelatorio').click();
+  }
+
+  function formSessoes_processarPDF(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    if (file.type !== 'application/pdf') {
+      return M.toast({ html: 'Selecione um arquivo PDF válido.', classes: 'red darken-2' });
+    }
+
+    if (file.size > 15 * 1024 * 1024) {
+      return M.toast({ html: 'Arquivo muito grande. Limite: 15 MB.', classes: 'red darken-2' });
+    }
+
+    M.toast({ html: 'Carregando arquivo...', classes: 'blue darken-2' });
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      // Extrai apenas o base64 puro (sem o prefixo data:...)
+      const base64Full = e.target.result;
+      const base64Data = base64Full.split(',')[1];
+
+      M.toast({ html: 'Enviando para o Google Drive...', classes: 'blue darken-2' });
+
+      // Cria um voto placeholder para vincular o PDF
+      // (O backend irá criar o voto se não existir, com URL preenchida)
+      const obj = {
+        id:             '',
+        idfichavotacao: fichaAtualId,
+        idprocesso:     fichaAtualIdProc,
+        tipovoto:       'Relatório',
+        relator:        '',
+        voto:           'Relatório em PDF',
+        resultado:      '',
+        urlvoto:        ''
+      };
+
+      google.script.run
+        .withSuccessHandler(function (resVoto) {
+          // Após criar/recuperar o ID do voto, faz o upload do PDF
+          google.script.run
+            .withSuccessHandler(function (resUpload) {
+              M.toast({ html: 'Relatório enviado com sucesso!', classes: 'green darken-2' });
+              input.value = ''; // reseta o input
+              _carregarVotos(fichaAtualId);
+            })
+            .withFailureHandler(function (err) {
+              M.toast({ html: 'Erro no upload: ' + err.message, classes: 'red darken-2' });
+            })
+            .formSessoes_uploadRelatorio(resVoto.id, base64Data, file.name);
+        })
+        .withFailureHandler(function (err) {
+          M.toast({ html: 'Erro ao preparar registro: ' + err.message, classes: 'red darken-2' });
+        })
+        .formSessoes_salvarVoto(obj);
+    };
+
+    reader.onerror = function () {
+      M.toast({ html: 'Erro ao ler o arquivo.', classes: 'red darken-2' });
+    };
+
+    reader.readAsDataURL(file);
+  }
+
+  // ============================================================
+  // FUNCIONALIDADES EM DESENVOLVIMENTO
+  // ============================================================
+
+  function formSessoes_emBreve(funcionalidade) {
+    M.toast({
+      html: `<i class="material-icons left" style="line-height:inherit">construction</i>${funcionalidade} em desenvolvimento...`,
+      classes: 'amber darken-4'
+    });
+  }
+
+  // ============================================================
+  // UTILITÁRIOS
+  // ============================================================
+
+  function _abrirModal(id) {
+    const el   = document.getElementById(id);
+    const inst = M.Modal.getInstance(el) || M.Modal.init(el);
+    inst.open();
+  }
+
+  function _esc(str) {
+    return (str || '').toString()
+      .replace(/\\/g, '\\\\')
+      .replace(/'/g, "\\'")
+      .replace(/"/g, '&quot;');
+  }
+
+  function _i18nPtBR() {
+    return {
+      cancel: 'Cancelar', clear: 'Limpar', done: 'OK',
+      months: ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+               'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'],
+      monthsShort: ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'],
+      weekdays: ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'],
+      weekdaysShort: ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'],
+      weekdaysAbbrev: ['D','S','T','Q','Q','S','S']
+    };
+  }
+
+  function _statusCor(status) {
+    const mapa = {
+      'Em tramitação': 's-tramitacao',
+      'Arquivado':     's-arquivado',
+      'Deferido':      's-deferido',
+      'Indeferido':    's-indeferido',
+      'Em recurso':    's-recurso',
+      'Em diligência': 's-diligencia',
+      'Concluso':      's-concluso',
+      'Na secretaria': 's-secretaria'
+    };
+    return mapa[status] || 's-vazio';
+  }
+
+  function _votoTipoClasse(tipo) {
+    const t = (tipo || '').toLowerCase();
+    if (t.includes('relator'))  return 'voto-tipo-relator';
+    if (t.includes('membro'))   return 'voto-tipo-membro';
+    if (t.includes('minerva'))  return 'voto-tipo-minerva';
+    if (t.includes('vogal'))    return 'voto-tipo-vogal';
+    return 'voto-tipo-default';
+  }
+</script>

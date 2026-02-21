@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <?!= include('PainelLateral-style'); ?>
+  </head>
+  <body>
+    <div class="sidebar-header">
+      <img src="https://www.oabgo.org.br/wp-content/themes/oab/images/logo.png" alt="OAB Logo" class="logo">
+    </div>
+
+    <div class="sidebar-content">
+      <div class="section-title">Navegação</div>
+      
+      <div id="listaBotoes">
+        <button class="btn-oab-pill" onclick="google.script.run.formProcessos_abrirModal()">
+          <i class="fa-solid fa-folder"></i> Processos
+        </button>
+
+        <button class="btn-oab-pill" onclick="google.script.run.abrirFormMembros()">
+          <i class="fa-solid fa-users"></i> Membros
+        </button>
+
+        <button class="btn-oab-pill" onclick="google.script.run.formSessoes_abrirModal()">
+          <i class="fa-solid fa-calendar-check"></i> Sessões
+        </button>
+        
+        <button class="btn-oab-pill" onclick="PainelLateral_JS_navegar('Votacao')"><i class="fa-solid fa-check-to-slot"></i> Fichas de votação</button>
+        
+        <button class="btn-oab-pill" onclick="PainelLateral_JS_navegar('Configuracao')"><i class="fa-solid fa-gear"></i> Configuração</button>
+        
+        <button class="btn-oab-pill" onclick="PainelLateral_JS_navegar('Ajuda')"><i class="fa-solid fa-circle-question"></i> Ajuda</button>
+      </div>
+    </div>
+
+    <div class="fab-container">
+      <div class="fab-options" id="fabOptions">
+        <div class="fab-item" onclick="PainelLateral_JS_acaoRapida('Novo Processo')">
+          <span>Novo processo</span>
+          <button class="fab-sub"><i class="fa-solid fa-file-medical"></i></button>
+        </div>
+        <div class="fab-item" onclick="PainelLateral_JS_acaoRapida('Adicionar Membro')">
+          <span>Adicionar membro</span>
+          <button class="fab-sub"><i class="fa-solid fa-user-plus"></i></button>
+        </div>
+        <div class="fab-item" onclick="PainelLateral_JS_acaoRapida('Criar Relatorio')">
+          <span>Criar relatório</span>
+          <button class="fab-sub"><i class="fa-solid fa-file-circle-plus"></i></button>
+        </div>
+      </div>
+      <button class="fab-main" id="fabMain" onclick="PainelLateral_JS_toggleFab()">
+        <i class="fa-solid fa-plus"></i>
+      </button>
+    </div>
+
+    <?!= include('PainelLateral-js'); ?>
+  </body>
+</html>

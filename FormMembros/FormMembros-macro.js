@@ -201,19 +201,6 @@ function excluirMembroMacro(id) {
 }
 
 /**
- * Função para ser chamada pelo Painel Lateral
- * IMPORTANTE: Esta função é executada no contexto do servidor quando chamada
- * via google.script.run do painel lateral, então tem acesso à UI
- */
-function PainelLateral_abrirMembros() {
-  // Fecha o painel lateral antes de abrir o modal (opcional)
-  // SpreadsheetApp.getUi().showSidebar(HtmlService.createHtmlOutput(''));
-
-  abrirFormMembros();
-  return true;
-}
-
-/**
  * 1. FUNÇÃO PRINCIPAL PARA ATUALIZAR A TABELA DE MEMBROS CONFORME O SISTE DA OAB
  */
 function atualizarTabelaMembros() {
