@@ -525,56 +525,86 @@
       return;
     }
 
+    const tipoOpcoes = ['Voto do relator', 'Voto divergente'];
+
     container.innerHTML = '';
-    votos.forEach((v, idx) => {
-      const tipoClass = _votoTipoClasse(v.tipovoto);
+    votos.forEach(v => {
+      const tipoClass  = _votoTipoClasse(v.tipovoto);
+      const idSafe     = _esc(v.id);
+      const resultadoExibe = (v.resultado !== '' && v.resultado !== null && v.resultado !== undefined)
+        ? v.resultado : '—';
+
       const acc = document.createElement('div');
       acc.className = 'voto-accordion';
       acc.setAttribute('data-voto-id', v.id);
 
+      const opsTipo = tipoOpcoes.map(o =>
+        `<option value="${o}" ${v.tipovoto === o ? 'selected' : ''}>${o}</option>`).join('');
+
       acc.innerHTML = `
-        <!-- Cabeçalho clicável -->
+        <!-- CABEÇALHO retraído: TipoVoto · Relator · Resultado -->
         <div class="voto-accordion-header" onclick="formSessoes_toggleVoto(this)">
           <span class="voto-tipo-chip ${tipoClass}">${v.tipovoto || '—'}</span>
           <div class="voto-header-info">
-            <span class="voto-header-votante">${v.relator || 'Votante não informado'}</span>
-            <span class="voto-header-decisao">${v.voto || '—'}</span>
+            <span class="voto-header-votante">${v.relator || 'Relator não informado'}</span>
           </div>
+          <span class="voto-resultado-placar" title="Resultado">${resultadoExibe}</span>
           <i class="material-icons voto-chevron">expand_more</i>
         </div>
 
-        <!-- Corpo expandido -->
+        <!-- CORPO EXPANDIDO: campos editáveis -->
         <div class="voto-accordion-body">
-          ${v.relator ? `
-            <div class="voto-detalhe-linha">
-              <span class="voto-detalhe-label">Votante</span>
-              <span class="voto-detalhe-valor">${v.relator}</span>
-            </div>` : ''}
 
-          <div class="voto-detalhe-linha">
-            <span class="voto-detalhe-label">Decisão</span>
-            <span class="voto-detalhe-valor">${v.voto || '—'}</span>
+          <!-- TipoVoto (editável) -->
+          <div class="voto-campo-grupo">
+            <label class="voto-campo-label">TipoVoto</label>
+            <div class="input-field voto-campo-input">
+              <select id="ve_TipoVoto_${idSafe}">${opsTipo}</select>
+            </div>
           </div>
 
-          ${v.resultado ? `
-            <div class="voto-detalhe-linha">
-              <span class="voto-detalhe-label">Resultado</span>
-              <span class="voto-resultado-chip">${v.resultado}</span>
-            </div>` : ''}
+          <!-- Relator (editável) -->
+          <div class="voto-campo-grupo">
+            <label class="voto-campo-label">Relator</label>
+            <div class="input-field voto-campo-input">
+              <input id="ve_Relator_${idSafe}" type="text"
+                value="${_esc(v.relator)}" class="autocomplete">
+            </div>
+          </div>
+
+          <!-- Voto (textarea editável — texto longo) -->
+          <div class="voto-campo-grupo voto-campo-grupo-voto">
+            <label class="voto-campo-label" style="margin-top: 10px;">Voto</label>
+            <div class="input-field voto-campo-input">
+              <textarea id="ve_Voto_${idSafe}"
+                class="materialize-textarea voto-textarea">${_escTexto(v.voto)}</textarea>
+            </div>
+          </div>
+
+          <!-- Resultado (somente leitura) -->
+          <div class="voto-campo-grupo">
+            <label class="voto-campo-label">Resultado</label>
+            <span class="voto-resultado-placar voto-resultado-readonly">${resultadoExibe}</span>
+          </div>
 
           ${v.urlvoto ? `
-            <div class="voto-detalhe-linha">
-              <span class="voto-detalhe-label">Relatório</span>
-              <a href="${_esc(v.urlvoto)}" target="_blank" class="voto-pdf-link">
-                <i class="material-icons" style="font-size:15px;">picture_as_pdf</i>
-                Abrir PDF
-              </a>
-            </div>` : ''}
+          <!-- PDF vinculado -->
+          <div class="voto-campo-grupo" style="margin-top: 4px;">
+            <label class="voto-campo-label">PDF</label>
+            <a href="${_esc(v.urlvoto)}" target="_blank" class="voto-pdf-link">
+              <i class="material-icons" style="font-size:15px;">picture_as_pdf</i>Abrir relatório
+            </a>
+          </div>` : ''}
 
+          <!-- Rodapé: excluir e salvar -->
           <div class="voto-accordion-footer">
-            <button class="btn-voto-del" onclick="formSessoes_excluirVoto('${_esc(v.id)}')">
-              <i class="material-icons" style="font-size:14px;">delete_outline</i>
-              Excluir voto
+            <button class="btn-voto-del"
+              onclick="formSessoes_excluirVoto('${idSafe}')">
+              <i class="material-icons" style="font-size:14px;">delete_outline</i>Excluir
+            </button>
+            <button class="btn-voto-salvar"
+              onclick="formSessoes_salvarVotoEdicao('${idSafe}')">
+              <i class="material-icons" style="font-size:14px;">save</i>Salvar alterações
             </button>
           </div>
         </div>
@@ -582,8 +612,15 @@
 
       container.appendChild(acc);
 
-      // Abre o primeiro automaticamente
-      if (idx === 0) acc.classList.add('aberto');
+      // Inicializa select de TipoVoto e autocomplete do Relator
+      M.FormSelect.init(acc.querySelectorAll('select'));
+      M.Autocomplete.init(acc.querySelector(`#ve_Relator_${idSafe}`), {
+        data: baseMembros, minLength: 2, limit: 7
+      });
+      // Ajusta altura do textarea ao conteúdo
+      M.textareaAutoResize(acc.querySelector(`#ve_Voto_${idSafe}`));
+
+      // Cards iniciam retraídos — expansão somente por clique do usuário
     });
   }
 
@@ -596,14 +633,59 @@
     if (!estaAberto) acc.classList.add('aberto');
   }
 
+  /**
+   * Salva as edições feitas nos campos de um voto já existente (dentro do accordion).
+   * Não atualiza Resultado — esse campo é somente leitura no card.
+   */
+  function formSessoes_salvarVotoEdicao(id) {
+    const selTipo    = document.getElementById(`ve_TipoVoto_${id}`);
+    const inpRelator = document.getElementById(`ve_Relator_${id}`);
+    const taVoto     = document.getElementById(`ve_Voto_${id}`);
+
+    if (!selTipo || !inpRelator || !taVoto) {
+      return M.toast({ html: 'Campos do voto não encontrados.', classes: 'orange darken-3' });
+    }
+
+    const tipovoto = selTipo.value;
+    const relator  = inpRelator.value;
+    const voto     = taVoto.value.trim();
+
+    if (!tipovoto) {
+      return M.toast({ html: 'TipoVoto é obrigatório.', classes: 'orange darken-3' });
+    }
+
+    const acc     = document.querySelector(`.voto-accordion[data-voto-id="${id}"]`);
+    const urlvoto = acc && acc.querySelector('.voto-pdf-link')
+      ? acc.querySelector('.voto-pdf-link').href : '';
+
+    google.script.run
+      .withSuccessHandler(function () {
+        M.toast({ html: 'Voto atualizado!', classes: 'green darken-2' });
+        _carregarVotos(fichaAtualId);
+      })
+      .withFailureHandler(function (err) {
+        M.toast({ html: 'Erro ao salvar: ' + err.message, classes: 'red darken-2' });
+      })
+      .formSessoes_salvarVoto({
+        id:             id,
+        idfichavotacao: fichaAtualId,
+        idprocesso:     fichaAtualIdProc,
+        tipovoto:       tipovoto,
+        relator:        relator,
+        voto:           voto,
+        resultado:      '', // preservado no backend — não sobrescreve
+        urlvoto:        urlvoto
+      });
+  }
+
   function formSessoes_salvarVoto() {
     if (!fichaAtualId) return M.toast({ html: 'Selecione uma ficha primeiro.', classes: 'orange darken-3' });
 
     const tipo    = document.getElementById('voto_f_Tipo').value;
-    const decisao = document.getElementById('voto_f_Voto').value;
+    const voto    = document.getElementById('voto_f_Voto').value.trim();
 
-    if (!tipo || !decisao) {
-      return M.toast({ html: 'Tipo de Voto e Decisão são obrigatórios.', classes: 'orange darken-3' });
+    if (!tipo) {
+      return M.toast({ html: 'TipoVoto é obrigatório.', classes: 'orange darken-3' });
     }
 
     const obj = {
@@ -612,7 +694,7 @@
       idprocesso:     fichaAtualIdProc,
       tipovoto:       tipo,
       relator:        document.getElementById('voto_f_Relator').value,
-      voto:           decisao,
+      voto:           voto,
       resultado:      document.getElementById('voto_f_Resultado').value,
       urlvoto:        ''
     };
@@ -774,6 +856,14 @@
       .replace(/\\/g, '\\\\')
       .replace(/'/g, "\\'")
       .replace(/"/g, '&quot;');
+  }
+
+  // Para conteúdo de textarea — escapa só os caracteres HTML sem quebrar o texto
+  function _escTexto(str) {
+    return (str || '').toString()
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
   }
 
   function _i18nPtBR() {

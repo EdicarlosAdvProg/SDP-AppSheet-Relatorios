@@ -367,7 +367,10 @@ function formSessoes_salvarVoto(obj) {
     linha[mapa['tipovoto'] - 1]       = obj.tipovoto || '';
     linha[mapa['relator'] - 1]        = obj.relator || '';
     linha[mapa['voto'] - 1]           = obj.voto || '';
-    linha[mapa['resultado'] - 1]      = obj.resultado || '';
+    // Preserva Resultado existente quando a edição não informa novo valor
+    if (obj.resultado !== '' && obj.resultado !== undefined && obj.resultado !== null) {
+      linha[mapa['resultado'] - 1] = obj.resultado;
+    }
     if (chaveUrl) linha[mapa[chaveUrl] - 1] = obj.urlvoto || '';
 
     if (linhaAlvo !== -1) {

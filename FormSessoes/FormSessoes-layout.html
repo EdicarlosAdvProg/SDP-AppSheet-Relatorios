@@ -173,9 +173,9 @@
           </div>
 
           <!-- Conteúdo da ficha (exibido ao selecionar um processo) -->
-          <div id="fichasConteudo" style="display: none; flex-direction: column; flex: 1; overflow: hidden; min-height: 0;">
+          <div id="fichasConteudo" style="display: none;">
 
-            <!-- Cabeçalho azul: info do processo (FIXO) -->
+            <!-- Cabeçalho azul: info do processo (fixo no topo) -->
             <div class="ficha-proc-info">
               <div class="ficha-proc-numero" id="fichaNumProc">---</div>
               <div class="ficha-proc-req" id="fichaReqProc">---</div>
@@ -183,7 +183,7 @@
               <span id="fichaStatusChip" class="ficha-status-chip" style="display:none;"></span>
             </div>
 
-            <!-- Área scrollável: campos da ficha + votos -->
+            <!-- Área scrollável única: campos + label + formulário + votos -->
             <div class="fichas-dir-scroll">
 
               <!-- Campos editáveis: relator e expediente -->
@@ -213,13 +213,13 @@
                 </div>
               </div>
 
-              <!-- Seção de votos -->
+              <!-- Label da seção votos -->
               <div class="ficha-secao-votos">
                 <span>Votos registrados</span>
                 <span id="fichaVotosTotal" class="ficha-secao-votos-total">0 voto(s)</span>
               </div>
 
-              <!-- Formulário de novo voto (aparece aqui ao clicar no FAB) -->
+              <!-- Formulário de novo voto (aparece ao clicar no FAB) -->
               <div id="painelNovoVoto" style="display: none;">
                 <div class="painel-novo-voto">
                   <div class="painel-novo-voto-titulo">
@@ -236,9 +236,7 @@
                       <select id="voto_f_Tipo">
                         <option value="" disabled selected>Selecione *</option>
                         <option value="Voto do relator">Voto do relator</option>
-                        <option value="Voto do membro">Voto do membro</option>
-                        <option value="Voto de minerva">Voto de minerva</option>
-                        <option value="Voto vogal">Voto vogal</option>
+                        <option value="Voto divergente">Voto divergente</option>
                       </select>
                       <label>Tipo de Voto *</label>
                     </div>
@@ -249,28 +247,17 @@
                   </div>
 
                   <div class="row" style="margin-bottom: 0;">
-                    <div class="input-field col s12 m6">
-                      <select id="voto_f_Voto">
-                        <option value="" disabled selected>Decisão *</option>
-                        <option value="Pelo deferimento">Pelo deferimento</option>
-                        <option value="Pelo indeferimento">Pelo indeferimento</option>
-                        <option value="Pelo arquivamento">Pelo arquivamento</option>
-                        <option value="Diligência">Diligência</option>
-                        <option value="Abstenção">Abstenção</option>
-                      </select>
-                      <label>Decisão *</label>
+                    <div class="input-field col s12">
+                      <textarea id="voto_f_Voto" class="materialize-textarea"
+                        style="min-height: 60px; font-size: 0.88rem;"></textarea>
+                      <label for="voto_f_Voto">Voto (texto)</label>
                     </div>
-                    <div class="input-field col s12 m6">
-                      <select id="voto_f_Resultado">
-                        <option value="" disabled selected>Resultado</option>
-                        <option value="Deferido">Deferido</option>
-                        <option value="Indeferido">Indeferido</option>
-                        <option value="Arquivado">Arquivado</option>
-                        <option value="Em diligência">Em diligência</option>
-                        <option value="Por maioria">Por maioria</option>
-                        <option value="Por unanimidade">Por unanimidade</option>
-                      </select>
-                      <label>Resultado Final</label>
+                  </div>
+
+                  <div class="row" style="margin-bottom: 0;">
+                    <div class="input-field col s12 m4">
+                      <input id="voto_f_Resultado" type="number" min="0">
+                      <label for="voto_f_Resultado">Resultado (placar)</label>
                     </div>
                   </div>
 
@@ -297,28 +284,28 @@
 
             </div><!-- /fichas-dir-scroll -->
 
-            <!-- FAB interno: adicionar novo voto -->
-            <div class="fichas-fab-interno" id="fichasFabInterno">
-              <div class="fichas-fab-opcoes">
-                <div class="fichas-fab-opcao" onclick="formSessoes_abrirUploadAvulso()">
-                  <span class="fichas-fab-opcao-label">Enviar PDF avulso</span>
-                  <button class="fichas-fab-opcao-btn cor-dourado">
-                    <i class="material-icons" style="font-size:18px;">picture_as_pdf</i>
-                  </button>
-                </div>
-                <div class="fichas-fab-opcao" onclick="formSessoes_abrirNovoVoto()">
-                  <span class="fichas-fab-opcao-label">Adicionar voto</span>
-                  <button class="fichas-fab-opcao-btn cor-azul">
-                    <i class="material-icons" style="font-size:18px;">how_to_vote</i>
-                  </button>
-                </div>
-              </div>
-              <button class="fichas-fab-btn-principal" onclick="formSessoes_toggleFab()">
-                <i class="material-icons">add</i>
-              </button>
-            </div>
-
           </div><!-- /fichasConteudo -->
+
+          <!-- FAB: filho direto de fichas-painel-dir para ficar ancorado ao painel, fora do scroll -->
+          <div class="fichas-fab-interno" id="fichasFabInterno">
+            <div class="fichas-fab-opcoes">
+              <div class="fichas-fab-opcao" onclick="formSessoes_abrirUploadAvulso()">
+                <span class="fichas-fab-opcao-label">Enviar PDF avulso</span>
+                <button class="fichas-fab-opcao-btn cor-dourado">
+                  <i class="material-icons" style="font-size:18px;">picture_as_pdf</i>
+                </button>
+              </div>
+              <div class="fichas-fab-opcao" onclick="formSessoes_abrirNovoVoto()">
+                <span class="fichas-fab-opcao-label">Adicionar voto</span>
+                <button class="fichas-fab-opcao-btn cor-azul">
+                  <i class="material-icons" style="font-size:18px;">how_to_vote</i>
+                </button>
+              </div>
+            </div>
+            <button class="fichas-fab-btn-principal" onclick="formSessoes_toggleFab()">
+              <i class="material-icons">add</i>
+            </button>
+          </div>
 
         </div><!-- /fichas-painel-dir -->
       </div><!-- /fichas-body -->

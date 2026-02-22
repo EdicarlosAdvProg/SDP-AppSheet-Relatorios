@@ -479,12 +479,23 @@
     letter-spacing: 0.05em;
   }
 
-  /* Área scrollável: campos da ficha + votos */
+  /* fichasConteudo: flex column ocupando todo espaço disponível,
+     overflow hidden para ceder o scroll ao filho fichas-dir-scroll */
+  #fichasConteudo {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  /* ÚNICO contêiner de scroll: campos + label + formulário + votos,
+     tudo no mesmo frame rolável */
   .fichas-dir-scroll {
     flex: 1;
     overflow-y: auto;
     min-height: 0;
-    padding-bottom: 80px; /* espaço para FAB não cobrir conteúdo */
+    padding-bottom: 72px; /* espaço para o FAB não cobrir o último card */
   }
 
   /* Campos editáveis (relator, expediente) */
@@ -585,13 +596,6 @@
     text-overflow: ellipsis;
   }
 
-  .voto-header-decisao {
-    font-size: 0.75rem;
-    color: #777;
-    display: block;
-    margin-top: 1px;
-  }
-
   /* Seta de expansão */
   .voto-chevron {
     font-size: 20px;
@@ -664,6 +668,7 @@
   .voto-accordion-footer {
     display: flex;
     justify-content: flex-end;
+    gap: 8px;
     margin-top: 10px;
     padding-top: 8px;
     border-top: 1px solid #eee;
@@ -685,6 +690,90 @@
   }
 
   .btn-voto-del:hover { background: #ffebee; }
+
+  .btn-voto-salvar {
+    background: none;
+    border: 1px solid #c8d8f8;
+    color: #004480;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 50px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: background 0.15s;
+  }
+
+  .btn-voto-salvar:hover { background: #e8f0fe; }
+
+  /* Placar de resultado no cabeçalho do accordion */
+  .voto-resultado-placar {
+    font-size: 0.8rem;
+    font-weight: 800;
+    color: #a68945;
+    background: #fdf6e3;
+    border: 1.5px solid #e8d9a0;
+    padding: 3px 9px;
+    border-radius: 50px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    letter-spacing: 0.03em;
+  }
+
+  /* Variante somente leitura no corpo expandido */
+  .voto-resultado-readonly {
+    display: inline-block;
+    margin-top: 2px;
+  }
+
+  /* Grupos de campos editáveis no corpo do accordion */
+  .voto-campo-grupo {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 2px;
+  }
+
+  .voto-campo-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #aaa;
+    letter-spacing: 0.06em;
+    min-width: 64px;
+    flex-shrink: 0;
+    margin-top: 8px;
+  }
+
+  .voto-campo-input {
+    flex: 1;
+    margin: 0 !important;
+    padding-top: 0 !important;
+  }
+
+  .voto-campo-input input,
+  .voto-campo-input .select-wrapper input {
+    font-size: 0.82rem !important;
+    height: 2rem !important;
+    margin: 0 !important;
+  }
+
+  .voto-campo-input .select-wrapper + label,
+  .voto-campo-input label { display: none !important; }
+
+  /* Textarea do campo Voto (texto longo) */
+  .voto-textarea {
+    font-size: 0.82rem !important;
+    min-height: 60px !important;
+    padding-top: 4px !important;
+    line-height: 1.5 !important;
+  }
+
+  .voto-campo-grupo-voto {
+    align-items: flex-start !important;
+  }
 
   .votos-vazio {
     text-align: center;
