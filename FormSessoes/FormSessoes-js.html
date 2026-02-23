@@ -7,14 +7,14 @@
   // ============================================================
   // ESTADO GLOBAL
   // ============================================================
-  let baseSessoes        = [];
-  let baseMembros        = {};
-  let sessaoDataISO      = '';
-  let fichaAtualId       = '';
-  let fichaAtualIdProc   = '';
-  let pdfSelecionado     = null; // { file, base64 } do PDF do novo voto
+  let baseSessoes = [];
+  let baseMembros = {};
+  let sessaoDataISO = '';
+  let fichaAtualId = '';
+  let fichaAtualIdProc = '';
+  let pdfSelecionado = null; // { file, base64 } do PDF do novo voto
 
-  const MESES_PT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const MESES_PT = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
   // ============================================================
   // INICIALIZAÇÃO
@@ -39,14 +39,14 @@
   // ============================================================
 
   function formSessoes_carregar() {
-    const loader    = document.getElementById('loaderLista');
+    const loader = document.getElementById('loaderLista');
     const container = document.getElementById('listaSessoes');
-    loader.style.display    = 'block';
+    loader.style.display = 'block';
     container.style.opacity = '0.4';
 
     google.script.run
       .withSuccessHandler(function (res) {
-        loader.style.display    = 'none';
+        loader.style.display = 'none';
         container.style.opacity = '1';
         if (res.sucesso) {
           baseSessoes = res.sessoes || [];
@@ -57,7 +57,7 @@
         }
       })
       .withFailureHandler(function () {
-        loader.style.display    = 'none';
+        loader.style.display = 'none';
         container.style.opacity = '1';
         M.toast({ html: 'Falha crítica no servidor.', classes: 'red darken-2' });
       })
@@ -135,11 +135,11 @@
     if (!termo) { formSessoes_renderizar(baseSessoes); return; }
 
     const filtrados = baseSessoes.filter(s =>
-      (s.datasessao  || '').toLowerCase().includes(termo) ||
-      (s.orgao       || '').toLowerCase().includes(termo) ||
-      (s.local       || '').toLowerCase().includes(termo) ||
-      (s.presidente  || '').toLowerCase().includes(termo) ||
-      (s.secretario  || '').toLowerCase().includes(termo)
+      (s.datasessao || '').toLowerCase().includes(termo) ||
+      (s.orgao || '').toLowerCase().includes(termo) ||
+      (s.local || '').toLowerCase().includes(termo) ||
+      (s.presidente || '').toLowerCase().includes(termo) ||
+      (s.secretario || '').toLowerCase().includes(termo)
     );
     formSessoes_renderizar(filtrados);
   }
@@ -166,8 +166,8 @@
 
     document.getElementById('sessaoForm').reset();
     document.getElementById('sessaoModalTitulo').innerText = 'Editar Sessão';
-    document.getElementById('sess_f_Id').value         = s.id;
-    document.getElementById('sess_f_Local').value      = s.local || '';
+    document.getElementById('sess_f_Id').value = s.id;
+    document.getElementById('sess_f_Local').value = s.local || '';
     document.getElementById('sess_f_Presidente').value = s.presidente || '';
     document.getElementById('sess_f_Secretario').value = s.secretario || '';
     sessaoDataISO = s.dataiso || '';
@@ -193,8 +193,8 @@
     M.Datepicker.init(el, {
       format: 'dd/mm/yyyy', autoClose: true, i18n: _i18nPtBR(),
       onSelect: function (d) {
-        const y   = d.getFullYear();
-        const m   = String(d.getMonth() + 1).padStart(2, '0');
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
         const day = String(d.getDate()).padStart(2, '0');
         sessaoDataISO = `${y}-${m}-${day}`;
       }
@@ -215,27 +215,27 @@
     if (!sessaoDataISO) return M.toast({ html: 'Selecione a Data da Sessão.', classes: 'orange darken-3' });
 
     const btn = document.getElementById('sessBtnSalvar');
-    btn.disabled  = true;
+    btn.disabled = true;
     btn.innerHTML = 'Processando...';
 
     google.script.run
       .withSuccessHandler(function () {
         M.toast({ html: 'Sessão salva com sucesso!', classes: 'green darken-2' });
-        btn.disabled  = false;
+        btn.disabled = false;
         btn.innerHTML = '<i class="material-icons left">save</i>Salvar';
         M.Modal.getInstance(document.getElementById('modalSessaoCad')).close();
         formSessoes_carregar();
       })
       .withFailureHandler(function (err) {
         M.toast({ html: 'Erro: ' + err.message, classes: 'red darken-2' });
-        btn.disabled  = false;
+        btn.disabled = false;
         btn.innerHTML = '<i class="material-icons left">save</i>Salvar';
       })
       .formSessoes_salvarRegistro({
-        id:         document.getElementById('sess_f_Id').value || '',
+        id: document.getElementById('sess_f_Id').value || '',
         datasessao: sessaoDataISO,
-        orgao:      orgao,
-        local:      document.getElementById('sess_f_Local').value,
+        orgao: orgao,
+        local: document.getElementById('sess_f_Local').value,
         presidente: document.getElementById('sess_f_Presidente').value,
         secretario: document.getElementById('sess_f_Secretario').value
       });
@@ -273,13 +273,13 @@
   // ============================================================
 
   function formSessoes_abrirFichas(idSessao) {
-    fichaAtualId     = '';
+    fichaAtualId = '';
     fichaAtualIdProc = '';
-    pdfSelecionado   = null;
+    pdfSelecionado = null;
 
     const sessao = baseSessoes.find(s => s.id === idSessao);
-    document.getElementById('fichasModalTitulo').textContent     = 'Fichas de Votação';
-    document.getElementById('fichasModalSubtitulo').textContent  =
+    document.getElementById('fichasModalTitulo').textContent = 'Fichas de Votação';
+    document.getElementById('fichasModalSubtitulo').textContent =
       sessao ? `${sessao.orgao} · ${sessao.datasessao}` : '';
 
     _fichasPainelVazio();
@@ -356,24 +356,24 @@
   }
 
   function _carregarPainelFicha(ficha) {
-    fichaAtualId     = ficha.id;
+    fichaAtualId = ficha.id;
     fichaAtualIdProc = ficha.idprocesso;
-    pdfSelecionado   = null;
+    pdfSelecionado = null;
 
     // Preenche cabeçalho azul
-    document.getElementById('fichaNumProc').textContent   = `Processo nº ${ficha.proc.numero || 'S/N'}`;
-    document.getElementById('fichaReqProc').textContent   = ficha.proc.requerente || 'Requerente não informado';
+    document.getElementById('fichaNumProc').textContent = `Processo nº ${ficha.proc.numero || 'S/N'}`;
+    document.getElementById('fichaReqProc').textContent = ficha.proc.requerente || 'Requerente não informado';
     document.getElementById('fichaLocalProc').textContent = ficha.proc.local || '';
 
     const chip = document.getElementById('fichaStatusChip');
-    chip.textContent    = ficha.proc.status || '';
-    chip.style.display  = ficha.proc.status ? 'inline-block' : 'none';
+    chip.textContent = ficha.proc.status || '';
+    chip.style.display = ficha.proc.status ? 'inline-block' : 'none';
 
     // Preenche campos editáveis
-    document.getElementById('ficha_f_Id').value          = ficha.id;
-    document.getElementById('ficha_f_IdProcesso').value  = ficha.idprocesso;
-    document.getElementById('ficha_f_Relator').value     = ficha.relator || '';
-    document.getElementById('ficha_f_Expediente').value  = ficha.expediente || '';
+    document.getElementById('ficha_f_Id').value = ficha.id;
+    document.getElementById('ficha_f_IdProcesso').value = ficha.idprocesso;
+    document.getElementById('ficha_f_Relator').value = ficha.relator || '';
+    document.getElementById('ficha_f_Expediente').value = ficha.expediente || '';
 
     M.Autocomplete.init(document.getElementById('ficha_f_Relator'), {
       data: baseMembros, minLength: 2, limit: 7
@@ -393,12 +393,12 @@
   }
 
   function _fichasPainelVazio() {
-    document.getElementById('fichasVazio').style.display    = 'flex';
+    document.getElementById('fichasVazio').style.display = 'flex';
     document.getElementById('fichasConteudo').style.display = 'none';
   }
 
   function _fichasExibirConteudo() {
-    document.getElementById('fichasVazio').style.display    = 'none';
+    document.getElementById('fichasVazio').style.display = 'none';
     document.getElementById('fichasConteudo').style.display = 'flex';
   }
 
@@ -418,9 +418,9 @@
         M.toast({ html: 'Erro: ' + err.message, classes: 'red darken-2' });
       })
       .formSessoes_salvarFicha({
-        id:          id,
-        relator:     document.getElementById('ficha_f_Relator').value,
-        expediente:  document.getElementById('ficha_f_Expediente').value
+        id: id,
+        relator: document.getElementById('ficha_f_Relator').value,
+        expediente: document.getElementById('ficha_f_Expediente').value
       });
   }
 
@@ -514,6 +514,8 @@
 
   function _renderizarVotos(votos) {
     const container = document.getElementById('fichasListaVotos');
+    if (!container) return;
+
     document.getElementById('fichaVotosTotal').textContent = `${votos.length} voto${votos.length !== 1 ? 's' : ''}`;
 
     if (!votos || votos.length === 0) {
@@ -526,13 +528,38 @@
     }
 
     const tipoOpcoes = ['Voto do relator', 'Voto divergente'];
+    container.innerHTML = ''; // Limpa o loader ou mensagens anteriores
 
-    container.innerHTML = '';
     votos.forEach(v => {
-      const tipoClass  = _votoTipoClasse(v.tipovoto);
-      const idSafe     = _esc(v.id);
+      const tipoClass = _votoTipoClasse(v.tipovoto);
+      const idSafe = _esc(v.id);
+
+      // Tenta encontrar a URL em todas as variações possíveis vindas do backend
+      const linkRelatorio = v.urlvoto || v.urlRelatorio || v['URL Relatório'] || v.url_voto || '';
+
       const resultadoExibe = (v.resultado !== '' && v.resultado !== null && v.resultado !== undefined)
         ? v.resultado : '—';
+
+      // Define a seção do PDF
+      const secaoRelatorio = linkRelatorio
+        ? `<div class="voto-campo-grupo" style="margin-top: 4px;">
+            <label class="voto-campo-label">Relatório</label>
+            <div class="voto-pdf-container">
+              <a href="${_esc(linkRelatorio)}" target="_blank" class="voto-pdf-link">
+                <i class="material-icons">picture_as_pdf</i>Abrir relatório
+              </a>
+              <button class="btn-pdf-excluir tooltipped" data-tooltip="Excluir arquivo"
+                onclick="formSessoes_removerRelatorio('${idSafe}', '${_esc(linkRelatorio)}')">
+                <i class="material-icons" style="font-size:16px;">delete</i>
+              </button>
+            </div>
+          </div>`
+        : `<div class="voto-campo-grupo" style="margin-top: 4px;">
+            <label class="voto-campo-label">Relatório</label>
+            <button class="btn-pdf-adicionar" onclick="formSessoes_adicionarRelatorioDireto('${idSafe}')">
+              <i class="material-icons" style="font-size:16px;">add_circle_outline</i>Anexar PDF
+            </button>
+          </div>`;
 
       const acc = document.createElement('div');
       acc.className = 'voto-accordion';
@@ -542,7 +569,6 @@
         `<option value="${o}" ${v.tipovoto === o ? 'selected' : ''}>${o}</option>`).join('');
 
       acc.innerHTML = `
-        <!-- CABEÇALHO retraído: TipoVoto · Relator · Resultado -->
         <div class="voto-accordion-header" onclick="formSessoes_toggleVoto(this)">
           <span class="voto-tipo-chip ${tipoClass}">${v.tipovoto || '—'}</span>
           <div class="voto-header-info">
@@ -552,10 +578,7 @@
           <i class="material-icons voto-chevron">expand_more</i>
         </div>
 
-        <!-- CORPO EXPANDIDO: campos editáveis -->
         <div class="voto-accordion-body">
-
-          <!-- TipoVoto (editável) -->
           <div class="voto-campo-grupo">
             <label class="voto-campo-label">TipoVoto</label>
             <div class="input-field voto-campo-input">
@@ -563,7 +586,6 @@
             </div>
           </div>
 
-          <!-- Relator (editável) -->
           <div class="voto-campo-grupo">
             <label class="voto-campo-label">Relator</label>
             <div class="input-field voto-campo-input">
@@ -572,7 +594,6 @@
             </div>
           </div>
 
-          <!-- Voto (textarea editável — texto longo) -->
           <div class="voto-campo-grupo voto-campo-grupo-voto">
             <label class="voto-campo-label" style="margin-top: 10px;">Voto</label>
             <div class="input-field voto-campo-input">
@@ -581,22 +602,13 @@
             </div>
           </div>
 
-          <!-- Resultado (somente leitura) -->
           <div class="voto-campo-grupo">
             <label class="voto-campo-label">Resultado</label>
             <span class="voto-resultado-placar voto-resultado-readonly">${resultadoExibe}</span>
           </div>
 
-          ${v.urlvoto ? `
-          <!-- PDF vinculado -->
-          <div class="voto-campo-grupo" style="margin-top: 4px;">
-            <label class="voto-campo-label">PDF</label>
-            <a href="${_esc(v.urlvoto)}" target="_blank" class="voto-pdf-link">
-              <i class="material-icons" style="font-size:15px;">picture_as_pdf</i>Abrir relatório
-            </a>
-          </div>` : ''}
+          ${secaoRelatorio}
 
-          <!-- Rodapé: excluir e salvar -->
           <div class="voto-accordion-footer">
             <button class="btn-voto-del"
               onclick="formSessoes_excluirVoto('${idSafe}')">
@@ -612,15 +624,13 @@
 
       container.appendChild(acc);
 
-      // Inicializa select de TipoVoto e autocomplete do Relator
+      // Reinicializa os componentes do Materialize para o novo elemento
       M.FormSelect.init(acc.querySelectorAll('select'));
       M.Autocomplete.init(acc.querySelector(`#ve_Relator_${idSafe}`), {
         data: baseMembros, minLength: 2, limit: 7
       });
-      // Ajusta altura do textarea ao conteúdo
       M.textareaAutoResize(acc.querySelector(`#ve_Voto_${idSafe}`));
-
-      // Cards iniciam retraídos — expansão somente por clique do usuário
+      M.Tooltip.init(acc.querySelectorAll('.tooltipped'));
     });
   }
 
@@ -638,23 +648,23 @@
    * Não atualiza Resultado — esse campo é somente leitura no card.
    */
   function formSessoes_salvarVotoEdicao(id) {
-    const selTipo    = document.getElementById(`ve_TipoVoto_${id}`);
+    const selTipo = document.getElementById(`ve_TipoVoto_${id}`);
     const inpRelator = document.getElementById(`ve_Relator_${id}`);
-    const taVoto     = document.getElementById(`ve_Voto_${id}`);
+    const taVoto = document.getElementById(`ve_Voto_${id}`);
 
     if (!selTipo || !inpRelator || !taVoto) {
       return M.toast({ html: 'Campos do voto não encontrados.', classes: 'orange darken-3' });
     }
 
     const tipovoto = selTipo.value;
-    const relator  = inpRelator.value;
-    const voto     = taVoto.value.trim();
+    const relator = inpRelator.value;
+    const voto = taVoto.value.trim();
 
     if (!tipovoto) {
       return M.toast({ html: 'TipoVoto é obrigatório.', classes: 'orange darken-3' });
     }
 
-    const acc     = document.querySelector(`.voto-accordion[data-voto-id="${id}"]`);
+    const acc = document.querySelector(`.voto-accordion[data-voto-id="${id}"]`);
     const urlvoto = acc && acc.querySelector('.voto-pdf-link')
       ? acc.querySelector('.voto-pdf-link').href : '';
 
@@ -667,36 +677,36 @@
         M.toast({ html: 'Erro ao salvar: ' + err.message, classes: 'red darken-2' });
       })
       .formSessoes_salvarVoto({
-        id:             id,
+        id: id,
         idfichavotacao: fichaAtualId,
-        idprocesso:     fichaAtualIdProc,
-        tipovoto:       tipovoto,
-        relator:        relator,
-        voto:           voto,
-        resultado:      '', // preservado no backend — não sobrescreve
-        urlvoto:        urlvoto
+        idprocesso: fichaAtualIdProc,
+        tipovoto: tipovoto,
+        relator: relator,
+        voto: voto,
+        resultado: '', // preservado no backend — não sobrescreve
+        urlvoto: urlvoto
       });
   }
 
   function formSessoes_salvarVoto() {
     if (!fichaAtualId) return M.toast({ html: 'Selecione uma ficha primeiro.', classes: 'orange darken-3' });
 
-    const tipo    = document.getElementById('voto_f_Tipo').value;
-    const voto    = document.getElementById('voto_f_Voto').value.trim();
+    const tipo = document.getElementById('voto_f_Tipo').value;
+    const voto = document.getElementById('voto_f_Voto').value.trim();
 
     if (!tipo) {
       return M.toast({ html: 'TipoVoto é obrigatório.', classes: 'orange darken-3' });
     }
 
     const obj = {
-      id:             document.getElementById('voto_f_Id').value || '',
+      id: document.getElementById('voto_f_Id').value || '',
       idfichavotacao: fichaAtualId,
-      idprocesso:     fichaAtualIdProc,
-      tipovoto:       tipo,
-      relator:        document.getElementById('voto_f_Relator').value,
-      voto:           voto,
-      resultado:      document.getElementById('voto_f_Resultado').value,
-      urlvoto:        ''
+      idprocesso: fichaAtualIdProc,
+      tipovoto: tipo,
+      relator: document.getElementById('voto_f_Relator').value,
+      voto: voto,
+      resultado: document.getElementById('voto_f_Resultado').value,
+      urlvoto: ''
     };
 
     M.toast({ html: 'Salvando voto...', classes: 'blue darken-2' });
@@ -769,7 +779,7 @@
     reader.onload = function (e) {
       pdfSelecionado = {
         base64: e.target.result.split(',')[1],
-        nome:   file.name
+        nome: file.name
       };
 
       // Atualiza a aparência da área de upload
@@ -830,6 +840,56 @@
     reader.readAsDataURL(file);
   }
 
+  /**
+   * Dispara o seletor de arquivos para um voto específico que não possui PDF
+   */
+  function formSessoes_adicionarRelatorioDireto(idVoto) {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/pdf';
+    input.onchange = e => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      // Validações básicas
+      if (file.size > 15 * 1024 * 1024) return M.toast({ html: 'Limite de 15MB excedido', classes: 'red' });
+
+      M.toast({ html: 'Fazendo upload do relatório...', classes: 'blue' });
+
+      const reader = new FileReader();
+      reader.onload = function (evt) {
+        const base64Data = evt.target.result.split(',')[1];
+
+        google.script.run
+          .withSuccessHandler(function () {
+            M.toast({ html: 'Relatório anexado!', classes: 'green' });
+            _carregarVotos(fichaAtualId); // Recarrega a lista para mostrar o botão 'Abrir'
+          })
+          .withFailureHandler(err => M.toast({ html: err.message, classes: 'red' }))
+          .formSessoes_uploadRelatorio(idVoto, base64Data, file.name);
+      };
+      reader.readAsDataURL(file);
+    };
+    input.click();
+  }
+
+  /**
+   * Solicita a exclusão do arquivo do Drive e limpa o link na planilha
+   */
+  function formSessoes_removerRelatorio(idVoto, urlArquivo) {
+    if (!confirm('Deseja realmente excluir este arquivo PDF permanentemente do Drive?')) return;
+
+    M.toast({ html: 'Excluindo arquivo...', classes: 'amber darken-3' });
+
+    google.script.run
+      .withSuccessHandler(function () {
+        M.toast({ html: 'Arquivo removido com sucesso.', classes: 'blue-grey' });
+        _carregarVotos(fichaAtualId); // Recarrega para mostrar o botão de 'Anexar'
+      })
+      .withFailureHandler(err => M.toast({ html: err.message, classes: 'red' }))
+      .formSessoes_excluirRelatorio(idVoto, urlArquivo);
+  }
+
   // ============================================================
   // FUNCIONALIDADES EM DESENVOLVIMENTO
   // ============================================================
@@ -846,7 +906,7 @@
   // ============================================================
 
   function _abrirModal(id) {
-    const el   = document.getElementById(id);
+    const el = document.getElementById(id);
     const inst = M.Modal.getInstance(el) || M.Modal.init(el);
     inst.open();
   }
@@ -869,31 +929,31 @@
   function _i18nPtBR() {
     return {
       cancel: 'Cancelar', clear: 'Limpar', done: 'OK',
-      months: ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
-               'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'],
-      monthsShort: ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'],
-      weekdays: ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'],
-      weekdaysShort: ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'],
-      weekdaysAbbrev: ['D','S','T','Q','Q','S','S']
+      months: ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'],
+      monthsShort: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'],
+      weekdays: ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'],
+      weekdaysShort: ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'],
+      weekdaysAbbrev: ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']
     };
   }
 
   function _statusCor(status) {
     const mapa = {
       'Em tramitação': 's-tramitacao', 'Arquivado': 's-arquivado',
-      'Deferido': 's-deferido',        'Indeferido': 's-indeferido',
-      'Em recurso': 's-recurso',       'Em diligência': 's-diligencia',
-      'Concluso': 's-concluso',        'Na secretaria': 's-secretaria'
+      'Deferido': 's-deferido', 'Indeferido': 's-indeferido',
+      'Em recurso': 's-recurso', 'Em diligência': 's-diligencia',
+      'Concluso': 's-concluso', 'Na secretaria': 's-secretaria'
     };
     return mapa[status] || 's-vazio';
   }
 
   function _votoTipoClasse(tipo) {
     const t = (tipo || '').toLowerCase();
-    if (t.includes('relator'))  return 'voto-tipo-relator';
-    if (t.includes('membro'))   return 'voto-tipo-membro';
-    if (t.includes('minerva'))  return 'voto-tipo-minerva';
-    if (t.includes('vogal'))    return 'voto-tipo-vogal';
+    if (t.includes('relator')) return 'voto-tipo-relator';
+    if (t.includes('membro')) return 'voto-tipo-membro';
+    if (t.includes('minerva')) return 'voto-tipo-minerva';
+    if (t.includes('vogal')) return 'voto-tipo-vogal';
     return 'voto-tipo-default';
   }
 </script>

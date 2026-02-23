@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <base target="_top">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
   <?!= include('FormSessoes-style'); ?>
 </head>
+
 <body>
 
   <div class="main-container">
@@ -28,9 +30,15 @@
       <div id="loaderLista" class="center-align" style="padding: 20px; display: none;">
         <div class="preloader-wrapper small active">
           <div class="spinner-layer spinner-blue-only">
-            <div class="circle-clipper left"><div class="circle"></div></div>
-            <div class="gap-patch"><div class="circle"></div></div>
-            <div class="circle-clipper right"><div class="circle"></div></div>
+            <div class="circle-clipper left">
+              <div class="circle"></div>
+            </div>
+            <div class="gap-patch">
+              <div class="circle"></div>
+            </div>
+            <div class="circle-clipper right">
+              <div class="circle"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -44,30 +52,26 @@
       </a>
       <ul>
         <li>
-          <a class="btn-floating btn-oab-red tooltipped btn-hover-zoom"
-             data-position="left" data-tooltip="Criar Pauta (em breve)"
-             onclick="formSessoes_emBreve('Criação de Pauta')">
+          <a class="btn-floating btn-oab-red tooltipped btn-hover-zoom" data-position="left"
+            data-tooltip="Criar Pauta (em breve)" onclick="formSessoes_emBreve('Criação de Pauta')">
             <i class="material-icons">assignment</i>
           </a>
         </li>
         <li>
-          <a class="btn-floating btn-oab-red tooltipped btn-hover-zoom"
-             data-position="left" data-tooltip="Criar Ata (em breve)"
-             onclick="formSessoes_emBreve('Geração de Ata')">
+          <a class="btn-floating btn-oab-red tooltipped btn-hover-zoom" data-position="left"
+            data-tooltip="Criar Ata (em breve)" onclick="formSessoes_emBreve('Geração de Ata')">
             <i class="material-icons">description</i>
           </a>
         </li>
         <li>
-          <a class="btn-floating btn-oab-red tooltipped btn-hover-zoom"
-             data-position="left" data-tooltip="Nova Sessão"
-             onclick="formSessoes_abrirNova()">
+          <a class="btn-floating btn-oab-red tooltipped btn-hover-zoom" data-position="left" data-tooltip="Nova Sessão"
+            onclick="formSessoes_abrirNova()">
             <i class="material-icons">add</i>
           </a>
         </li>
         <li>
-          <a class="btn-floating btn-oab-red tooltipped btn-hover-zoom"
-             data-position="left" data-tooltip="Sincronizar lista"
-             onclick="formSessoes_carregar()">
+          <a class="btn-floating btn-oab-red tooltipped btn-hover-zoom" data-position="left"
+            data-tooltip="Sincronizar lista" onclick="formSessoes_carregar()">
             <i class="material-icons">refresh</i>
           </a>
         </li>
@@ -123,8 +127,7 @@
     <div class="modal-footer">
       <button class="modal-close waves-effect waves-grey btn-flat grey-text text-darken-1"
         style="margin-right: 10px;">Cancelar</button>
-      <button id="sessBtnSalvar" class="waves-effect waves-light btn btn-salvar-modal"
-        onclick="formSessoes_salvar()">
+      <button id="sessBtnSalvar" class="waves-effect waves-light btn btn-salvar-modal" onclick="formSessoes_salvar()">
         <i class="material-icons left">save</i>Salvar
       </button>
     </div>
@@ -141,7 +144,8 @@
       <div class="fichas-header">
         <div>
           <h5 id="fichasModalTitulo">Fichas de Votação</h5>
-          <span id="fichasModalSubtitulo" class="grey-text" style="font-size: 0.8rem; display:block; margin-top: 2px;"></span>
+          <span id="fichasModalSubtitulo" class="grey-text"
+            style="font-size: 0.8rem; display:block; margin-top: 2px;"></span>
         </div>
         <button class="modal-close waves-effect waves-grey btn-flat grey-text" style="padding: 0 8px;">
           <i class="material-icons">close</i>
@@ -168,7 +172,8 @@
 
           <!-- Estado vazio -->
           <div id="fichasVazio" class="fichas-vazio-msg">
-            <i class="material-icons" style="font-size: 48px; color: #ddd; display:block; margin-bottom: 12px;">touch_app</i>
+            <i class="material-icons"
+              style="font-size: 48px; color: #ddd; display:block; margin-bottom: 12px;">touch_app</i>
             <p>Selecione um processo ao lado para visualizar a ficha de votação.</p>
           </div>
 
@@ -223,8 +228,10 @@
               <div id="painelNovoVoto" style="display: none;">
                 <div class="painel-novo-voto">
                   <div class="painel-novo-voto-titulo">
-                    <span><i class="material-icons" style="font-size:14px; vertical-align:middle; margin-right:4px;">how_to_vote</i>Novo Voto</span>
-                    <button class="btn-flat btn-small grey-text" style="padding: 0;" onclick="formSessoes_fecharNovoVoto()">
+                    <span><i class="material-icons"
+                        style="font-size:14px; vertical-align:middle; margin-right:4px;">how_to_vote</i>Novo Voto</span>
+                    <button class="btn-flat btn-small grey-text" style="padding: 0;"
+                      onclick="formSessoes_fecharNovoVoto()">
                       <i class="material-icons" style="font-size:18px;">close</i>
                     </button>
                   </div>
@@ -262,9 +269,13 @@
                   </div>
 
                   <!-- Área de upload do PDF -->
-                  <div class="upload-area" id="uploadAreaVoto" onclick="document.getElementById('inputPDFVoto').click()">
-                    <i class="material-icons">upload_file</i>
-                    <p><strong>Clique para anexar o relatório em PDF</strong><br>Opcional · máx. 15 MB</p>
+                  <div class="upload-area" id="uploadAreaVoto" onclick="document.getElementById('inputPDFVoto').click()"
+                    style="border: 2px dashed #a68945; padding: 15px; text-align: center; cursor: pointer; border-radius: 8px; margin-bottom: 15px;">
+                    <i class="material-icons" style="color: #a68945; font-size: 32px;">upload_file</i>
+                    <p style="margin: 5px 0;">
+                      <strong id="labelUploadVoto">Clique para anexar o relatório em PDF</strong><br>
+                      <span style="font-size: 0.8rem; color: #777;">Opcional · PDF único</span>
+                    </p>
                   </div>
                   <input type="file" id="inputPDFVoto" accept=".pdf" style="display:none;"
                     onchange="formSessoes_selecionarPDF(this)">
@@ -347,4 +358,5 @@
   <?!= include('FormSessoes-js'); ?>
 
 </body>
+
 </html>

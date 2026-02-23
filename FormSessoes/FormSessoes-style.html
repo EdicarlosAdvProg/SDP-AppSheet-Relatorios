@@ -648,22 +648,81 @@
     color: #2e7d32;
   }
 
-  .voto-pdf-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 0.78rem;
-    font-weight: 700;
-    color: #004480;
-    text-decoration: none;
-    background: #e8f0fe;
-    padding: 5px 12px;
-    border-radius: 50px;
-    transition: background 0.15s;
-    margin-top: 4px;
-  }
+  /* Container de ações do relatório para alinhar Abrir e Excluir */
+.voto-pdf-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
 
-  .voto-pdf-link:hover { background: #c8d8f8; text-decoration: none; }
+/* Botão de abrir PDF (Ajustado) */
+.voto-pdf-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #fff !important;
+  background: #004480; /* Azul OAB */
+  padding: 6px 14px;
+  border-radius: 50px;
+  transition: all 0.2s ease;
+  text-decoration: none !important;
+  border: none;
+  cursor: pointer;
+}
+
+.voto-pdf-link:hover {
+  background: #002f5d;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+}
+
+.voto-pdf-link i { font-size: 16px; }
+
+/* Botão de excluir PDF (Novo) */
+.btn-pdf-excluir {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #fff;
+  color: #ff0000;
+  border: 1px solid #ffcdd2;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-pdf-excluir:hover {
+  background: #ff0000;
+  color: #fff;
+  border-color: #ff0000;
+}
+
+/* Botão para adicionar PDF quando estiver vazio (Novo) */
+.btn-pdf-adicionar {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #a68945 !important; /* Dourado OAB */
+  background: #fff;
+  border: 1.5px dashed #a68945;
+  padding: 5px 12px;
+  border-radius: 50px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 5px;
+}
+
+.btn-pdf-adicionar:hover {
+  background: #fdf6e3;
+  transform: scale(1.02);
+}
 
   .voto-accordion-footer {
     display: flex;

@@ -310,7 +310,7 @@ function formSessoes_buscarVotos(idFicha) {
     const dados = sheetVot.getDataRange().getValues();
     dados.shift();
 
-    const chaveUrl = _encontrarChave(mapa, ['url voto', 'urlvoto', 'url_voto']);
+    const chaveUrl = _encontrarChave(mapa, ['url relatório','url voto', 'urlvoto', 'url_voto']);
 
     const votos = dados
       .filter(v => String(v[mapa['idfichavotacao'] - 1]).trim() === String(idFicha).trim())
@@ -408,24 +408,21 @@ function formSessoes_excluirVoto(id) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// UPLOAD DE RELATÓRIO EM PDF
+// UPLOAD E GESTÃO DE RELATÓRIO EM PDF (AJUSTADO)
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
  * Faz upload de um PDF para a pasta "Relatórios" no mesmo diretório do documento.
  * Salva a URL no campo URL Voto da tabVotos.
- *
- * @param {string} idVoto     Id do registro em tabVotos que receberá a URL
- * @param {string} base64Data Conteúdo do arquivo em Base64
- * @param {string} fileName   Nome original do arquivo
  */
 function formSessoes_uploadRelatorio(idVoto, base64Data, fileName) {
   try {
-    // Localiza a pasta pai do documento
-    const doc = DocumentApp.getActiveDocument();
-    const docFile = DriveApp.getFileById(doc.getId());
-    const parentIter = docFile.getParents();
-    if (!parentIter.hasNext()) throw new Error('Não foi possível localizar a pasta do documento.');
+    const ss = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
+    
+    // Localiza a pasta pai da planilha de dados (Documento Mestre)
+    const planilhaFile = DriveApp.getFileById(ss.getId());
+    const parentIter = planilhaFile.getParents();
+    if (!parentIter.hasNext()) throw new Error('Não foi possível localizar a pasta do documento mestre.');
     const parentFolder = parentIter.next();
 
     // Localiza ou cria a pasta "Relatórios"
@@ -433,37 +430,90 @@ function formSessoes_uploadRelatorio(idVoto, base64Data, fileName) {
     const folderIter = parentFolder.getFoldersByName('Relatórios');
     relFolder = folderIter.hasNext() ? folderIter.next() : parentFolder.createFolder('Relatórios');
 
-    // Cria o arquivo
-    const bytes = Utilities.base64Decode(base64Data);
-    const blob  = Utilities.newBlob(bytes, 'application/pdf', fileName);
-    const file  = relFolder.createFile(blob);
+    // Converte Base64 para Blob e cria o arquivo
+    // Tratamento para remover o prefixo data:application/pdf;base64, se existir
+    const cleanBase64 = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
+    const bytes = Utilities.base64Decode(cleanBase64);
+    const blob = Utilities.newBlob(bytes, 'application/pdf', fileName);
+    const file = relFolder.createFile(blob);
+    
+    // Define permissão de visualização para quem tem o link
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
 
     const fileUrl = file.getUrl();
 
-    // Atualiza a URL no registro de voto correspondente
-    if (idVoto) {
-      const ss    = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
-      const sheet = ss.getSheetByName('tabVotos');
-      if (sheet) {
-        const mapa    = getMapaColunas(sheet);
-        const chaveUrl = _encontrarChave(mapa, ['url voto', 'urlvoto', 'url_voto']);
-        if (chaveUrl) {
-          const dados = sheet.getDataRange().getValues();
-          for (let i = 1; i < dados.length; i++) {
-            if (String(dados[i][mapa['id'] - 1]).trim() === String(idVoto).trim()) {
-              sheet.getRange(i + 1, mapa[chaveUrl]).setValue(fileUrl);
-              break;
-            }
-          }
-        }
+    // Atualiza a URL no registro de voto correspondente na tabVotos
+    const sheet = ss.getSheetByName('tabVotos');
+    if (!sheet) throw new Error("Aba 'tabVotos' não encontrada.");
+    
+    const mapa = getMapaColunas(sheet);
+    const chaveUrl = _encontrarChave(mapa, ['url voto', 'urlvoto', 'url_voto', 'url relatório']);
+    
+    if (!chaveUrl) throw new Error("Coluna de URL do relatório não encontrada na tabVotos.");
+
+    const dados = sheet.getDataRange().getValues();
+    let atualizou = false;
+
+    for (let i = 1; i < dados.length; i++) {
+      if (String(dados[i][mapa['id'] - 1]).trim() === String(idVoto).trim()) {
+        sheet.getRange(i + 1, mapa[chaveUrl]).setValue(fileUrl);
+        atualizou = true;
+        break;
       }
     }
+
+    if (!atualizou) throw new Error("ID do voto não encontrado para vincular o relatório.");
 
     return { sucesso: true, url: fileUrl, nome: fileName };
 
   } catch (e) {
+    console.error('Erro em formSessoes_uploadRelatorio: ' + e.message);
     throw new Error('Erro no upload do relatório: ' + e.message);
+  }
+}
+
+/**
+ * Exclui o arquivo do Google Drive e limpa o campo na tabVotos.
+ * @param {string} idVoto - ID do registro na planilha.
+ * @param {string} urlArquivo - URL completa do arquivo para extração do ID do Drive.
+ */
+function formSessoes_excluirRelatorio(idVoto, urlArquivo) {
+  try {
+    if (!urlArquivo) throw new Error("URL do arquivo não informada.");
+
+    // 1. Extrair ID do arquivo da URL do Google Drive
+    // Padrão comum: /file/d/[ID]/view ou id=[ID]
+    let fileId = "";
+    const match = urlArquivo.match(/[-\w]{25,}/);
+    if (match) fileId = match[0];
+
+    // 2. Excluir arquivo do Drive (enviar para a lixeira)
+    if (fileId) {
+      try {
+        DriveApp.getFileById(fileId).setTrashed(true);
+      } catch (errDrive) {
+        console.warn("Aviso: Arquivo não encontrado no Drive ou já excluído.");
+      }
+    }
+
+    // 3. Limpar o registro na tabVotos
+    const ss = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
+    const sheet = ss.getSheetByName('tabVotos');
+    const mapa = getMapaColunas(sheet);
+    const chaveUrl = _encontrarChave(mapa, ['url voto', 'urlvoto', 'url_voto', 'url relatório']);
+    
+    const dados = sheet.getDataRange().getValues();
+    for (let i = 1; i < dados.length; i++) {
+      if (String(dados[i][mapa['id'] - 1]).trim() === String(idVoto).trim()) {
+        sheet.getRange(i + 1, mapa[chaveUrl]).setValue("");
+        break;
+      }
+    }
+
+    return { sucesso: true };
+  } catch (e) {
+    console.error('Erro em formSessoes_excluirRelatorio: ' + e.message);
+    throw new Error('Erro ao excluir relatório: ' + e.message);
   }
 }
 
