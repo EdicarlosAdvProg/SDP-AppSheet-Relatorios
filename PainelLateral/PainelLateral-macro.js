@@ -24,14 +24,6 @@ function PainelLateral_exibirSobre() {
 }
 
 /**
- * Processamento de chamadas vindas da sidebar.
- */
-function PainelLateral_processarAcessoModulo(moduloId) {
-  Logger.log('Módulo solicitado no Docs: ' + moduloId);
-  return "Módulo " + moduloId + " pronto para interação no documento.";
-}
-
-/**
  * Trata as ações rápidas disparadas pelo botão suspenso.
  */
 function PainelLateral_processarAcaoRapida(acaoId) {
