@@ -210,14 +210,16 @@ function formSessoes_buscarFichas(idSessao) {
 
     const sheetFichas = ss.getSheetByName('tabFichas');
     if (!sheetFichas) throw new Error("Aba 'tabFichas' não encontrada.");
-    const mapaF   = getMapaColunas(sheetFichas);
-    const dadosF  = sheetFichas.getDataRange().getValues();
+    const mapaF = getMapaColunas(sheetFichas);
+    const dadosF = sheetFichas.getDataRange().getValues();
     dadosF.shift();
+
+    const chaveOrdem = _encontrarChave(mapaF, ['ordem', 'ordem_ficha']);
 
     const sheetProc = ss.getSheetByName('tabProcessos');
     const cacheProc = {};
     if (sheetProc) {
-      const mapaP  = getMapaColunas(sheetProc);
+      const mapaP = getMapaColunas(sheetProc);
       const dadosP = sheetProc.getDataRange().getValues();
       dadosP.shift();
       const chaveLocal = _encontrarChave(mapaP, ['local da ocorrência', 'local']);
@@ -225,59 +227,101 @@ function formSessoes_buscarFichas(idSessao) {
         const pid = String(p[mapaP['id'] - 1] || '').trim();
         if (pid) {
           cacheProc[pid] = {
-            numero:     String(p[mapaP['processo']   - 1] || 'S/N'),
+            numero: String(p[mapaP['processo'] - 1] || 'S/N'),
             requerente: String(p[mapaP['requerente'] - 1] || ''),
-            requerido:  String(p[mapaP['requerido']  - 1] || ''),
-            status:     mapaP['status'] ? String(p[mapaP['status'] - 1] || '') : '',
-            local:      chaveLocal ? String(p[mapaP[chaveLocal] - 1] || '') : ''
+            requerido: String(p[mapaP['requerido'] - 1] || ''),
+            status: mapaP['status'] ? String(p[mapaP['status'] - 1] || '') : '',
+            local: chaveLocal ? String(p[mapaP[chaveLocal] - 1] || '') : ''
           };
         }
       });
     }
 
-    const chaveRelator  = _encontrarChave(mapaF, ['relator']);
-    const chaveMembros  = _encontrarChave(mapaF, ['membros']);
-    const chaveProcs    = _encontrarChave(mapaF, ['procuradores']);
-    const chaveExped    = _encontrarChave(mapaF, ['expediente']);
+    const chaveRelator = _encontrarChave(mapaF, ['relator']);
+    const chaveExped = _encontrarChave(mapaF, ['expediente']);
 
     const fichas = dadosF
       .filter(f => String(f[mapaF['idsessao'] - 1]).trim() === String(idSessao).trim())
       .map(f => {
         const idFicha = String(f[mapaF['id'] - 1] || '');
-        const idProc  = String(f[mapaF['idprocesso'] - 1] || '');
-        const proc    = cacheProc[idProc] || { numero: 'S/N', requerente: '', requerido: '', status: '', local: '' };
+        const idProc = String(f[mapaF['idprocesso'] - 1] || '');
+        const proc = cacheProc[idProc] || { numero: 'S/N', requerente: '', requerido: '', status: '', local: '' };
+        const numOrdem = chaveOrdem ? parseInt(f[mapaF[chaveOrdem] - 1]) : 0;
+
         return {
-          id:          idFicha,
-          idprocesso:  idProc,
-          relator:     chaveRelator ? String(f[mapaF[chaveRelator] - 1] || '') : '',
-          membros:     chaveMembros ? String(f[mapaF[chaveMembros] - 1] || '') : '',
-          procuradores:chaveProcs   ? String(f[mapaF[chaveProcs]   - 1] || '') : '',
-          expediente:  chaveExped   ? String(f[mapaF[chaveExped]   - 1] || '') : '',
+          id: idFicha,
+          idsessao: String(f[mapaF['idsessao'] - 1] || ''), // ESSENCIAL: Adicionado para o Front-end
+          idprocesso: idProc,
+          ordem: isNaN(numOrdem) ? 0 : numOrdem,
+          relator: chaveRelator ? String(f[mapaF[chaveRelator] - 1] || '') : '',
+          expediente: chaveExped ? String(f[mapaF[chaveExped] - 1] || '') : '',
           proc: proc
         };
       });
 
     return { sucesso: true, fichas: fichas };
-
   } catch (e) {
     return { sucesso: false, erro: e.message };
   }
 }
 
 /**
- * Salva ou atualiza campos da ficha (relator, expediente).
+ * Lógica de reordenamento das fichas
+ */
+function formSessoes_atualizarOrdemFichas(idSessao, idFicha, novaOrdem, ordemAntiga) {
+  try {
+    const ss = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
+    const sheet = ss.getSheetByName('tabFichas');
+    const mapa = getMapaColunas(sheet);
+    const range = sheet.getDataRange();
+    const dados = range.getValues();
+    
+    const colId = mapa['id'];
+    const colIdSessao = mapa['idsessao'];
+    const colOrdem = mapa['ordem'] || mapa['ordem_ficha'];
+
+    novaOrdem = parseInt(novaOrdem);
+    ordemAntiga = parseInt(ordemAntiga);
+
+    for (let i = 1; i < dados.length; i++) {
+      const rowIdSessao = String(dados[i][colIdSessao - 1]);
+      const rowIdFicha = String(dados[i][colId - 1]);
+      let currentOrdem = parseInt(dados[i][colOrdem - 1]) || 0;
+
+      if (rowIdSessao === String(idSessao)) {
+        if (rowIdFicha === String(idFicha)) {
+          sheet.getRange(i + 1, colOrdem).setValue(novaOrdem);
+        } else {
+          if (novaOrdem > ordemAntiga) {
+            if (currentOrdem > ordemAntiga && currentOrdem <= novaOrdem) {
+              sheet.getRange(i + 1, colOrdem).setValue(currentOrdem - 1);
+            }
+          } else if (novaOrdem < ordemAntiga) {
+            if (currentOrdem >= novaOrdem && currentOrdem < ordemAntiga) {
+              sheet.getRange(i + 1, colOrdem).setValue(currentOrdem + 1);
+            }
+          }
+        }
+      }
+    }
+    return { sucesso: true };
+  } catch (e) {
+    throw new Error('Erro ao reordenar: ' + e.message);
+  }
+}
+
+/**
+ * Salva apenas os campos de texto da ficha. 
  */
 function formSessoes_salvarFicha(obj) {
   try {
-    const ss    = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
+    const ss = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
     const sheet = ss.getSheetByName('tabFichas');
-    if (!sheet) throw new Error("Aba 'tabFichas' não encontrada.");
-
-    const mapa  = getMapaColunas(sheet);
+    const mapa = getMapaColunas(sheet);
     const dados = sheet.getDataRange().getValues();
 
     const chaveRelator = _encontrarChave(mapa, ['relator']);
-    const chaveExped   = _encontrarChave(mapa, ['expediente']);
+    const chaveExped = _encontrarChave(mapa, ['expediente']);
 
     for (let i = 1; i < dados.length; i++) {
       if (String(dados[i][mapa['id'] - 1]).trim() === String(obj.id).trim()) {
@@ -288,7 +332,7 @@ function formSessoes_salvarFicha(obj) {
     }
     throw new Error('Ficha não encontrada.');
   } catch (e) {
-    throw new Error('Erro ao salvar ficha: ' + e.message);
+    throw new Error('Erro ao salvar campos da ficha: ' + e.message);
   }
 }
 

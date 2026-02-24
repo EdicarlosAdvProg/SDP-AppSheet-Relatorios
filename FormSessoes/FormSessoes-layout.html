@@ -197,10 +197,16 @@
                 <input type="hidden" id="ficha_f_IdProcesso">
 
                 <div class="row" style="margin-bottom: 0; margin-top: 8px;">
-                  <div class="input-field col s12 m8">
+                  <div class="input-field col s12 m2">
+                    <input id="ficha_f_Ordem" type="number" min="1">
+                    <label for="ficha_f_Ordem">Ordem</label>
+                  </div>
+                  
+                  <div class="input-field col s12 m6">
                     <input id="ficha_f_Relator" type="text" class="autocomplete">
                     <label for="ficha_f_Relator">Relator(a)</label>
                   </div>
+                  
                   <div class="col s12 m4" style="padding-top: 18px; text-align:right;">
                     <button class="btn btn-small btn-oab-gold waves-effect waves-light"
                       onclick="formSessoes_salvarFicha()">

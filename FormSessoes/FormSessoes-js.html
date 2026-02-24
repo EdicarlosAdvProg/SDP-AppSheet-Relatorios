@@ -65,32 +65,31 @@
   }
 
   function formSessoes_renderizar(lista) {
-    const container = document.getElementById('listaSessoes');
-    container.innerHTML = '';
+  const container = document.getElementById('listaSessoes');
+  container.innerHTML = '';
 
-    if (!lista || lista.length === 0) {
-      container.innerHTML = `
+  if (!lista || lista.length === 0) {
+    container.innerHTML = `
         <div class="lista-vazia-msg">
           <i class="material-icons">event_busy</i>
           <p>Nenhuma sessão encontrada para esta busca.</p>
         </div>`;
-      return;
-    }
+    return;
+  }
 
-    lista.forEach(s => {
-      const partes = s.datasessao && s.datasessao !== 'Data não informada'
-        ? s.datasessao.split('/') : null;
+  lista.forEach(s => {
+    const partes = s.datasessao && s.datasessao !== 'Data não informada'
+      ? s.datasessao.split('/') : null;
 
-      const dia = partes ? partes[0] : '--';
-      const mes = partes ? (MESES_PT[parseInt(partes[1], 10) - 1] || '') : '';
-      const ano = partes ? partes[2] : '';
+    const dia = partes ? partes[0] : '--';
+    const mes = partes ? (MESES_PT[parseInt(partes[1], 10) - 1] || '') : '';
+    const ano = partes ? partes[2] : '';
 
-      const participantes = [s.presidente, s.secretario].filter(Boolean).join(' · ');
-      const idSafe = _esc(s.id);
+    const idSafe = _esc(s.id);
 
-      const card = document.createElement('div');
-      card.className = 'collection-item-sessao';
-      card.innerHTML = `
+    const card = document.createElement('div');
+    card.className = 'collection-item-sessao';
+    card.innerHTML = `
         <div class="sess-col-data">
           <span class="sess-data-dia">${dia}</span>
           <span class="sess-data-mes">${mes}</span>
@@ -98,11 +97,19 @@
         </div>
         <div class="sess-col-info">
           <span class="sess-orgao">${s.orgao || 'Órgão não informado'}</span>
+          
           <span class="sess-local">
             <i class="material-icons" style="font-size:13px; vertical-align:middle; margin-right:3px;">location_on</i>
             ${s.local || 'Local não informado'}
           </span>
-          ${participantes ? `<span class="sess-participantes">${participantes}</span>` : ''}
+          
+          <span class="sess-participantes" style="display: block; margin-top: 2px;">
+            <strong>Presidente da sessão: </strong>${s.presidente || 'Não informado'}
+          </span>
+
+          <span class="sess-participantes" style="display: block; margin-top: 2px;">
+            <strong>Secretário da mesa: </strong>${s.secretario || 'Não informado'}
+          </span>
         </div>
         <div class="sess-col-metricas">
           <span class="sess-metrica-num">${s.totalFichas}</span>
@@ -120,11 +127,11 @@
              onclick="formSessoes_confirmarExclusao('${idSafe}', '${_esc(s.datasessao)}')">delete</i>
         </div>
       `;
-      container.appendChild(card);
-    });
+    container.appendChild(card);
+  });
 
-    M.Tooltip.init(document.querySelectorAll('.tooltipped'));
-  }
+  M.Tooltip.init(document.querySelectorAll('.tooltipped'));
+}
 
   // ============================================================
   // FILTRO
@@ -320,12 +327,15 @@
 
     if (!fichas || fichas.length === 0) {
       container.innerHTML = `
-        <div style="padding:30px; text-align:center; color:#bbb; font-size:0.85rem;">
-          <i class="material-icons" style="font-size:36px; display:block; margin-bottom:8px; color:#ddd;">gavel</i>
-          Nenhum processo pautado nesta sessão.
-        </div>`;
+          <div style="padding:30px; text-align:center; color:#bbb; font-size:0.85rem;">
+            <i class="material-icons" style="font-size:36px; display:block; margin-bottom:8px; color:#ddd;">gavel</i>
+            Nenhum processo pautado nesta sessão.
+          </div>`;
       return;
     }
+
+    // --- ORDENAÇÃO PELO CAMPO [ORDEM] ---
+    fichas.sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
 
     container.innerHTML = '';
     fichas.forEach((f, idx) => {
@@ -336,11 +346,15 @@
       const reqShort = (f.proc.requerente || '').substring(0, 55);
       const statusCfg = _statusCor(f.proc.status);
 
+      // Adicionado o número da ordem (#) antes do número do processo
       item.innerHTML = `
-        <span class="ficha-proc-num">${f.proc.numero || 'S/N'}</span>
-        <span class="ficha-proc-req-short" title="${_esc(f.proc.requerente)}">${reqShort || 'Requerente não informado'}</span>
-        ${f.proc.status ? `<span class="ficha-proc-status-mini ${statusCfg}">${f.proc.status}</span>` : ''}
-      `;
+          <span class="ficha-proc-num">
+            <span style="color: #a68945; font-weight: bold; margin-right: 4px;">#${f.ordem}</span> 
+            ${f.proc.numero || 'S/N'}
+          </span>
+          <span class="ficha-proc-req-short" title="${_esc(f.proc.requerente)}">${reqShort || 'Requerente não informado'}</span>
+          ${f.proc.status ? `<span class="ficha-proc-status-mini ${statusCfg}">${f.proc.status}</span>` : ''}
+        `;
 
       item.onclick = function () {
         document.querySelectorAll('.ficha-proc-item').forEach(el => el.classList.remove('selecionado'));
@@ -350,46 +364,62 @@
 
       container.appendChild(item);
 
-      // Seleciona o primeiro automaticamente
+      // Seleciona o primeiro da lista ordenada automaticamente
       if (idx === 0) setTimeout(() => item.click(), 120);
     });
   }
 
+  // Variável global para controle de alteração
+  let fichaSelecionadaOriginal = null; 
+
+  /**
+   * Carrega os dados da ficha no painel lateral direito
+   * Une a limpeza de estado de ontem com a lógica de ordem de hoje.
+   */
   function _carregarPainelFicha(ficha) {
-    fichaAtualId = ficha.id;
-    fichaAtualIdProc = ficha.idprocesso;
-    pdfSelecionado = null;
+      // 1. Definição de IDs globais
+      fichaAtualId = ficha.id;
+      fichaAtualIdProc = ficha.idprocesso;
+      
+      // 2. Limpeza de estado (Crucial para que o sistema não trave ao trocar de ficha)
+      pdfSelecionado = null; 
+      
+      // 3. Armazena a ficha completa como original para comparações de Ordem futuras
+      fichaSelecionadaOriginal = JSON.parse(JSON.stringify(ficha)); 
 
-    // Preenche cabeçalho azul
-    document.getElementById('fichaNumProc').textContent = `Processo nº ${ficha.proc.numero || 'S/N'}`;
-    document.getElementById('fichaReqProc').textContent = ficha.proc.requerente || 'Requerente não informado';
-    document.getElementById('fichaLocalProc').textContent = ficha.proc.local || '';
+      // 4. Preenchimento da interface (Cabeçalho azul)
+      document.getElementById('fichaNumProc').textContent = `Processo nº ${ficha.proc.numero || 'S/N'}`;
+      document.getElementById('fichaReqProc').textContent = ficha.proc.requerente || 'Requerente não informado';
+      document.getElementById('fichaLocalProc').textContent = ficha.proc.local || '';
 
-    const chip = document.getElementById('fichaStatusChip');
-    chip.textContent = ficha.proc.status || '';
-    chip.style.display = ficha.proc.status ? 'inline-block' : 'none';
+      const chip = document.getElementById('fichaStatusChip');
+      chip.textContent = ficha.proc.status || '';
+      chip.style.display = ficha.proc.status ? 'inline-block' : 'none';
 
-    // Preenche campos editáveis
-    document.getElementById('ficha_f_Id').value = ficha.id;
-    document.getElementById('ficha_f_IdProcesso').value = ficha.idprocesso;
-    document.getElementById('ficha_f_Relator').value = ficha.relator || '';
-    document.getElementById('ficha_f_Expediente').value = ficha.expediente || '';
+      // 5. Preenchimento dos campos do formulário
+      document.getElementById('ficha_f_Id').value = ficha.id;
+      document.getElementById('ficha_f_IdProcesso').value = ficha.idprocesso;
+      document.getElementById('ficha_f_Ordem').value = ficha.ordem || '';
+      document.getElementById('ficha_f_Relator').value = ficha.relator || '';
+      document.getElementById('ficha_f_Expediente').value = ficha.expediente || '';
 
-    M.Autocomplete.init(document.getElementById('ficha_f_Relator'), {
-      data: baseMembros, minLength: 2, limit: 7
-    });
-    M.updateTextFields();
-    M.textareaAutoResize(document.getElementById('ficha_f_Expediente'));
+      // 6. Inicialização de componentes Materialize
+      M.Autocomplete.init(document.getElementById('ficha_f_Relator'), {
+        data: baseMembros, 
+        minLength: 2, 
+        limit: 7
+      });
+      M.updateTextFields();
+      M.textareaAutoResize(document.getElementById('ficha_f_Expediente'));
 
-    // Fecha formulário de novo voto se estiver aberto
-    formSessoes_fecharNovoVoto();
-    _fecharFab();
+      // 7. Reset de interface
+      formSessoes_fecharNovoVoto(); // Fecha o formulário de "Novo Voto" se estiver aberto
+      _fecharFab();                 // Fecha o menu flutuante (bolinha +)
+      _fichasExibirConteudo();      // Esconde a mensagem "Selecione um processo" e mostra a ficha
 
-    // Exibe o conteúdo
-    _fichasExibirConteudo();
-
-    // Carrega votos
-    _carregarVotos(ficha.id);
+      // 8. CARREGAMENTO DOS VOTOS
+      // Certifique-se de que no seu HTML só existe UM elemento com id="fichasListaVotos"
+      _carregarVotos(ficha.id);
   }
 
   function _fichasPainelVazio() {
@@ -406,22 +436,72 @@
   // SALVAR FICHA (RELATOR + EXPEDIENTE)
   // ============================================================
 
+  /**
+   * Função principal de salvamento. 
+   * Decide se chama a reordenação ou apenas o salvamento simples.
+   */
   function formSessoes_salvarFicha() {
-    const id = document.getElementById('ficha_f_Id').value;
-    if (!id) return M.toast({ html: 'Nenhuma ficha selecionada.', classes: 'orange darken-3' });
+      const id = document.getElementById('ficha_f_Id').value;
+      const novaOrdem = parseInt(document.getElementById('ficha_f_Ordem').value);
+      const ordemAntiga = parseInt(fichaSelecionadaOriginal.ordem);
+      const idSessao = fichaSelecionadaOriginal.idsessao; // Garantir que idsessao venha no objeto da ficha
 
-    google.script.run
-      .withSuccessHandler(function () {
-        M.toast({ html: 'Ficha atualizada!', classes: 'green darken-2' });
-      })
-      .withFailureHandler(function (err) {
-        M.toast({ html: 'Erro: ' + err.message, classes: 'red darken-2' });
-      })
-      .formSessoes_salvarFicha({
-        id: id,
-        relator: document.getElementById('ficha_f_Relator').value,
-        expediente: document.getElementById('ficha_f_Expediente').value
-      });
+      if (!id) return M.toast({ html: 'Nenhuma ficha selecionada.', classes: 'orange darken-3' });
+
+      M.toast({ html: 'Processando alterações...', classes: 'blue' });
+
+      // 1. Verifica se houve alteração na ordem
+      const ordemAlterada = (novaOrdem !== ordemAntiga);
+
+      if (ordemAlterada) {
+          // Fluxo com reordenação
+          google.script.run
+              .withSuccessHandler(function() {
+                  // Após reordenar, salva os outros campos
+                  executarSalvarSimples(id, true); 
+              })
+              .withFailureHandler(err => M.toast({ html: 'Erro na reordenação: ' + err.message, classes: 'red' }))
+              .formSessoes_atualizarOrdemFichas(idSessao, id, novaOrdem, ordemAntiga);
+      } else {
+          // Fluxo simples (apenas texto)
+          executarSalvarSimples(id, false);
+      }
+  }
+
+  /**
+   * Função auxiliar para salvar Relator e Expediente
+   * @param {string} id
+   * @param {boolean} recarregarTudo Se true, recarrega a lista de fichas completa
+   */
+  function executarSalvarSimples(id, recarregarTudo) {
+      const dados = {
+          id: id,
+          relator: document.getElementById('ficha_f_Relator').value,
+          expediente: document.getElementById('ficha_f_Expediente').value
+      };
+
+      google.script.run
+          .withSuccessHandler(function() {
+              M.toast({ html: 'Ficha salva com sucesso!', classes: 'green' });
+              
+              // Se a ordem mudou, precisamos buscar as fichas da sessão de novo para atualizar a lista lateral
+              if (recarregarTudo) {
+                google.script.run
+                  .withSuccessHandler(res => {
+                      if (res.sucesso) {
+                          _renderizarListaFichas(res.fichas);
+                          // Mantém a ficha atual selecionada visualmente
+                          setTimeout(() => {
+                            const item = document.querySelector(`.ficha-proc-item[data-ficha-id="${id}"]`);
+                            if(item) item.classList.add('selecionado');
+                          }, 200);
+                      }
+                  })
+                  .formSessoes_buscarFichas(fichaSelecionadaOriginal.idsessao);
+              }
+          })
+          .withFailureHandler(err => M.toast({ html: 'Erro ao salvar: ' + err.message, classes: 'red' }))
+          .formSessoes_salvarFicha(dados);
   }
 
   // ============================================================
@@ -487,152 +567,172 @@
 
   function _carregarVotos(idFicha) {
     const container = document.getElementById('fichasListaVotos');
+    if (!container) {
+        return;
+    }
+
+    // Exibe loader
     container.innerHTML = `
-      <div class="votos-vazio">
-        <div class="preloader-wrapper small active">
-          <div class="spinner-layer spinner-blue-only">
-            <div class="circle-clipper left"><div class="circle"></div></div>
-            <div class="gap-patch"><div class="circle"></div></div>
-            <div class="circle-clipper right"><div class="circle"></div></div>
-          </div>
-        </div>
-      </div>`;
+        <div class="votos-vazio">
+            <div class="preloader-wrapper small active">
+                <div class="spinner-layer spinner-blue-only">
+                    <div class="circle-clipper left"><div class="circle"></div></div>
+                    <div class="gap-patch"><div class="circle"></div></div>
+                    <div class="circle-clipper right"><div class="circle"></div></div>
+                </div>
+            </div>
+        </div>`;
 
     google.script.run
-      .withSuccessHandler(function (res) {
-        if (!res.sucesso) {
-          container.innerHTML = `<div class="votos-vazio">Erro ao carregar votos.</div>`;
-          return;
-        }
-        _renderizarVotos(res.votos || []);
-      })
-      .withFailureHandler(function () {
-        container.innerHTML = `<div class="votos-vazio">Falha ao carregar votos.</div>`;
-      })
-      .formSessoes_buscarVotos(idFicha);
+        .withSuccessHandler(function (res) {
+            if (!res.sucesso) {
+                console.error('Erro retornado pelo servidor:', res.erro);
+                container.innerHTML = `<div class="votos-vazio">Erro: ${res.erro || 'desconhecido'}</div>`;
+                return;
+            }
+            _renderizarVotos(res.votos || []);
+        })
+        .withFailureHandler(function (err) {
+            console.error('Falha na comunicação com o servidor:', err);
+            container.innerHTML = `<div class="votos-vazio">Falha na comunicação.</div>`;
+        })
+        .formSessoes_buscarVotos(idFicha);
   }
 
   function _renderizarVotos(votos) {
     const container = document.getElementById('fichasListaVotos');
-    if (!container) return;
-
-    document.getElementById('fichaVotosTotal').textContent = `${votos.length} voto${votos.length !== 1 ? 's' : ''}`;
-
-    if (!votos || votos.length === 0) {
-      container.innerHTML = `
-        <div class="votos-vazio">
-          <i class="material-icons" style="font-size:32px; display:block; margin-bottom:8px; color:#ddd;">how_to_vote</i>
-          Nenhum voto registrado. Use o botão + para adicionar.
-        </div>`;
-      return;
+    if (!container) {
+        return;
     }
 
+    // Atualiza contador de votos
+    const totalSpan = document.getElementById('fichaVotosTotal');
+    if (totalSpan) {
+        totalSpan.textContent = `${votos.length} voto${votos.length !== 1 ? 's' : ''}`;
+    } else {
+        console.warn('Elemento #fichaVotosTotal não encontrado');
+    }
+
+    // Se não há votos, exibe mensagem vazia
+    if (!votos || votos.length === 0) {
+        container.innerHTML = `
+            <div class="votos-vazio">
+                <i class="material-icons" style="font-size:32px; display:block; margin-bottom:8px; color:#ddd;">how_to_vote</i>
+                Nenhum voto registrado. Use o botão + para adicionar.
+            </div>`;
+        return;
+    }
+
+    // Limpa o container antes de renderizar
+    container.innerHTML = '';
+
     const tipoOpcoes = ['Voto do relator', 'Voto divergente'];
-    container.innerHTML = ''; // Limpa o loader ou mensagens anteriores
 
-    votos.forEach(v => {
-      const tipoClass = _votoTipoClasse(v.tipovoto);
-      const idSafe = _esc(v.id);
+    votos.forEach((v, index) => {
+        const tipoClass = _votoTipoClasse(v.tipovoto);
+        const idSafe = _esc(v.id);
 
-      // Tenta encontrar a URL em todas as variações possíveis vindas do backend
-      const linkRelatorio = v.urlvoto || v.urlRelatorio || v['URL Relatório'] || v.url_voto || '';
+        // Tenta encontrar a URL em todas as variações possíveis vindas do backend
+        const linkRelatorio = v.urlvoto || v.urlRelatorio || v['URL Relatório'] || v.url_voto || '';
 
-      const resultadoExibe = (v.resultado !== '' && v.resultado !== null && v.resultado !== undefined)
-        ? v.resultado : '—';
+        const resultadoExibe = (v.resultado !== '' && v.resultado !== null && v.resultado !== undefined)
+            ? v.resultado : '—';
 
-      // Define a seção do PDF
-      const secaoRelatorio = linkRelatorio
-        ? `<div class="voto-campo-grupo" style="margin-top: 4px;">
-            <label class="voto-campo-label">Relatório</label>
-            <div class="voto-pdf-container">
-              <a href="${_esc(linkRelatorio)}" target="_blank" class="voto-pdf-link">
-                <i class="material-icons">picture_as_pdf</i>Abrir relatório
-              </a>
-              <button class="btn-pdf-excluir tooltipped" data-tooltip="Excluir arquivo"
-                onclick="formSessoes_removerRelatorio('${idSafe}', '${_esc(linkRelatorio)}')">
-                <i class="material-icons" style="font-size:16px;">delete</i>
-              </button>
+        // Define a seção do PDF
+        const secaoRelatorio = linkRelatorio
+            ? `<div class="voto-campo-grupo" style="margin-top: 4px;">
+                <label class="voto-campo-label">Relatório</label>
+                <div class="voto-pdf-container">
+                    <a href="${_esc(linkRelatorio)}" target="_blank" class="voto-pdf-link">
+                        <i class="material-icons">picture_as_pdf</i>Abrir relatório
+                    </a>
+                    <button class="btn-pdf-excluir tooltipped" data-tooltip="Excluir arquivo"
+                        onclick="formSessoes_removerRelatorio('${idSafe}', '${_esc(linkRelatorio)}')">
+                        <i class="material-icons" style="font-size:16px;">delete</i>
+                    </button>
+                </div>
+            </div>`
+            : `<div class="voto-campo-grupo" style="margin-top: 4px;">
+                <label class="voto-campo-label">Relatório</label>
+                <button class="btn-pdf-adicionar" onclick="formSessoes_adicionarRelatorioDireto('${idSafe}')">
+                    <i class="material-icons" style="font-size:16px;">add_circle_outline</i>Anexar PDF
+                </button>
+            </div>`;
+
+        const acc = document.createElement('div');
+        acc.className = 'voto-accordion';
+        acc.setAttribute('data-voto-id', v.id);
+
+        const opsTipo = tipoOpcoes.map(o =>
+            `<option value="${o}" ${v.tipovoto === o ? 'selected' : ''}>${o}</option>`).join('');
+
+        // Usando _escTexto para campos textuais (exceto onde o HTML é necessário)
+        acc.innerHTML = `
+            <div class="voto-accordion-header" onclick="formSessoes_toggleVoto(this)">
+                <span class="voto-tipo-chip ${tipoClass}">${_escTexto(v.tipovoto) || '—'}</span>
+                <div class="voto-header-info">
+                    <span class="voto-header-votante">${_escTexto(v.relator) || 'Relator não informado'}</span>
+                </div>
+                <span class="voto-resultado-placar" title="Resultado">${_escTexto(resultadoExibe)}</span>
+                <i class="material-icons voto-chevron">expand_more</i>
             </div>
-          </div>`
-        : `<div class="voto-campo-grupo" style="margin-top: 4px;">
-            <label class="voto-campo-label">Relatório</label>
-            <button class="btn-pdf-adicionar" onclick="formSessoes_adicionarRelatorioDireto('${idSafe}')">
-              <i class="material-icons" style="font-size:16px;">add_circle_outline</i>Anexar PDF
-            </button>
-          </div>`;
 
-      const acc = document.createElement('div');
-      acc.className = 'voto-accordion';
-      acc.setAttribute('data-voto-id', v.id);
+            <div class="voto-accordion-body">
+                <div class="voto-campo-grupo">
+                    <label class="voto-campo-label">TipoVoto</label>
+                    <div class="input-field voto-campo-input">
+                        <select id="ve_TipoVoto_${idSafe}">${opsTipo}</select>
+                    </div>
+                </div>
 
-      const opsTipo = tipoOpcoes.map(o =>
-        `<option value="${o}" ${v.tipovoto === o ? 'selected' : ''}>${o}</option>`).join('');
+                <div class="voto-campo-grupo">
+                    <label class="voto-campo-label">Relator</label>
+                    <div class="input-field voto-campo-input">
+                        <input id="ve_Relator_${idSafe}" type="text"
+                            value="${_escTexto(v.relator)}" class="autocomplete">
+                    </div>
+                </div>
 
-      acc.innerHTML = `
-        <div class="voto-accordion-header" onclick="formSessoes_toggleVoto(this)">
-          <span class="voto-tipo-chip ${tipoClass}">${v.tipovoto || '—'}</span>
-          <div class="voto-header-info">
-            <span class="voto-header-votante">${v.relator || 'Relator não informado'}</span>
-          </div>
-          <span class="voto-resultado-placar" title="Resultado">${resultadoExibe}</span>
-          <i class="material-icons voto-chevron">expand_more</i>
-        </div>
+                <div class="voto-campo-grupo voto-campo-grupo-voto">
+                    <label class="voto-campo-label" style="margin-top: 10px;">Voto</label>
+                    <div class="input-field voto-campo-input">
+                        <textarea id="ve_Voto_${idSafe}"
+                            class="materialize-textarea voto-textarea">${_escTexto(v.voto)}</textarea>
+                    </div>
+                </div>
 
-        <div class="voto-accordion-body">
-          <div class="voto-campo-grupo">
-            <label class="voto-campo-label">TipoVoto</label>
-            <div class="input-field voto-campo-input">
-              <select id="ve_TipoVoto_${idSafe}">${opsTipo}</select>
+                <div class="voto-campo-grupo">
+                    <label class="voto-campo-label">Resultado</label>
+                    <span class="voto-resultado-placar voto-resultado-readonly">${_escTexto(resultadoExibe)}</span>
+                </div>
+
+                ${secaoRelatorio}
+
+                <div class="voto-accordion-footer">
+                    <button class="btn-voto-del"
+                        onclick="formSessoes_excluirVoto('${idSafe}')">
+                        <i class="material-icons" style="font-size:14px;">delete_outline</i>Excluir
+                    </button>
+                    <button class="btn-voto-salvar"
+                        onclick="formSessoes_salvarVotoEdicao('${idSafe}')">
+                        <i class="material-icons" style="font-size:14px;">save</i>Salvar alterações
+                    </button>
+                </div>
             </div>
-          </div>
+        `;
 
-          <div class="voto-campo-grupo">
-            <label class="voto-campo-label">Relator</label>
-            <div class="input-field voto-campo-input">
-              <input id="ve_Relator_${idSafe}" type="text"
-                value="${_esc(v.relator)}" class="autocomplete">
-            </div>
-          </div>
+        container.appendChild(acc);
 
-          <div class="voto-campo-grupo voto-campo-grupo-voto">
-            <label class="voto-campo-label" style="margin-top: 10px;">Voto</label>
-            <div class="input-field voto-campo-input">
-              <textarea id="ve_Voto_${idSafe}"
-                class="materialize-textarea voto-textarea">${_escTexto(v.voto)}</textarea>
-            </div>
-          </div>
-
-          <div class="voto-campo-grupo">
-            <label class="voto-campo-label">Resultado</label>
-            <span class="voto-resultado-placar voto-resultado-readonly">${resultadoExibe}</span>
-          </div>
-
-          ${secaoRelatorio}
-
-          <div class="voto-accordion-footer">
-            <button class="btn-voto-del"
-              onclick="formSessoes_excluirVoto('${idSafe}')">
-              <i class="material-icons" style="font-size:14px;">delete_outline</i>Excluir
-            </button>
-            <button class="btn-voto-salvar"
-              onclick="formSessoes_salvarVotoEdicao('${idSafe}')">
-              <i class="material-icons" style="font-size:14px;">save</i>Salvar alterações
-            </button>
-          </div>
-        </div>
-      `;
-
-      container.appendChild(acc);
-
-      // Reinicializa os componentes do Materialize para o novo elemento
-      M.FormSelect.init(acc.querySelectorAll('select'));
-      M.Autocomplete.init(acc.querySelector(`#ve_Relator_${idSafe}`), {
-        data: baseMembros, minLength: 2, limit: 7
-      });
-      M.textareaAutoResize(acc.querySelector(`#ve_Voto_${idSafe}`));
-      M.Tooltip.init(acc.querySelectorAll('.tooltipped'));
+        // Reinicializa os componentes do Materialize para o novo elemento
+        M.FormSelect.init(acc.querySelectorAll('select'));
+        M.Autocomplete.init(acc.querySelector(`#ve_Relator_${idSafe}`), {
+            data: baseMembros, minLength: 2, limit: 7
+        });
+        M.textareaAutoResize(acc.querySelector(`#ve_Voto_${idSafe}`));
+        M.Tooltip.init(acc.querySelectorAll('.tooltipped'));
     });
-  }
+
+}
 
   function formSessoes_toggleVoto(header) {
     const acc = header.closest('.voto-accordion');
