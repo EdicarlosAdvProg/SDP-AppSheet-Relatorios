@@ -13,6 +13,9 @@
   let fichaAtualId = '';
   let fichaAtualIdProc = '';
   let pdfSelecionado = null; // { file, base64 } do PDF do novo voto
+  let sessaoAtualId = '';           // ID da sessão atual no modal de fichas
+  let fichasDaSessao = [];          // cache das fichas da sessão atual
+  let sortableInstance = null;      // instância do SortableJS
 
   const MESES_PT = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
@@ -280,6 +283,7 @@
   // ============================================================
 
   function formSessoes_abrirFichas(idSessao) {
+    sessaoAtualId = idSessao;
     fichaAtualId = '';
     fichaAtualIdProc = '';
     pdfSelecionado = null;
@@ -290,7 +294,6 @@
       sessao ? `${sessao.orgao} · ${sessao.datasessao}` : '';
 
     _fichasPainelVazio();
-    _fecharFab();
 
     document.getElementById('fichasListaProcessos').innerHTML = `
       <div style="text-align:center; padding: 30px;">
@@ -312,7 +315,8 @@
             `<div style="padding:20px; color:#c62828; font-size:0.85rem;">${res.erro}</div>`;
           return;
         }
-        _renderizarListaFichas(res.fichas || []);
+        fichasDaSessao = res.fichas || [];
+        _renderizarListaFichas(fichasDaSessao);
       })
       .withFailureHandler(function (err) {
         document.getElementById('fichasListaProcessos').innerHTML =
@@ -327,34 +331,34 @@
 
     if (!fichas || fichas.length === 0) {
       container.innerHTML = `
-          <div style="padding:30px; text-align:center; color:#bbb; font-size:0.85rem;">
-            <i class="material-icons" style="font-size:36px; display:block; margin-bottom:8px; color:#ddd;">gavel</i>
-            Nenhum processo pautado nesta sessão.
-          </div>`;
+        <div style="padding:30px; text-align:center; color:#bbb; font-size:0.85rem;">
+          <i class="material-icons" style="font-size:36px; display:block; margin-bottom:8px; color:#ddd;">gavel</i>
+          Nenhum processo pautado nesta sessão.
+        </div>`;
       return;
     }
 
-    // --- ORDENAÇÃO PELO CAMPO [ORDEM] ---
+    // Ordena pela ordem atual
     fichas.sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
 
     container.innerHTML = '';
-    fichas.forEach((f, idx) => {
+    fichas.forEach(f => {
       const item = document.createElement('div');
       item.className = 'ficha-proc-item';
       item.setAttribute('data-ficha-id', f.id);
+      item.setAttribute('data-ordem', f.ordem || 0);
 
       const reqShort = (f.proc.requerente || '').substring(0, 55);
       const statusCfg = _statusCor(f.proc.status);
 
-      // Adicionado o número da ordem (#) antes do número do processo
       item.innerHTML = `
-          <span class="ficha-proc-num">
-            <span style="color: #a68945; font-weight: bold; margin-right: 4px;">#${f.ordem}</span> 
-            ${f.proc.numero || 'S/N'}
-          </span>
-          <span class="ficha-proc-req-short" title="${_esc(f.proc.requerente)}">${reqShort || 'Requerente não informado'}</span>
-          ${f.proc.status ? `<span class="ficha-proc-status-mini ${statusCfg}">${f.proc.status}</span>` : ''}
-        `;
+        <span class="ficha-proc-num">
+          <span style="color: #a68945; font-weight: bold; margin-right: 4px;">#${f.ordem}</span> 
+          ${f.proc.numero || 'S/N'}
+        </span>
+        <span class="ficha-proc-req-short" title="${_esc(f.proc.requerente)}">${reqShort || 'Requerente não informado'}</span>
+        ${f.proc.status ? `<span class="ficha-proc-status-mini ${statusCfg}">${f.proc.status}</span>` : ''}
+      `;
 
       item.onclick = function () {
         document.querySelectorAll('.ficha-proc-item').forEach(el => el.classList.remove('selecionado'));
@@ -363,9 +367,18 @@
       };
 
       container.appendChild(item);
+    });
 
-      // Seleciona o primeiro da lista ordenada automaticamente
-      if (idx === 0) setTimeout(() => item.click(), 120);
+    // Inicializa Sortable para drag and drop
+    if (sortableInstance) sortableInstance.destroy();
+    sortableInstance = new Sortable(container, {
+      animation: 150,
+      handle: '.ficha-proc-item',
+      draggable: '.ficha-proc-item',
+      onEnd: function(evt) {
+        const novaOrdemIds = Array.from(container.children).map(child => child.getAttribute('data-ficha-id'));
+        formSessoes_salvarNovaOrdemFichas(sessaoAtualId, novaOrdemIds);
+      }
     });
   }
 
@@ -414,7 +427,6 @@
 
       // 7. Reset de interface
       formSessoes_fecharNovoVoto(); // Fecha o formulário de "Novo Voto" se estiver aberto
-      _fecharFab();                 // Fecha o menu flutuante (bolinha +)
       _fichasExibirConteudo();      // Esconde a mensagem "Selecione um processo" e mostra a ficha
 
       // 8. CARREGAMENTO DOS VOTOS
@@ -432,6 +444,41 @@
     document.getElementById('fichasConteudo').style.display = 'flex';
   }
 
+  function formSessoes_salvarNovaOrdemFichas(idSessao, novaOrdemIds) {
+    if (!idSessao || !novaOrdemIds.length) return;
+    
+    M.toast({ html: 'Atualizando ordem...', classes: 'blue' });
+    
+    google.script.run
+      .withSuccessHandler(function (res) {
+        if (res.sucesso) {
+          M.toast({ html: 'Ordem atualizada!', classes: 'green' });
+          if (res.fichas) {
+            fichasDaSessao = res.fichas;
+            _renderizarListaFichas(fichasDaSessao);
+            
+            // Re-seleciona a ficha atual, se existir
+            if (fichaAtualId) {
+              setTimeout(() => {
+                const item = document.querySelector(`.ficha-proc-item[data-ficha-id="${fichaAtualId}"]`);
+                if (item) {
+                  item.classList.add('selecionado');
+                  const fichaAtualizada = fichasDaSessao.find(f => f.id === fichaAtualId);
+                  if (fichaAtualizada) {
+                    fichaSelecionadaOriginal = JSON.parse(JSON.stringify(fichaAtualizada));
+                  }
+                }
+              }, 200);
+            }
+          }
+        } else {
+          M.toast({ html: 'Erro: ' + res.erro, classes: 'red' });
+        }
+      })
+      .withFailureHandler(err => M.toast({ html: 'Erro: ' + err.message, classes: 'red' }))
+      .formSessoes_atualizarOrdemLote(idSessao, novaOrdemIds);
+  }
+
   // ============================================================
   // SALVAR FICHA (RELATOR + EXPEDIENTE)
   // ============================================================
@@ -441,31 +488,41 @@
    * Decide se chama a reordenação ou apenas o salvamento simples.
    */
   function formSessoes_salvarFicha() {
-      const id = document.getElementById('ficha_f_Id').value;
-      const novaOrdem = parseInt(document.getElementById('ficha_f_Ordem').value);
-      const ordemAntiga = parseInt(fichaSelecionadaOriginal.ordem);
-      const idSessao = fichaSelecionadaOriginal.idsessao; // Garantir que idsessao venha no objeto da ficha
+    const id = document.getElementById('ficha_f_Id').value;
+    const novaOrdem = parseInt(document.getElementById('ficha_f_Ordem').value);
+    const ordemAntiga = parseInt(fichaSelecionadaOriginal.ordem);
+    const idSessao = fichaSelecionadaOriginal.idsessao;
 
-      if (!id) return M.toast({ html: 'Nenhuma ficha selecionada.', classes: 'orange darken-3' });
+    if (!id) return M.toast({ html: 'Nenhuma ficha selecionada.', classes: 'orange darken-3' });
 
-      M.toast({ html: 'Processando alterações...', classes: 'blue' });
+    M.toast({ html: 'Processando alterações...', classes: 'blue' });
 
-      // 1. Verifica se houve alteração na ordem
-      const ordemAlterada = (novaOrdem !== ordemAntiga);
+    const ordemAlterada = (novaOrdem !== ordemAntiga);
 
-      if (ordemAlterada) {
-          // Fluxo com reordenação
-          google.script.run
-              .withSuccessHandler(function() {
-                  // Após reordenar, salva os outros campos
-                  executarSalvarSimples(id, true); 
-              })
-              .withFailureHandler(err => M.toast({ html: 'Erro na reordenação: ' + err.message, classes: 'red' }))
-              .formSessoes_atualizarOrdemFichas(idSessao, id, novaOrdem, ordemAntiga);
-      } else {
-          // Fluxo simples (apenas texto)
-          executarSalvarSimples(id, false);
-      }
+    if (ordemAlterada) {
+      // Fluxo com reordenação
+      google.script.run
+        .withSuccessHandler(function (res) {
+          if (res.sucesso) {
+            // Atualiza a lista local com as fichas retornadas
+            fichasDaSessao = res.fichas || [];
+            _renderizarListaFichas(fichasDaSessao);
+            // Mantém a ficha atual selecionada
+            setTimeout(() => {
+              const item = document.querySelector(`.ficha-proc-item[data-ficha-id="${id}"]`);
+              if (item) item.classList.add('selecionado');
+            }, 200);
+            M.toast({ html: 'Ordem atualizada com sucesso!', classes: 'green' });
+          } else {
+            M.toast({ html: 'Erro na reordenação: ' + res.erro, classes: 'red' });
+          }
+        })
+        .withFailureHandler(err => M.toast({ html: 'Erro na reordenação: ' + err.message, classes: 'red' }))
+        .formSessoes_atualizarOrdemFichas(idSessao, id, novaOrdem, ordemAntiga);
+    } else {
+      // Fluxo simples (apenas texto)
+      executarSalvarSimples(id);
+    }
   }
 
   /**
@@ -473,54 +530,36 @@
    * @param {string} id
    * @param {boolean} recarregarTudo Se true, recarrega a lista de fichas completa
    */
-  function executarSalvarSimples(id, recarregarTudo) {
-      const dados = {
-          id: id,
-          relator: document.getElementById('ficha_f_Relator').value,
-          expediente: document.getElementById('ficha_f_Expediente').value
-      };
+  function executarSalvarSimples(id) {
+    const dados = {
+      id: id,
+      relator: document.getElementById('ficha_f_Relator').value,
+      expediente: document.getElementById('ficha_f_Expediente').value
+    };
 
-      google.script.run
-          .withSuccessHandler(function() {
-              M.toast({ html: 'Ficha salva com sucesso!', classes: 'green' });
-              
-              // Se a ordem mudou, precisamos buscar as fichas da sessão de novo para atualizar a lista lateral
-              if (recarregarTudo) {
-                google.script.run
-                  .withSuccessHandler(res => {
-                      if (res.sucesso) {
-                          _renderizarListaFichas(res.fichas);
-                          // Mantém a ficha atual selecionada visualmente
-                          setTimeout(() => {
-                            const item = document.querySelector(`.ficha-proc-item[data-ficha-id="${id}"]`);
-                            if(item) item.classList.add('selecionado');
-                          }, 200);
-                      }
-                  })
-                  .formSessoes_buscarFichas(fichaSelecionadaOriginal.idsessao);
-              }
-          })
-          .withFailureHandler(err => M.toast({ html: 'Erro ao salvar: ' + err.message, classes: 'red' }))
-          .formSessoes_salvarFicha(dados);
+    google.script.run
+      .withSuccessHandler(function () {
+        M.toast({ html: 'Ficha salva com sucesso!', classes: 'green' });
+        if (fichaSelecionadaOriginal) {
+          fichaSelecionadaOriginal.relator = dados.relator;
+          fichaSelecionadaOriginal.expediente = dados.expediente;
+        }
+        const idx = fichasDaSessao.findIndex(f => f.id === id);
+        if (idx !== -1) {
+          fichasDaSessao[idx].relator = dados.relator;
+          fichasDaSessao[idx].expediente = dados.expediente;
+        }
+      })
+      .withFailureHandler(err => M.toast({ html: 'Erro ao salvar: ' + err.message, classes: 'red' }))
+      .formSessoes_salvarFicha(dados);
   }
 
   // ============================================================
   // FAB INTERNO
   // ============================================================
 
-  function formSessoes_toggleFab() {
-    const fab = document.getElementById('fichasFabInterno');
-    fab.classList.toggle('aberto');
-  }
-
-  function _fecharFab() {
-    const fab = document.getElementById('fichasFabInterno');
-    if (fab) fab.classList.remove('aberto');
-  }
-
   // Ação 1: Abrir formulário de novo voto (rola para ele)
   function formSessoes_abrirNovoVoto() {
-    _fecharFab();
 
     if (!fichaAtualId) return M.toast({ html: 'Selecione um processo primeiro.', classes: 'orange darken-3' });
 
@@ -552,13 +591,6 @@
     const painel = document.getElementById('painelNovoVoto');
     if (painel) painel.style.display = 'none';
     pdfSelecionado = null;
-  }
-
-  // Ação 2: Upload de PDF avulso (sem criar voto)
-  function formSessoes_abrirUploadAvulso() {
-    _fecharFab();
-    if (!fichaAtualId) return M.toast({ html: 'Selecione um processo primeiro.', classes: 'orange darken-3' });
-    document.getElementById('inputPDFAvulso').click();
   }
 
   // ============================================================
@@ -893,51 +925,6 @@
     };
     reader.readAsDataURL(file);
     input.value = ''; // reseta para permitir selecionar o mesmo arquivo novamente
-  }
-
-  /**
-   * Upload de PDF avulso — cria um voto do tipo "Relatório" automaticamente.
-   */
-  function formSessoes_processarPDFAvulso(input) {
-    const file = input.files[0];
-    if (!file) return;
-
-    if (file.type !== 'application/pdf') {
-      return M.toast({ html: 'Selecione um arquivo PDF válido.', classes: 'red darken-2' });
-    }
-    if (file.size > 15 * 1024 * 1024) {
-      return M.toast({ html: 'Arquivo muito grande. Limite: 15 MB.', classes: 'red darken-2' });
-    }
-
-    M.toast({ html: 'Preparando envio...', classes: 'blue darken-2' });
-
-    const reader = new FileReader();
-    reader.onload = function (e) {
-      const base64Data = e.target.result.split(',')[1];
-
-      // Cria um voto "Relatório" para vincular o PDF
-      google.script.run
-        .withSuccessHandler(function (res) {
-          google.script.run
-            .withSuccessHandler(function () {
-              M.toast({ html: 'PDF enviado e vinculado com sucesso!', classes: 'green darken-2' });
-              input.value = '';
-              _carregarVotos(fichaAtualId);
-            })
-            .withFailureHandler(function (err) {
-              M.toast({ html: 'Erro no upload: ' + err.message, classes: 'red darken-2' });
-            })
-            .formSessoes_uploadRelatorio(res.id, base64Data, file.name);
-        })
-        .withFailureHandler(function (err) {
-          M.toast({ html: 'Erro ao criar registro: ' + err.message, classes: 'red darken-2' });
-        })
-        .formSessoes_salvarVoto({
-          id: '', idfichavotacao: fichaAtualId, idprocesso: fichaAtualIdProc,
-          tipovoto: 'Relatório', relator: '', voto: 'Relatório em PDF', resultado: '', urlvoto: ''
-        });
-    };
-    reader.readAsDataURL(file);
   }
 
   /**

@@ -5,6 +5,7 @@
   <base target="_top">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
   <?!= include('FormSessoes-style'); ?>
 </head>
 
@@ -224,10 +225,15 @@
                 </div>
               </div>
 
-              <!-- Label da seção votos -->
-              <div class="ficha-secao-votos">
+              <!-- Label da seção votos com botão adicionar -->
+              <div class="ficha-secao-votos" style="display: flex; justify-content: space-between; align-items: center;">
                 <span>Votos registrados</span>
-                <span id="fichaVotosTotal" class="ficha-secao-votos-total">0 voto(s)</span>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span id="fichaVotosTotal" class="ficha-secao-votos-total">0 voto(s)</span>
+                  <button class="btn-floating btn-small waves-effect waves-light btn-oab-blue" onclick="formSessoes_abrirNovoVoto()" title="Adicionar voto">
+                    <i class="material-icons">add</i>
+                  </button>
+                </div>
               </div>
 
               <!-- Formulário de novo voto (aparece ao clicar no FAB) -->
@@ -303,37 +309,11 @@
 
           </div><!-- /fichasConteudo -->
 
-          <!-- FAB: filho direto de fichas-painel-dir para ficar ancorado ao painel, fora do scroll -->
-          <div class="fichas-fab-interno" id="fichasFabInterno">
-            <div class="fichas-fab-opcoes">
-              <div class="fichas-fab-opcao" onclick="formSessoes_abrirUploadAvulso()">
-                <span class="fichas-fab-opcao-label">Enviar PDF avulso</span>
-                <button class="fichas-fab-opcao-btn cor-dourado">
-                  <i class="material-icons" style="font-size:18px;">picture_as_pdf</i>
-                </button>
-              </div>
-              <div class="fichas-fab-opcao" onclick="formSessoes_abrirNovoVoto()">
-                <span class="fichas-fab-opcao-label">Adicionar voto</span>
-                <button class="fichas-fab-opcao-btn cor-azul">
-                  <i class="material-icons" style="font-size:18px;">how_to_vote</i>
-                </button>
-              </div>
-            </div>
-            <button class="fichas-fab-btn-principal" onclick="formSessoes_toggleFab()">
-              <i class="material-icons">add</i>
-            </button>
-          </div>
-
         </div><!-- /fichas-painel-dir -->
       </div><!-- /fichas-body -->
 
     </div><!-- /modal-content -->
   </div><!-- /modalFichas -->
-
-  <!-- Input de PDF avulso (sem voto vinculado) -->
-  <input type="file" id="inputPDFAvulso" accept=".pdf" style="display:none;"
-    onchange="formSessoes_processarPDFAvulso(this)">
-
 
   <!-- ==================================================================
        MODAL: CONFIRMAÇÃO GENÉRICA

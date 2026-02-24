@@ -283,6 +283,7 @@ function formSessoes_atualizarOrdemFichas(idSessao, idFicha, novaOrdem, ordemAnt
     novaOrdem = parseInt(novaOrdem);
     ordemAntiga = parseInt(ordemAntiga);
 
+    // Reordenação (igual antes)
     for (let i = 1; i < dados.length; i++) {
       const rowIdSessao = String(dados[i][colIdSessao - 1]);
       const rowIdFicha = String(dados[i][colId - 1]);
@@ -304,7 +305,13 @@ function formSessoes_atualizarOrdemFichas(idSessao, idFicha, novaOrdem, ordemAnt
         }
       }
     }
-    return { sucesso: true };
+
+    // Após reordenar, retorna as fichas atualizadas da sessão
+    const fichasResult = formSessoes_buscarFichas(idSessao);
+    if (!fichasResult.sucesso) {
+      throw new Error('Erro ao buscar fichas após reordenação');
+    }
+    return { sucesso: true, fichas: fichasResult.fichas };
   } catch (e) {
     throw new Error('Erro ao reordenar: ' + e.message);
   }
@@ -333,6 +340,43 @@ function formSessoes_salvarFicha(obj) {
     throw new Error('Ficha não encontrada.');
   } catch (e) {
     throw new Error('Erro ao salvar campos da ficha: ' + e.message);
+  }
+}
+
+function formSessoes_atualizarOrdemLote(idSessao, ordemIds) {
+  try {
+    const ss = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
+    const sheet = ss.getSheetByName('tabFichas');
+    const mapa = getMapaColunas(sheet);
+    const dados = sheet.getDataRange().getValues();
+    
+    const colId = mapa['id'];
+    const colIdSessao = mapa['idsessao'];
+    const colOrdem = mapa['ordem'] || mapa['ordem_ficha'];
+
+    // Mapeia ID -> nova ordem (posição no array)
+    const ordemMap = {};
+    ordemIds.forEach((id, index) => {
+      ordemMap[String(id).trim()] = index + 1;
+    });
+
+    // Atualiza cada linha da sessão
+    for (let i = 1; i < dados.length; i++) {
+      const idSess = String(dados[i][colIdSessao - 1]).trim();
+      if (idSess === String(idSessao).trim()) {
+        const idFicha = String(dados[i][colId - 1]).trim();
+        if (ordemMap.hasOwnProperty(idFicha)) {
+          sheet.getRange(i + 1, colOrdem).setValue(ordemMap[idFicha]);
+        }
+      }
+    }
+
+    // Retorna as fichas atualizadas
+    const fichasResult = formSessoes_buscarFichas(idSessao);
+    if (!fichasResult.sucesso) throw new Error('Erro ao buscar fichas');
+    return { sucesso: true, fichas: fichasResult.fichas };
+  } catch (e) {
+    return { sucesso: false, erro: e.message };
   }
 }
 
