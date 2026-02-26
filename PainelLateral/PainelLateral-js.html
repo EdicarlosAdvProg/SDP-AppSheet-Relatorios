@@ -127,13 +127,22 @@
     container.innerHTML = fichas.map(function (f) {
       return [
         '<div class="ficha-card">',
-        '<div class="ficha-nivel1">',
-        '<span class="ficha-ordem">' + PL_JS_esc(f.ordem) + 'º</span>',
-        '<span class="ficha-processo">' + PL_JS_esc(f.processo) + '</span>',
-        '</div>',
-        '<div class="ficha-nivel2"><span class="ficha-label">Req.</span><span class="ficha-valor">' + PL_JS_esc(f.requerente) + '</span></div>',
-        '<div class="ficha-nivel3"><span class="ficha-label">Proc.</span><span class="ficha-valor">' + PL_JS_esc(f.procurador) + '</span></div>',
-        '<div class="ficha-nivel4"><span class="ficha-label">Rel.</span><span class="ficha-valor">' + PL_JS_esc(f.relator) + '</span></div>',
+          '<div class="ficha-nivel1">',
+            '<span class="ficha-ordem">' + PL_JS_esc(f.ordem) + 'º</span>',
+            '<span class="ficha-processo">' + PL_JS_esc(f.processo) + '</span>',
+          '</div>',
+          '<div class="ficha-nivel2">',
+            '<span class="ficha-label">REQ.</span>',
+            '<span class="ficha-valor"><strong>' + PL_JS_esc(f.requerente) + '</strong></span>',
+          '</div>',
+          '<div class="ficha-nivel3">',
+            '<span class="ficha-label">PROC.</span>',
+            '<span class="ficha-valor">' + PL_JS_esc(f.procurador) + '</span>',
+          '</div>',
+          '<div class="ficha-nivel4">',
+            '<span class="ficha-label">REL.</span>',
+            '<span class="ficha-valor">' + PL_JS_esc(f.relator) + '</span>',
+          '</div>',
         '</div>'
       ].join('');
     }).join('');

@@ -5,7 +5,7 @@ function PainelLateral_exibirSidebar() {
   try {
     const html = HtmlService.createTemplateFromFile('PainelLateral-layout')
         .evaluate()
-        .setTitle('Relatórios SDP-OAB')
+        .setTitle('Ferramentas da Sessão')
         .setSandboxMode(HtmlService.SandboxMode.IFRAME);
     
     DocumentApp.getUi().showSidebar(html);
@@ -100,70 +100,63 @@ function PainelLateral_carregarPauta(sessaoId) {
   try {
     const ss = PainelLateral_getPlanilha();
 
-    // --- Dados da Sessão ---
-    const sheetSessoes  = ss.getSheetByName(PL_ABA_SESSOES);
-    if (!sheetSessoes) throw new Error('Aba ' + PL_ABA_SESSOES + ' não encontrada.');
-    const mapaSessoes   = getMapaColunas(sheetSessoes);
-    const dadosSessoes  = sheetSessoes.getDataRange().getValues();
-
-    const iSId        = (mapaSessoes['id']          || mapaSessoes['id sessão'] || 1) - 1;
-    const iSData      = (mapaSessoes['data']         || mapaSessoes['data da sessão'] || 2) - 1;
-    const iSOrgao     = (mapaSessoes['órgão']        || mapaSessoes['orgao'] || mapaSessoes['órgao'] || 3) - 1;
-    const iSMembros   = (mapaSessoes['membros']      || 4) - 1;
-    const iSProcurad  = (mapaSessoes['procuradores'] || 5) - 1;
-    const iSExpediente= (mapaSessoes['expediente']   || 6) - 1;
-
-    // Converte sessaoId para o tipo correto antes de comparar
+    // 1. DADOS DA SESSÃO
+    const sheetSessoes = ss.getSheetByName('tabSessoes');
+    const dadosSessoes = sheetSessoes.getDataRange().getValues();
+    const mapaSessoes  = getMapaColunas(sheetSessoes);
+    
+    const iSId = (mapaSessoes['id'] || 1) - 1;
     const idBusca = isNaN(sessaoId) ? String(sessaoId) : Number(sessaoId);
-    const linhaSessao = dadosSessoes.slice(1).find(row => {
-      const v = isNaN(row[iSId]) ? String(row[iSId]) : Number(row[iSId]);
-      return v == idBusca;
-    });
-
-    if (!linhaSessao) throw new Error('Sessão ID ' + sessaoId + ' não encontrada.');
+    const linhaSessao = dadosSessoes.slice(1).find(row => row[iSId] == idBusca);
+    if (!linhaSessao) throw new Error('Sessão não encontrada.');
 
     const sessao = {
       id:    linhaSessao[iSId],
-      data:  linhaSessao[iSData]
-        ? Utilities.formatDate(new Date(linhaSessao[iSData]), Session.getScriptTimeZone(), 'dd/MM/yyyy')
-        : '',
-      orgao: linhaSessao[iSOrgao] || ''
+      data:  linhaSessao[(mapaSessoes['datasessao'] || 2) - 1] ? Utilities.formatDate(new Date(linhaSessao[(mapaSessoes['datasessao'] || 2) - 1]), Session.getScriptTimeZone(), 'dd/MM/yyyy') : '',
+      orgao: linhaSessao[(mapaSessoes['órgão'] || 3) - 1] || ''
     };
 
-    const membros = PainelLateral_parseLista(linhaSessao[iSMembros]);
-    const procuradoresSessao = PainelLateral_parseLista(linhaSessao[iSProcurad]);
-    const expediente = linhaSessao[iSExpediente] || '';
+    // 2. BUSCA DE PROCESSOS (Cache para lookup rápido)
+    const sheetProcs = ss.getSheetByName('tabProcessos');
+    const dadosProcs = sheetProcs.getDataRange().getValues();
+    const mapaProcs  = getMapaColunas(sheetProcs);
+    const iPrId      = (mapaProcs['id'] || 1) - 1;
+    const iPrNum     = (mapaProcs['processo'] || 2) - 1;
+    const iPrReq     = (mapaProcs['requerente'] || 3) - 1;
+    const iPrProc    = (mapaProcs['procurador'] || 5) - 1; // Coluna E na sua planilha
 
-    // --- Fichas da Sessão ---
-    const sheetFichas = ss.getSheetByName(PL_ABA_FICHAS);
-    if (!sheetFichas) throw new Error('Aba ' + PL_ABA_FICHAS + ' não encontrada.');
-    const mapaFichas  = getMapaColunas(sheetFichas);
+    // 3. FICHAS DA SESSÃO
+    const sheetFichas = ss.getSheetByName('tabFichas');
     const dadosFichas = sheetFichas.getDataRange().getValues();
-
-    const iFId        = (mapaFichas['id']           || mapaFichas['id ficha'] || 1) - 1;
-    const iFSessaoId  = (mapaFichas['id sessão']    || mapaFichas['sessao']   || mapaFichas['sessão'] || 2) - 1;
-    const iFOrdem     = (mapaFichas['ordem']         || 3) - 1;
-    const iFProcesso  = (mapaFichas['processo']      || mapaFichas['nº processo'] || mapaFichas['numero'] || 4) - 1;
-    const iFRequer    = (mapaFichas['requerente']    || 5) - 1;
-    const iFProcurad  = (mapaFichas['procurador']    || 6) - 1;
-    const iFRelator   = (mapaFichas['relator']       || 7) - 1;
+    const mapaFichas  = getMapaColunas(sheetFichas);
+    const iFSessaoId  = (mapaFichas['idsessao'] || 2) - 1;
+    const iFProcId    = (mapaFichas['idprocesso'] || 3) - 1;
 
     const fichas = dadosFichas.slice(1)
-      .filter(row => {
-        const v = isNaN(row[iFSessaoId]) ? String(row[iFSessaoId]) : Number(row[iFSessaoId]);
-        return v == idBusca && row[iFId] !== '';
+      .filter(row => row[iFSessaoId] == idBusca)
+      .map(row => {
+        const idProcessoReferencia = row[iFProcId];
+        // Busca na tabProcessos pelo ID único (Ex: 1ks3cbsy)
+        const infoProc = dadosProcs.find(p => p[iPrId] == idProcessoReferencia);
+
+        return {
+          id:         row[(mapaFichas['id'] || 1) - 1],
+          ordem:      row[(mapaFichas['ordem'] || 4) - 1] || '',
+          processo:   infoProc ? infoProc[iPrNum] : 'N/D',
+          requerente: infoProc ? infoProc[iPrReq] : 'N/D',
+          procurador: infoProc ? infoProc[iPrProc] : 'N/D',
+          relator:    row[(mapaFichas['relator'] || 5) - 1] || ''
+        };
       })
-      .map(row => ({
-        id:        row[iFId],
-        ordem:     row[iFOrdem]    || '',
-        processo:  row[iFProcesso] || '',
-        requerente:row[iFRequer]   || '',
-        procurador:row[iFProcurad] || '',
-        relator:   row[iFRelator]  || ''
-      }))
       .sort((a, b) => Number(a.ordem) - Number(b.ordem));
 
-    return { sessao, fichas, membros, procuradores: procuradoresSessao, expediente };
+    return { 
+      sessao, 
+      fichas, 
+      membros: PainelLateral_parseLista(linhaSessao[(mapaSessoes['membros'] || 7) - 1]), 
+      procuradores: PainelLateral_parseLista(linhaSessao[(mapaSessoes['procuradores'] || 8) - 1]), 
+      expediente: linhaSessao[(mapaSessoes['expediente'] || 9) - 1] || '' 
+    };
 
   } catch (err) {
     throw new Error('PainelLateral_carregarPauta: ' + err.message);
