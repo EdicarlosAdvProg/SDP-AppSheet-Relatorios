@@ -1,150 +1,150 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <base target="_top">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <?!= include('PainelLateral-style'); ?>
-  </head>
-  <body>
 
-    <!-- ===== HEADER FIXO ===== -->
-    <div class="sidebar-header">
-      <img src="https://www.oabgo.org.br/wp-content/themes/oab/images/logo.png" alt="OAB-GO" class="logo">
+<head>
+  <base target="_top">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <?!= include('PainelLateral-style'); ?>
+</head>
+
+<body>
+
+  <!-- ===== HEADER FIXO ===== -->
+  <div class="sidebar-header">
+    <img src="https://www.oabgo.org.br/wp-content/themes/oab/images/logo.png" alt="OAB-GO" class="logo">
+
+    <div class="custom-dropdown" id="dropdownSessao">
+      <div class="dropdown-selected" onclick="PL_JS_toggleDropdown()">
+        <div class="selected-info">
+          <span id="displayOrgao">Carregando...</span>
+          <span id="displayData">--/--/----</span>
+        </div>
+        <i class="fa-solid fa-chevron-down"></i>
+      </div>
+      <div class="dropdown-list hidden" id="listaSessoesDropdown">
+      </div>
     </div>
 
-    <!-- ===== CONTEÚDO PRINCIPAL (scrollável) ===== -->
-    <div class="main-container" id="mainContainer">
+  </div>
 
-      <!-- Estado de carregamento inicial -->
-      <div class="estado-loading" id="estadoLoading">
-        <i class="fa-solid fa-circle-notch fa-spin"></i>
-        <p>Carregando pauta...</p>
+  <!-- ===== CONTEÚDO PRINCIPAL (scrollável) ===== -->
+  <div class="main-container" id="mainContainer">
+
+    <!-- Estado de carregamento inicial -->
+    <div class="estado-loading" id="estadoLoading">
+      <i class="fa-solid fa-circle-notch fa-spin"></i>
+      <p>Carregando pauta...</p>
+    </div>
+
+    <!-- Estado de erro -->
+    <div class="estado-erro hidden" id="estadoErro">
+      <i class="fa-solid fa-triangle-exclamation"></i>
+      <p id="mensagemErro">Erro ao carregar dados.</p>
+      <button class="btn-pill btn-secundario" onclick="PL_JS_inicializar()">Tentar novamente</button>
+    </div>
+
+    <!-- Conteúdo da pauta (visível após carregamento) -->
+    <div class="pauta-container hidden" id="pautaContainer">
+
+      <!-- ===== SEÇÃO: FICHAS DE VOTAÇÃO ===== -->
+      <div class="secao-titulo">
+        <i class="fa-solid fa-list-check"></i> Pauta
+        <span class="badge-count" id="badgeFichas">0</span>
+      </div>
+      <div class="fichas-lista" id="fichasLista">
+        <!-- Gerado pelo JS -->
       </div>
 
-      <!-- Estado de erro -->
-      <div class="estado-erro hidden" id="estadoErro">
-        <i class="fa-solid fa-triangle-exclamation"></i>
-        <p id="mensagemErro">Erro ao carregar dados.</p>
-        <button class="btn-pill btn-secundario" onclick="PL_JS_inicializar()">Tentar novamente</button>
+      <!-- ===== SEÇÃO: MEMBROS PARTICIPANTES ===== -->
+      <div class="secao-titulo">
+        <i class="fa-solid fa-users"></i> Participantes
+        <span class="badge-count" id="badgeMembros">0</span>
       </div>
-
-      <!-- Conteúdo da pauta (visível após carregamento) -->
-      <div class="pauta-container hidden" id="pautaContainer">
-
-        <!-- Seletor de Sessão -->
-        <div class="card-sessao">
-          <div class="sessao-info">
-            <span class="sessao-orgao" id="sessaoOrgao">-</span>
-            <span class="sessao-data" id="sessaoData">-</span>
-          </div>
-          <div class="sessao-selector-wrap">
-            <label class="label-campo">Selecionar sessão</label>
-            <select class="select-sessao" id="selectorSessao" onchange="PL_JS_trocarSessao(this.value)">
-            </select>
-          </div>
-        </div>
-
-        <!-- ===== SEÇÃO: FICHAS DE VOTAÇÃO ===== -->
-        <div class="secao-titulo">
-          <i class="fa-solid fa-list-check"></i> Pauta
-          <span class="badge-count" id="badgeFichas">0</span>
-        </div>
-        <div class="fichas-lista" id="fichasLista">
-          <!-- Gerado pelo JS -->
-        </div>
-
-        <!-- ===== SEÇÃO: MEMBROS PARTICIPANTES ===== -->
-        <div class="secao-titulo">
-          <i class="fa-solid fa-users"></i> Participantes
-          <span class="badge-count" id="badgeMembros">0</span>
-        </div>
-        <div class="lista-pessoas" id="listaMembros">
-          <!-- Gerado pelo JS -->
-        </div>
-        <div class="adicionar-item">
-          <input type="text" class="input-campo" id="inputNovoMembro" placeholder="Nome do membro...">
-          <button class="btn-pill btn-primario btn-sm" onclick="PL_JS_adicionarMembro()">
-            <i class="fa-solid fa-plus"></i> Adicionar
-          </button>
-        </div>
-        <div class="feedback-salvando hidden" id="feedbackMembros">Salvando...</div>
-
-        <!-- ===== SEÇÃO: PROCURADORES ===== -->
-        <div class="secao-titulo">
-          <i class="fa-solid fa-briefcase"></i> Procuradores
-          <span class="badge-count" id="badgeProcuradores">0</span>
-        </div>
-        <div class="lista-pessoas" id="listaProcuradores">
-          <!-- Gerado pelo JS -->
-        </div>
-        <div class="adicionar-item">
-          <div class="autocomplete-wrap">
-            <input type="text" class="input-campo" id="inputNovoProcurador"
-                   placeholder="Nome do procurador..."
-                   oninput="PL_JS_filtrarProcuradores(this.value)"
-                   autocomplete="off">
-            <div class="autocomplete-lista hidden" id="autocompleteProcurador"></div>
-          </div>
-          <button class="btn-pill btn-primario btn-sm" onclick="PL_JS_adicionarProcurador()">
-            <i class="fa-solid fa-plus"></i> Adicionar
-          </button>
-        </div>
-        <div class="feedback-salvando hidden" id="feedbackProcuradores">Salvando...</div>
-
-        <!-- ===== SEÇÃO: EXPEDIENTE ===== -->
-        <div class="secao-titulo">
-          <i class="fa-solid fa-file-lines"></i> Expediente
-        </div>
-        <div class="expediente-wrap">
-          <textarea class="textarea-expediente" id="expedienteTexto"
-                    placeholder="Registre aqui os assuntos do expediente..."
-                    onblur="PL_JS_salvarExpediente()"></textarea>
-          <div class="feedback-salvando hidden" id="feedbackExpediente">Salvando...</div>
-        </div>
-
-      </div><!-- /pautaContainer -->
-    </div><!-- /mainContainer -->
-
-    <!-- ===== MENU LATERAL RETRÁTIL ===== -->
-    <nav class="nav-sidebar">
-      <div class="nav-group">
-        <button class="nav-item" onclick="google.script.run.formProcessos_abrirModal()">
-          <i class="fa-solid fa-folder"></i>
-          <span class="nav-label">Processos</span>
-        </button>
-        <button class="nav-item" onclick="google.script.run.abrirFormMembros()">
-          <i class="fa-solid fa-users"></i>
-          <span class="nav-label">Membros</span>
-        </button>
-        <button class="nav-item" onclick="google.script.run.formSessoes_abrirModal()">
-          <i class="fa-solid fa-calendar-check"></i>
-          <span class="nav-label">Sessões</span>
-        </button>
-        <button class="nav-item" onclick="google.script.run.PainelLateral_exibirSobre()">
-          <i class="fa-solid fa-circle-question"></i>
-          <span class="nav-label">Sobre</span>
+      <div class="lista-pessoas" id="listaMembros">
+        <!-- Gerado pelo JS -->
+      </div>
+      <div class="adicionar-item">
+        <input type="text" class="input-campo" id="inputNovoMembro" placeholder="Nome do membro...">
+        <button class="btn-pill btn-primario btn-sm" onclick="PL_JS_adicionarMembro()">
+          <i class="fa-solid fa-plus"></i> Adicionar
         </button>
       </div>
-    </nav>
+      <div class="feedback-salvando hidden" id="feedbackMembros">Salvando...</div>
 
-    <!-- ===== FAB ===== -->
-    <div class="fab-container">
-      <div class="fab-options" id="fabOptions">
-        <div class="fab-item" onclick="PL_JS_acaoRapida('Novo Processo')">
-          <span>Novo processo</span>
-          <button class="fab-sub"><i class="fa-solid fa-file-medical"></i></button>
-        </div>
-        <div class="fab-item" onclick="PL_JS_acaoRapida('Adicionar Membro')">
-          <span>Adicionar membro</span>
-          <button class="fab-sub"><i class="fa-solid fa-user-plus"></i></button>
-        </div>
+      <!-- ===== SEÇÃO: PROCURADORES ===== -->
+      <div class="secao-titulo">
+        <i class="fa-solid fa-briefcase"></i> Procuradores
+        <span class="badge-count" id="badgeProcuradores">0</span>
       </div>
-      <button class="fab-main" id="fabMain" onclick="PL_JS_toggleFab()">
-        <i class="fa-solid fa-plus"></i>
+      <div class="lista-pessoas" id="listaProcuradores">
+        <!-- Gerado pelo JS -->
+      </div>
+      <div class="adicionar-item">
+        <div class="autocomplete-wrap">
+          <input type="text" class="input-campo" id="inputNovoProcurador" placeholder="Nome do procurador..."
+            oninput="PL_JS_filtrarProcuradores(this.value)" autocomplete="off">
+          <div class="autocomplete-lista hidden" id="autocompleteProcurador"></div>
+        </div>
+        <button class="btn-pill btn-primario btn-sm" onclick="PL_JS_adicionarProcurador()">
+          <i class="fa-solid fa-plus"></i> Adicionar
+        </button>
+      </div>
+      <div class="feedback-salvando hidden" id="feedbackProcuradores">Salvando...</div>
+
+      <!-- ===== SEÇÃO: EXPEDIENTE ===== -->
+      <div class="secao-titulo">
+        <i class="fa-solid fa-file-lines"></i> Expediente
+      </div>
+      <div class="expediente-wrap">
+        <textarea class="textarea-expediente" id="expedienteTexto"
+          placeholder="Registre aqui os assuntos do expediente..." onblur="PL_JS_salvarExpediente()"></textarea>
+        <div class="feedback-salvando hidden" id="feedbackExpediente">Salvando...</div>
+      </div>
+
+    </div><!-- /pautaContainer -->
+  </div><!-- /mainContainer -->
+
+  <!-- ===== MENU LATERAL RETRÁTIL ===== -->
+  <nav class="nav-sidebar">
+    <div class="nav-group">
+      <button class="nav-item" onclick="google.script.run.formProcessos_abrirModal()">
+        <i class="fa-solid fa-folder"></i>
+        <span class="nav-label">Processos</span>
+      </button>
+      <button class="nav-item" onclick="google.script.run.abrirFormMembros()">
+        <i class="fa-solid fa-users"></i>
+        <span class="nav-label">Membros</span>
+      </button>
+      <button class="nav-item" onclick="google.script.run.formSessoes_abrirModal()">
+        <i class="fa-solid fa-calendar-check"></i>
+        <span class="nav-label">Sessões</span>
+      </button>
+      <button class="nav-item" onclick="google.script.run.PainelLateral_exibirSobre()">
+        <i class="fa-solid fa-circle-question"></i>
+        <span class="nav-label">Sobre</span>
       </button>
     </div>
+  </nav>
 
-    <?!= include('PainelLateral-js'); ?>
-  </body>
+  <!-- ===== FAB ===== -->
+  <div class="fab-container">
+    <div class="fab-options" id="fabOptions">
+      <div class="fab-item" onclick="PL_JS_acaoRapida('Novo Processo')">
+        <span>Novo processo</span>
+        <button class="fab-sub"><i class="fa-solid fa-file-medical"></i></button>
+      </div>
+      <div class="fab-item" onclick="PL_JS_acaoRapida('Adicionar Membro')">
+        <span>Adicionar membro</span>
+        <button class="fab-sub"><i class="fa-solid fa-user-plus"></i></button>
+      </div>
+    </div>
+    <button class="fab-main" id="fabMain" onclick="PL_JS_toggleFab()">
+      <i class="fa-solid fa-plus"></i>
+    </button>
+  </div>
+
+  <?!= include('PainelLateral-js'); ?>
+</body>
+
 </html>

@@ -3,10 +3,10 @@
   // ESTADO GLOBAL DO PAINEL
   // ================================================================
   var PL_estado = {
-    sessaoAtualId:   null,
-    membros:         [],
-    procuradores:    [],
-    todosProc:       [],   // Cache de tabProcuradores para autocomplete
+    sessaoAtualId: null,
+    membros: [],
+    procuradores: [],
+    todosProc: [],   // Cache de tabProcuradores para autocomplete
     timerExpediente: null
   };
 
@@ -25,38 +25,54 @@
       .PainelLateral_listarSessoes();
   }
 
-  /** Chamado após receber a lista de sessões. Seleciona a mais recente. */
+  /** Popula o dropdown customizado e seleciona a mais recente */
   function PL_JS_onSessoesCarregadas(sessoes) {
     if (!sessoes || sessoes.length === 0) {
-      PL_JS_mostrarErro('Nenhuma sessão encontrada na planilha.');
+      PL_JS_mostrarErro('Nenhuma sessão encontrada.');
       return;
     }
 
-    var selector = document.getElementById('selectorSessao');
-    selector.innerHTML = '';
+    var listContainer = document.getElementById('listaSessoesDropdown');
+    listContainer.innerHTML = '';
+
     sessoes.forEach(function (s) {
-      var opt = document.createElement('option');
-      opt.value = s.id;
-      opt.textContent = s.data + ' — ' + s.orgao;
-      selector.appendChild(opt);
+      var card = document.createElement('div');
+      card.className = 'dropdown-item-card';
+      card.setAttribute('data-id', s.id);
+      card.onclick = function () { PL_JS_selecionarSessao(s.id); };
+
+      card.innerHTML =
+        '<span class="item-data">' + s.data + '</span>' +
+        '<span class="item-orgao">' + PL_JS_esc(s.orgao) + '</span>';
+
+      listContainer.appendChild(card);
     });
 
-    // Carrega a mais recente (primeira da lista, já ordenada decrescente)
-    PL_JS_carregarPauta(sessoes[0].id);
-
-    // Carrega procuradores cadastrados para autocomplete (uma única vez)
+    // Carrega procuradores para autocomplete em paralelo
     google.script.run
       .withSuccessHandler(function (lista) { PL_estado.todosProc = lista || []; })
-      .withFailureHandler(function () { PL_estado.todosProc = []; })
       .PainelLateral_listarProcuradoresCadastrados();
+
+    // Seleciona a mais recente por padrão
+    PL_JS_selecionarSessao(sessoes[0].id);
   }
 
-  /** Disparado pelo <select> quando o usuário muda a sessão. */
-  function PL_JS_trocarSessao(id) {
+  function PL_JS_toggleDropdown() {
+    document.getElementById('listaSessoesDropdown').classList.toggle('hidden');
+  }
+
+  function PL_JS_selecionarSessao(id) {
+    document.getElementById('listaSessoesDropdown').classList.add('hidden');
+
+    // Atualiza destaque visual no dropdown
+    var items = document.querySelectorAll('.dropdown-item-card');
+    items.forEach(function (el) {
+      el.classList.toggle('active', el.getAttribute('data-id') == id);
+    });
+
     PL_JS_carregarPauta(id);
   }
 
-  /** Solicita os dados completos de uma sessão ao backend. */
   function PL_JS_carregarPauta(sessaoId) {
     PL_JS_mostrarLoading(true);
     google.script.run
@@ -65,101 +81,81 @@
       .PainelLateral_carregarPauta(sessaoId);
   }
 
-  /** Renderiza toda a pauta após receber os dados do backend. */
+  /** ÚNICA VERSÃO: Renderiza os dados da pauta */
   function PL_JS_onPautaCarregada(dados) {
-    PL_estado.sessaoAtualId  = dados.sessao.id;
-    PL_estado.membros        = dados.membros        || [];
-    PL_estado.procuradores   = dados.procuradores   || [];
+    PL_estado.sessaoAtualId = dados.sessao.id;
+    PL_estado.membros = dados.membros || [];
+    PL_estado.procuradores = dados.procuradores || [];
 
-    // Header da sessão
-    document.getElementById('sessaoOrgao').textContent = dados.sessao.orgao || '—';
-    document.getElementById('sessaoData').textContent  = dados.sessao.data  || '—';
+    // Atualiza o Display do Header (Dropdown Customizado)
+    document.getElementById('displayOrgao').textContent = dados.sessao.orgao || '—';
+    document.getElementById('displayData').textContent = dados.sessao.data || '—';
 
-    // Sincroniza o <select> com a sessão carregada
-    document.getElementById('selectorSessao').value = dados.sessao.id;
-
-    // Renderiza seções
+    // Renderiza as seções
     PL_JS_renderizarFichas(dados.fichas || []);
     PL_JS_renderizarMembros();
     PL_JS_renderizarProcuradores();
 
-    // Expediente
     document.getElementById('expedienteTexto').value = dados.expediente || '';
 
+    // Finaliza o loading
     PL_JS_mostrarLoading(false);
     document.getElementById('pautaContainer').classList.remove('hidden');
   }
 
+  // Fecha dropdown ao clicar fora
+  window.addEventListener('click', function (e) {
+    var drop = document.getElementById('dropdownSessao');
+    if (drop && !drop.contains(e.target)) {
+      document.getElementById('listaSessoesDropdown').classList.add('hidden');
+    }
+  });
+
   // ================================================================
-  // FICHAS DE VOTAÇÃO
+  // RENDERIZAÇÃO E LOGICA DE NEGÓCIO
   // ================================================================
+
   function PL_JS_renderizarFichas(fichas) {
     var container = document.getElementById('fichasLista');
     document.getElementById('badgeFichas').textContent = fichas.length;
 
     if (fichas.length === 0) {
-      container.innerHTML = '<div class="empty-state">Nenhuma ficha de votação para esta sessão.</div>';
+      container.innerHTML = '<div class="empty-state">Nenhuma ficha para esta sessão.</div>';
       return;
     }
 
     container.innerHTML = fichas.map(function (f) {
       return [
         '<div class="ficha-card">',
-          '<div class="ficha-nivel1">',
-            '<span class="ficha-ordem">' + PL_JS_esc(f.ordem) + '</span>',
-            '<span class="ficha-processo">' + PL_JS_esc(f.processo) + '</span>',
-          '</div>',
-          '<div class="ficha-nivel2">',
-            '<span class="ficha-label">Req.</span>',
-            '<span class="ficha-valor">' + PL_JS_esc(f.requerente) + '</span>',
-          '</div>',
-          '<div class="ficha-nivel3">',
-            '<span class="ficha-label">Proc.</span>',
-            '<span class="ficha-valor">' + PL_JS_esc(f.procurador) + '</span>',
-          '</div>',
-          '<div class="ficha-nivel4">',
-            '<span class="ficha-label">Rel.</span>',
-            '<span class="ficha-valor">' + PL_JS_esc(f.relator) + '</span>',
-          '</div>',
+        '<div class="ficha-nivel1">',
+        '<span class="ficha-ordem">' + PL_JS_esc(f.ordem) + 'º</span>',
+        '<span class="ficha-processo">' + PL_JS_esc(f.processo) + '</span>',
+        '</div>',
+        '<div class="ficha-nivel2"><span class="ficha-label">Req.</span><span class="ficha-valor">' + PL_JS_esc(f.requerente) + '</span></div>',
+        '<div class="ficha-nivel3"><span class="ficha-label">Proc.</span><span class="ficha-valor">' + PL_JS_esc(f.procurador) + '</span></div>',
+        '<div class="ficha-nivel4"><span class="ficha-label">Rel.</span><span class="ficha-valor">' + PL_JS_esc(f.relator) + '</span></div>',
         '</div>'
       ].join('');
     }).join('');
   }
 
-  // ================================================================
-  // MEMBROS PARTICIPANTES
-  // ================================================================
   function PL_JS_renderizarMembros() {
     var container = document.getElementById('listaMembros');
     document.getElementById('badgeMembros').textContent = PL_estado.membros.length;
-
     if (PL_estado.membros.length === 0) {
-      container.innerHTML = '<div class="empty-state">Nenhum participante registrado.</div>';
+      container.innerHTML = '<div class="empty-state">Nenhum participante.</div>';
       return;
     }
-
     container.innerHTML = PL_estado.membros.map(function (nome, i) {
-      return [
-        '<div class="pessoa-item">',
-          '<span class="pessoa-nome">' + PL_JS_esc(nome) + '</span>',
-          '<button class="btn-remover" onclick="PL_JS_removerMembro(' + i + ')" title="Remover">',
-            '<i class="fa-solid fa-xmark"></i>',
-          '</button>',
-        '</div>'
-      ].join('');
+      return '<div class="pessoa-item"><span class="pessoa-nome">' + PL_JS_esc(nome) + '</span>' +
+        '<button class="btn-remover" onclick="PL_JS_removerMembro(' + i + ')"><i class="fa-solid fa-xmark"></i></button></div>';
     }).join('');
   }
 
   function PL_JS_adicionarMembro() {
     var input = document.getElementById('inputNovoMembro');
-    var nome  = input.value.trim();
-    if (!nome) return;
-
-    if (PL_estado.membros.indexOf(nome) !== -1) {
-      input.value = '';
-      return;
-    }
-
+    var nome = input.value.trim();
+    if (!nome || PL_estado.membros.indexOf(nome) !== -1) { input.value = ''; return; }
     PL_estado.membros.push(nome);
     input.value = '';
     PL_JS_renderizarMembros();
@@ -176,45 +172,26 @@
     PL_JS_mostrarFeedback('feedbackMembros', 'Salvando...');
     google.script.run
       .withSuccessHandler(function () { PL_JS_mostrarFeedback('feedbackMembros', 'Salvo.', true); })
-      .withFailureHandler(function (err) { PL_JS_mostrarFeedback('feedbackMembros', 'Erro: ' + err.message, true); })
       .PainelLateral_salvarMembros(PL_estado.sessaoAtualId, PL_estado.membros);
   }
 
-  // ================================================================
-  // PROCURADORES
-  // ================================================================
   function PL_JS_renderizarProcuradores() {
     var container = document.getElementById('listaProcuradores');
     document.getElementById('badgeProcuradores').textContent = PL_estado.procuradores.length;
-
     if (PL_estado.procuradores.length === 0) {
-      container.innerHTML = '<div class="empty-state">Nenhum procurador registrado.</div>';
+      container.innerHTML = '<div class="empty-state">Nenhum procurador.</div>';
       return;
     }
-
     container.innerHTML = PL_estado.procuradores.map(function (nome, i) {
-      return [
-        '<div class="pessoa-item">',
-          '<span class="pessoa-nome">' + PL_JS_esc(nome) + '</span>',
-          '<button class="btn-remover" onclick="PL_JS_removerProcurador(' + i + ')" title="Remover">',
-            '<i class="fa-solid fa-xmark"></i>',
-          '</button>',
-        '</div>'
-      ].join('');
+      return '<div class="pessoa-item"><span class="pessoa-nome">' + PL_JS_esc(nome) + '</span>' +
+        '<button class="btn-remover" onclick="PL_JS_removerProcurador(' + i + ')"><i class="fa-solid fa-xmark"></i></button></div>';
     }).join('');
   }
 
   function PL_JS_adicionarProcurador() {
     var input = document.getElementById('inputNovoProcurador');
-    var nome  = input.value.trim();
-    if (!nome) return;
-
-    if (PL_estado.procuradores.indexOf(nome) !== -1) {
-      input.value = '';
-      PL_JS_fecharAutocomplete();
-      return;
-    }
-
+    var nome = input.value.trim();
+    if (!nome || PL_estado.procuradores.indexOf(nome) !== -1) { input.value = ''; return; }
     PL_estado.procuradores.push(nome);
     input.value = '';
     PL_JS_fecharAutocomplete();
@@ -232,25 +209,17 @@
     PL_JS_mostrarFeedback('feedbackProcuradores', 'Salvando...');
     google.script.run
       .withSuccessHandler(function () { PL_JS_mostrarFeedback('feedbackProcuradores', 'Salvo.', true); })
-      .withFailureHandler(function (err) { PL_JS_mostrarFeedback('feedbackProcuradores', 'Erro: ' + err.message, true); })
       .PainelLateral_salvarProcuradores(PL_estado.sessaoAtualId, PL_estado.procuradores);
   }
 
-  // --- Autocomplete de procuradores ---
   function PL_JS_filtrarProcuradores(termo) {
     var lista = document.getElementById('autocompleteProcurador');
     if (!termo || termo.length < 2) { PL_JS_fecharAutocomplete(); return; }
-
     var termLower = termo.toLowerCase();
-    var filtrados = PL_estado.todosProc.filter(function (n) {
-      return n.toLowerCase().indexOf(termLower) !== -1;
-    });
-
+    var filtrados = PL_estado.todosProc.filter(function (n) { return n.toLowerCase().indexOf(termLower) !== -1; });
     if (filtrados.length === 0) { PL_JS_fecharAutocomplete(); return; }
-
     lista.innerHTML = filtrados.slice(0, 8).map(function (n) {
-      return '<div class="autocomplete-item" onclick="PL_JS_selecionarProcurador(\'' +
-             PL_JS_esc(n).replace(/'/g, "\\'") + '\')">' + PL_JS_esc(n) + '</div>';
+      return '<div class="autocomplete-item" onclick="PL_JS_selecionarProcurador(\'' + PL_JS_esc(n).replace(/'/g, "\\'") + '\')">' + PL_JS_esc(n) + '</div>';
     }).join('');
     lista.classList.remove('hidden');
   }
@@ -264,31 +233,17 @@
     document.getElementById('autocompleteProcurador').classList.add('hidden');
   }
 
-  // Fecha autocomplete ao clicar fora
-  document.addEventListener('click', function (e) {
-    if (!e.target.closest('.autocomplete-wrap')) {
-      PL_JS_fecharAutocomplete();
-    }
-  });
-
-  // ================================================================
-  // EXPEDIENTE
-  // ================================================================
   function PL_JS_salvarExpediente() {
     var texto = document.getElementById('expedienteTexto').value;
     PL_JS_mostrarFeedback('feedbackExpediente', 'Salvando...');
     google.script.run
       .withSuccessHandler(function () { PL_JS_mostrarFeedback('feedbackExpediente', 'Salvo.', true); })
-      .withFailureHandler(function (err) { PL_JS_mostrarFeedback('feedbackExpediente', 'Erro: ' + err.message, true); })
       .PainelLateral_salvarExpediente(PL_estado.sessaoAtualId, texto);
   }
 
-  // ================================================================
-  // FAB
-  // ================================================================
   function PL_JS_toggleFab() {
     var options = document.getElementById('fabOptions');
-    var btn     = document.getElementById('fabMain');
+    var btn = document.getElementById('fabMain');
     options.classList.toggle('show');
     btn.style.transform = options.classList.contains('show') ? 'rotate(45deg)' : 'rotate(0deg)';
   }
@@ -299,19 +254,15 @@
   }
 
   // ================================================================
-  // UTILITÁRIOS
+  // UTILITÁRIOS DE UI
   // ================================================================
   function PL_JS_mostrarLoading(ativo) {
     document.getElementById('estadoLoading').classList.toggle('hidden', !ativo);
-    document.getElementById('estadoErro').classList.add('hidden');
-    if (ativo) {
-      document.getElementById('pautaContainer').classList.add('hidden');
-    }
+    if (ativo) document.getElementById('pautaContainer').classList.add('hidden');
   }
 
   function PL_JS_mostrarErro(msg) {
-    document.getElementById('estadoLoading').classList.add('hidden');
-    document.getElementById('pautaContainer').classList.add('hidden');
+    PL_JS_mostrarLoading(false);
     document.getElementById('mensagemErro').textContent = msg || 'Erro desconhecido.';
     document.getElementById('estadoErro').classList.remove('hidden');
   }
@@ -320,28 +271,15 @@
     PL_JS_mostrarErro(err && err.message ? err.message : String(err));
   }
 
-  /**
-   * Exibe mensagem de feedback temporária.
-   * @param {string} elementId
-   * @param {string} msg
-   * @param {boolean} autoOcultar - Se true, oculta após 2,5s
-   */
   function PL_JS_mostrarFeedback(elementId, msg, autoOcultar) {
     var el = document.getElementById(elementId);
     el.textContent = msg;
     el.classList.remove('hidden');
-    if (autoOcultar) {
-      setTimeout(function () { el.classList.add('hidden'); }, 2500);
-    }
+    if (autoOcultar) setTimeout(function () { el.classList.add('hidden'); }, 2500);
   }
 
-  /** Escapa HTML para evitar XSS ao renderizar dados da planilha. */
   function PL_JS_esc(str) {
-    if (str === null || str === undefined) return '';
-    return String(str)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
+    if (!str) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 </script>
