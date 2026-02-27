@@ -8,7 +8,7 @@
     --oab-vermelho:   #ff0000;
     --oab-azul:       #004480;
     --oab-azul-escuro:#002f5d;
-    --oab-dourado:    #a68945;
+    /* --oab-dourado removido: cor fora da paleta oficial OAB-GO */
     --oab-fundo:      #d1d8db;
     --oab-branco:     #ffffff;
     --oab-cinza-md:   #b0bec5;  /* divisores, bordas leves */
@@ -121,24 +121,27 @@
   .dropdown-item-card:hover { background: var(--oab-cinza-bg); }
 
   .dropdown-item-card.active {
-    border-left: 4px solid var(--oab-dourado);
+    border-left: 4px solid var(--oab-vermelho);
     background: #f0f4f8;
   }
 
+  /* Nível 1: órgão — fonte maior, azul, destaque principal */
   .item-data {
     display: block;
-    color: var(--oab-dourado);
+    color: var(--oab-azul);
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 3px;
+  }
+
+  /* Nível 2: data — cinza escuro, negrito, fonte levemente menor */
+  .item-orgao {
+    display: block;
+    color: var(--oab-cinza-txt);
     font-size: 10px;
     font-weight: 700;
     text-transform: uppercase;
-  }
-
-  .item-orgao {
-    display: block;
-    color: var(--oab-azul-escuro);
-    font-size: 12px;
-    font-weight: 600;
-    margin-top: 2px;
+    letter-spacing: 0.4px;
   }
 
   /* =====================================================
@@ -218,12 +221,15 @@
     background: var(--oab-branco);
     border-radius: 10px;
     padding: 10px 12px;
-    border-left: 4px solid var(--oab-dourado);
+    border-left: 4px solid var(--oab-vermelho);
     box-shadow: 0 1px 4px rgba(0,0,0,0.07);
-    transition: box-shadow 0.2s;
+    transition: box-shadow 0.2s, transform 0.2s;
   }
 
-  .ficha-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
+  .ficha-card:hover {
+    box-shadow: 0 6px 16px rgba(0,0,0,0.14);
+    transform: translateX(-4px);   /* desliza levemente para a esquerda */
+  }
 
   .ficha-nivel1 {
     display: flex;
@@ -286,27 +292,45 @@
     font-family: 'Inter', sans-serif;
     font-size: 11px;
     font-weight: 600;
-    height: 26px;
-    line-height: 26px;
-    padding: 0 10px 0 10px;
-    border-radius: 50px;
-    display: inline-flex;
+    height: 30px;
+    line-height: 30px;
+    padding: 0 10px;
+    border-radius: 8px;
+    display: flex;           /* linha cheia */
+    width: 100%;             /* ocupa toda a largura */
     align-items: center;
-    gap: 5px;
-    transition: background 0.2s;
+    justify-content: space-between;
+    box-sizing: border-box;
+    transition: background 0.2s, transform 0.18s, box-shadow 0.18s;
   }
 
   .chip.oab-chip:hover { background-color: var(--oab-azul-escuro); }
+
+  /* Nome truncado com ellipsis — nunca quebra linha */
+  .chip.oab-chip .chip-nome {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
 
   .chip.oab-chip .material-icons.close {
     color: rgba(255,255,255,0.7);
     font-size: 16px;
     cursor: pointer;
     margin: 0;
+    flex-shrink: 0;           /* ícone nunca comprime */
     transition: color 0.2s;
   }
 
   .chip.oab-chip .material-icons.close:hover { color: var(--oab-branco); }
+
+  .chip.oab-chip:hover {
+    background-color: var(--oab-azul-escuro);
+    transform: scale(1.02);                          /* leve zoom */
+    box-shadow: 0 3px 8px rgba(0, 47, 93, 0.25);    /* sombra azul sutil */
+  }
 
   /* =====================================================
      8. INPUTS E AUTOCOMPLETE (MATERIALIZE - OVERRIDE)

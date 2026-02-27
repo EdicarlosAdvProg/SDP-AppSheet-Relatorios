@@ -74,8 +74,9 @@
       card.setAttribute('data-id', s.id);
       card.onclick = function () { PL_JS_selecionarSessao(s.id); };
       card.innerHTML =
-        '<span class="item-data">' + PL_JS_esc(s.data) + '</span>' +
-        '<span class="item-orgao">' + PL_JS_esc(s.orgao) + '</span>';
+        card.innerHTML =
+          '<span class="item-data">'  + PL_JS_esc(s.data)  + '</span>' +
+          '<span class="item-orgao">' + PL_JS_esc(s.orgao) + '</span>';
       listContainer.appendChild(card);
     });
 
@@ -206,8 +207,8 @@
     container.innerHTML = lista.map(function (nome, i) {
       return [
         '<div class="chip oab-chip">',
-          PL_JS_esc(nome),
-          '<i class="material-icons close" onclick="' + callbackRemover + '(' + i + ')">close</i>',
+          '<span class="chip-nome">' + PL_JS_esc(nome) + '</span>',
+          '<i class="material-icons close" onclick="...">close</i>',
         '</div>'
       ].join('');
     }).join('');
