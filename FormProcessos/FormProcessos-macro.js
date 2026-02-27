@@ -348,25 +348,44 @@ function formProcessos_adicionarAPauta(idProcesso, idSessao) {
     const dados     = sheetFichas.getDataRange().getValues();
     const colSessao = mapa['idsessao']   - 1;
     const colProc   = mapa['idprocesso'] - 1;
+    const colOrdem  = mapa['ordem']      - 1; // Coluna Ordem
 
+    let maiorOrdem = 0;
+
+    // Percorre os dados para validar duplicidade e calcular a próxima Ordem
     for (let i = 1; i < dados.length; i++) {
+      const sessaoNaLinha = String(dados[i][colSessao]).trim();
+      
+      // Validação de duplicidade
       if (
-        String(dados[i][colSessao]).trim() === String(idSessao).trim()  &&
+        sessaoNaLinha === String(idSessao).trim()  &&
         String(dados[i][colProc]).trim()   === String(idProcesso).trim()
       ) {
         throw new Error("Este processo já está na pauta desta sessão.");
       }
+
+      // Lógica da Ordem: Verifica o maior número de ordem APENAS para a mesma sessão
+      if (sessaoNaLinha === String(idSessao).trim()) {
+        const ordemAtual = parseInt(dados[i][colOrdem]) || 0;
+        if (ordemAtual > maiorOrdem) {
+          maiorOrdem = ordemAtual;
+        }
+      }
     }
+
+    const proximaOrdem = maiorOrdem + 1;
 
     const numCols   = Object.keys(mapa).length;
     const novaLinha = new Array(numCols).fill("");
+    
     novaLinha[mapa['id'] - 1]         = novoIdTimeStamp();
     novaLinha[colSessao]              = idSessao;
     novaLinha[colProc]                = idProcesso;
+    novaLinha[colOrdem]               = proximaOrdem; // Grava a nova ordem
     novaLinha[mapa['expediente'] - 1] = "Aguardando relato";
 
     sheetFichas.appendRow(novaLinha);
-    return { sucesso: true, mensagem: "Processo adicionado à pauta com sucesso." };
+    return { sucesso: true, mensagem: "Processo adicionado à pauta (Ordem: " + proximaOrdem + ")." };
 
   } catch (e) {
     throw new Error(e.message);
@@ -374,7 +393,7 @@ function formProcessos_adicionarAPauta(idProcesso, idSessao) {
 }
 
 /**
- * Cria nova sessão (Órgão + Data + Sala/Local opcional) e inclui o processo na pauta.
+ * Cria nova sessão (Órgão + Data + Sala/Local opcional) e inclui o processo na pauta com Ordem 1.
  */
 function formProcessos_criarSessaoEPautar(idProcesso, orgao, dataISO, local) {
   try {
@@ -389,24 +408,35 @@ function formProcessos_criarSessaoEPautar(idProcesso, orgao, dataISO, local) {
     const novoIdSessao = novoIdTimeStamp();
     novaLinha[mapa['id'] - 1] = novoIdSessao;
 
+    // Processamento da Data
     if (dataISO) {
       const p = dataISO.split('-');
       if (p.length === 3) {
-        novaLinha[mapa['datasessao'] - 1] =
+        novaLinha[mapa['datasessao'] - 1] = 
           new Date(parseInt(p[0]), parseInt(p[1]) - 1, parseInt(p[2]), 12, 0, 0);
       }
     }
 
+    // Mapeamento dinâmico de Órgão e Local
     const chaveOrgao = Object.keys(mapa).find(k => k.includes('rg'));
     const chaveLocal = Object.keys(mapa).find(k => k.includes('local'));
     if (chaveOrgao) novaLinha[mapa[chaveOrgao] - 1] = orgao;
     if (chaveLocal && local) novaLinha[mapa[chaveLocal] - 1] = local;
 
+    // Insere a nova sessão
     sheetSessoes.appendRow(novaLinha);
-    Utilities.sleep(250);
+    
+    // Pausa técnica para garantir que o Google Sheets registre a nova linha antes da consulta de ordem
+    Utilities.sleep(500); 
 
-    formProcessos_adicionarAPauta(idProcesso, novoIdSessao);
-    return { sucesso: true, mensagem: "Sessão criada e processo incluído na pauta." };
+    // CHAMA A FUNÇÃO DE ADICIONAR (que já ajustamos para calcular Ordem: maior + 1)
+    // Como a sessão é nova, a função adicionarAPauta encontrará "maiorOrdem = 0" e definirá Ordem = 1.
+    const resPauta = formProcessos_adicionarAPauta(idProcesso, novoIdSessao);
+    
+    return { 
+      sucesso: true, 
+      mensagem: "Sessão criada e processo incluído na pauta (Ordem: 1)." 
+    };
 
   } catch (e) {
     throw new Error("Erro ao criar sessão: " + e.message);
