@@ -1,176 +1,648 @@
 /**
- * @fileoverview Backend para Gestão de Processos SDP — OAB/GO
- * Funções: CRUD processos, pauta, histórico, alteração de status, importação em massa.
+ * @fileoverview Backend para Gestão de Sessões SDP — OAB/GO
+ * Funções: CRUD sessões, fichas de votação, votos, upload de relatório em PDF.
+ *
+ * Tabelas envolvidas:
+ *   tabSessoes  : Id | DataSessao | Órgão | Local/Sala | Presidente | Secretário | Membros | Procuradores | Expediente
+ *   tabFichas   : Id | IdSessao | IdProcesso | Relator | Membros | Procuradores | Expediente
+ *   tabVotos    : Id | IdFichaVotacao | IdProcesso | TipoVoto | Relator | Voto | Resultado | URL Voto
+ *   tabProcessos: Id | Processo | Requerente | Requerido | Procurador | ... | Status
+ *   tabMembros  : Id | Nome | Email | Gênero | Cargo
  */
 
-function formProcessos_abrirModal() {
-  const template = HtmlService.createTemplateFromFile('FormProcessos-layout');
+// ─────────────────────────────────────────────────────────────────────────────
+// ABERTURA DO FORMULÁRIO
+// ─────────────────────────────────────────────────────────────────────────────
+
+function formSessoes_abrirModal() {
+  const template = HtmlService.createTemplateFromFile('FormSessoes-layout');
   const html = template.evaluate()
-    .setTitle('SDP - Gestão de Processos')
+    .setTitle('SDP - Gestão de Sessões')
     .setWidth(1200)
     .setHeight(850);
   DocumentApp.getUi().showModalDialog(html, ' ');
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// CARGA INICIAL DE DADOS
+// ─────────────────────────────────────────────────────────────────────────────
+
 /**
- * Payload inicial: processos (cruzados com último evento do histórico),
- * sessões para o modal de pauta e membros para autocomplete.
+ * Retorna sessões com contagem de processos pautados, membros para autocomplete
+ * e órgãos únicos para o filtro/select.
  */
-function formProcessos_buscarDadosCompletos() {
+function formSessoes_buscarDadosCompletos() {
   try {
     const ss = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
 
-    // ── tabProcessos ──────────────────────────────────────────────────────────
-    const sheetProc = ss.getSheetByName("tabProcessos");
-    if (!sheetProc) throw new Error("Aba 'tabProcessos' não encontrada.");
-    const mapaProc  = getMapaColunas(sheetProc);
-    const dadosProc = sheetProc.getDataRange().getValues();
-    dadosProc.shift();
+    // ── tabSessoes ────────────────────────────────────────────────────────────
+    const sheetSess = ss.getSheetByName('tabSessoes');
+    if (!sheetSess) throw new Error("Aba 'tabSessoes' não encontrada.");
+    const mapaSess  = getMapaColunas(sheetSess);
+    const dadosSess = sheetSess.getDataRange().getValues();
+    dadosSess.shift(); // remove cabeçalho
 
-    // ── tabHistorico: último evento por processo ───────────────────────────────
-    const sheetHist = ss.getSheetByName("tabHistorico");
-    const ultimoEventoMap = {};
-    if (sheetHist) {
-      const mapaHist  = getMapaColunas(sheetHist);
-      const dadosHist = sheetHist.getDataRange().getValues();
-      dadosHist.shift();
-      const chaveDesc = mapaHist['descrição'] !== undefined ? 'descrição' : 'descricão';
-
-      dadosHist.forEach(h => {
-        const idProc  = String(h[mapaHist['idprocesso'] - 1]);
-        const dataRaw = h[mapaHist['datahora'] - 1];
-        const desc    = h[mapaHist[chaveDesc]  - 1];
-        if (idProc && dataRaw) {
-          const dObj = new Date(dataRaw);
-          if (!isNaN(dObj.getTime())) {
-            if (!ultimoEventoMap[idProc] || dObj > ultimoEventoMap[idProc].data) {
-              ultimoEventoMap[idProc] = { data: dObj, descricao: desc || "" };
-            }
-          }
-        }
+    // ── tabFichas: contagem por sessão ────────────────────────────────────────
+    const sheetFichas = ss.getSheetByName('tabFichas');
+    const contagemFichas = {};
+    if (sheetFichas) {
+      const mapaF   = getMapaColunas(sheetFichas);
+      const dadosF  = sheetFichas.getDataRange().getValues();
+      dadosF.shift();
+      dadosF.forEach(f => {
+        const idSess = String(f[mapaF['idsessao'] - 1] || '').trim();
+        if (idSess) contagemFichas[idSess] = (contagemFichas[idSess] || 0) + 1;
       });
     }
 
-    // ── tabSessoes: lista para o modal de pauta ───────────────────────────────
-    const sheetSess = ss.getSheetByName("tabSessoes");
-    let listaSessoes = [];
-    if (sheetSess) {
-      const mapaSess  = getMapaColunas(sheetSess);
-      const dadosSess = sheetSess.getDataRange().getValues();
-      dadosSess.shift();
-      const chaveOrgao = Object.keys(mapaSess).find(k => k.includes('rg'));
-      const chaveLocal = Object.keys(mapaSess).find(k => k.includes('local'));
-
-      listaSessoes = dadosSess.map(s => {
-        const rawDate = s[mapaSess['datasessao'] - 1];
-        const dObj    = rawDate ? new Date(rawDate) : null;
-        const dataOk  = dObj && !isNaN(dObj.getTime());
-        return {
-          id:       s[mapaSess['id'] - 1],
-          data:     dataOk ? Utilities.formatDate(dObj, "GMT-3", "dd/MM/yyyy") : "Data não informada",
-          dataSort: dataOk ? dObj.getTime() : 0,
-          orgao:    chaveOrgao ? (s[mapaSess[chaveOrgao] - 1] || "—") : "—",
-          local:    chaveLocal ? (s[mapaSess[chaveLocal]  - 1] || "") : ""
-        };
-      }).sort((a, b) => b.dataSort - a.dataSort);
-    }
-
-    // ── tabMembros: autocomplete do campo Procurador ──────────────────────────
-    const sheetMembros = ss.getSheetByName("tabMembros");
+    // ── tabMembros: autocomplete ──────────────────────────────────────────────
+    const sheetMembros = ss.getSheetByName('tabMembros');
     const membrosAuto  = {};
     if (sheetMembros) {
-      const mapaMembros  = getMapaColunas(sheetMembros);
-      const dadosMembros = sheetMembros.getDataRange().getValues();
-      dadosMembros.shift();
-      dadosMembros.forEach(m => {
-        const nome = m[mapaMembros['nome'] - 1];
+      const mapaM  = getMapaColunas(sheetMembros);
+      const dadosM = sheetMembros.getDataRange().getValues();
+      dadosM.shift();
+      dadosM.forEach(m => {
+        const nome = m[mapaM['nome'] - 1];
         if (nome) membrosAuto[nome.toString().trim()] = null;
       });
     }
 
-    // ── Monta lista final de processos ────────────────────────────────────────
-    const listaFinal = dadosProc.map(linha => {
-      const id = String(linha[mapaProc['id'] - 1] || "");
-      let dataFmt = "---", descFmt = "Sem registros";
-      if (ultimoEventoMap[id]) {
-        dataFmt = Utilities.formatDate(ultimoEventoMap[id].data, "GMT-3", "dd/MM/yyyy");
-        descFmt = ultimoEventoMap[id].descricao;
-      }
-      return {
-        id:         id,
-        processo:   String(linha[mapaProc['processo']   - 1] || "S/N"),
-        requerente: String(linha[mapaProc['requerente'] - 1] || ""),
-        requerido:  String(linha[mapaProc['requerido']  - 1] || ""),
-        procurador: String(linha[mapaProc['procurador'] - 1] || ""),
-        local:      mapaProc['local da ocorrência'] ? String(linha[mapaProc['local da ocorrência'] - 1] || "") : "",
-        status:     mapaProc['status'] ? String(linha[mapaProc['status'] - 1] || "") : "",
-        resumo:     mapaProc['resumo'] ? String(linha[mapaProc['resumo'] - 1] || "") : "",
-        ementa:     mapaProc['ementa'] ? String(linha[mapaProc['ementa'] - 1] || "") : "",
-        provas:     mapaProc['provas'] ? String(linha[mapaProc['provas'] - 1] || "") : "",
-        ultimaData: dataFmt,
-        ultimaDesc: descFmt
-      };
-    });
+    // ── Chaves do mapa (com acentos) ──────────────────────────────────────────
+    const chaveOrgao    = _encontrarChave(mapaSess, ['órgão', 'orgao', 'orgão']);
+    const chaveLocal    = _encontrarChave(mapaSess, ['local/sala', 'local', 'sala']);
+    const chavePresid   = _encontrarChave(mapaSess, ['presidente']);
+    const chaveSecret   = _encontrarChave(mapaSess, ['secretário', 'secretario']);
+    const chaveMembros  = _encontrarChave(mapaSess, ['membros']);
+    const chaveProc     = _encontrarChave(mapaSess, ['procuradores']);
+    const chaveExped    = _encontrarChave(mapaSess, ['expediente']);
 
-    return { sucesso: true, dados: listaFinal, sessoes: listaSessoes, membros: membrosAuto };
+    // ── Monta lista de sessões ────────────────────────────────────────────────
+    const listaSessoes = dadosSess.map(linha => {
+      const id      = String(linha[mapaSess['id'] - 1] || '');
+      const rawDate = linha[mapaSess['datasessao'] - 1];
+      const dObj    = rawDate ? new Date(rawDate) : null;
+      const dataOk  = dObj && !isNaN(dObj.getTime());
+
+      return {
+        id:          id,
+        datasessao:  dataOk ? Utilities.formatDate(dObj, 'GMT-3', 'dd/MM/yyyy') : 'Data não informada',
+        datasort:    dataOk ? dObj.getTime() : 0,
+        dataiso:     dataOk ? Utilities.formatDate(dObj, 'GMT-3', 'yyyy-MM-dd') : '',
+        orgao:       chaveOrgao  ? String(linha[mapaSess[chaveOrgao]  - 1] || '') : '',
+        local:       chaveLocal  ? String(linha[mapaSess[chaveLocal]  - 1] || '') : '',
+        presidente:  chavePresid ? String(linha[mapaSess[chavePresid] - 1] || '') : '',
+        secretario:  chaveSecret ? String(linha[mapaSess[chaveSecret] - 1] || '') : '',
+        membros:     chaveMembros ? String(linha[mapaSess[chaveMembros] - 1] || '') : '',
+        procuradores:chaveProc   ? String(linha[mapaSess[chaveProc]   - 1] || '') : '',
+        expediente:  chaveExped  ? String(linha[mapaSess[chaveExped]  - 1] || '') : '',
+        totalFichas: contagemFichas[id] || 0
+      };
+    }).sort((a, b) => b.datasort - a.datasort);
+
+    return { sucesso: true, sessoes: listaSessoes, membros: membrosAuto };
 
   } catch (e) {
-    console.error("Erro em formProcessos_buscarDadosCompletos: " + e.message);
+    console.error('Erro em formSessoes_buscarDadosCompletos: ' + e.message);
     return { sucesso: false, erro: e.toString() };
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// CRUD DE SESSÕES
+// ─────────────────────────────────────────────────────────────────────────────
+
 /**
- * Salva ou atualiza um processo na tabProcessos.
+ * Salva ou atualiza uma sessão.
+ * @param {Object} obj  { id?, datasessao, orgao, local, presidente, secretario }
  */
-function formProcessos_salvarRegistro(obj) {
+function formSessoes_salvarRegistro(obj) {
   try {
     const ss    = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
-    const sheet = ss.getSheetByName("tabProcessos");
-    if (!sheet) throw new Error("Aba 'tabProcessos' não encontrada.");
+    const sheet = ss.getSheetByName('tabSessoes');
+    if (!sheet) throw new Error("Aba 'tabSessoes' não encontrada.");
 
+    const mapa    = getMapaColunas(sheet);
     const dados   = sheet.getDataRange().getValues();
-    const colunas = dados[0].map(c => c.toLowerCase().trim());
+    const numCols = Object.keys(mapa).length;
 
-    let rowIndex = -1;
-    if (obj.id) {
-      for (let i = 1; i < dados.length; i++) {
-        if (String(dados[i][0]).trim() === String(obj.id).trim()) {
-          rowIndex = i + 1;
-          break;
-        }
+    const chaveOrgao  = _encontrarChave(mapa, ['órgão', 'orgao', 'orgão']);
+    const chaveLocal  = _encontrarChave(mapa, ['local/sala', 'local', 'sala']);
+    const chavePresid = _encontrarChave(mapa, ['presidente']);
+    const chaveSecret = _encontrarChave(mapa, ['secretário', 'secretario']);
+
+    if (!obj.id) obj.id = novoIdTimeStamp();
+
+    // Converte data ISO para Date
+    let dataObj = '';
+    if (obj.datasessao) {
+      const p = obj.datasessao.split('-');
+      if (p.length === 3) {
+        dataObj = new Date(parseInt(p[0]), parseInt(p[1]) - 1, parseInt(p[2]), 12, 0, 0);
       }
     }
 
-    if (!obj.id || rowIndex === -1) obj.id = novoIdTimeStamp();
+    // Localiza linha existente
+    let linhaAlvo = -1;
+    for (let i = 1; i < dados.length; i++) {
+      if (String(dados[i][mapa['id'] - 1]).trim() === String(obj.id).trim()) {
+        linhaAlvo = i + 1;
+        break;
+      }
+    }
 
-    const linhaParaSalvar = colunas.map(col => {
-      if (col === 'id') return obj.id;
-      if (col === 'local da ocorrência') return obj['local'] || "";
-      return obj[col] !== undefined ? obj[col] : "";
-    });
+    const linha = linhaAlvo !== -1
+      ? dados[linhaAlvo - 1].slice()
+      : new Array(numCols).fill('');
 
-    if (rowIndex !== -1) {
-      sheet.getRange(rowIndex, 1, 1, linhaParaSalvar.length).setValues([linhaParaSalvar]);
+    linha[mapa['id'] - 1]                              = obj.id;
+    linha[mapa['datasessao'] - 1]                      = dataObj || '';
+    if (chaveOrgao)  linha[mapa[chaveOrgao]  - 1]     = obj.orgao  || '';
+    if (chaveLocal)  linha[mapa[chaveLocal]  - 1]      = obj.local  || '';
+    if (chavePresid) linha[mapa[chavePresid] - 1]      = obj.presidente || '';
+    if (chaveSecret) linha[mapa[chaveSecret] - 1]      = obj.secretario || '';
+
+    if (linhaAlvo !== -1) {
+      sheet.getRange(linhaAlvo, 1, 1, linha.length).setValues([linha]);
     } else {
-      sheet.appendRow(linhaParaSalvar);
+      sheet.appendRow(linha);
     }
 
     return { sucesso: true };
   } catch (e) {
-    throw new Error("Erro ao salvar processo: " + e.message);
+    throw new Error('Erro ao salvar sessão: ' + e.message);
   }
 }
 
 /**
- * Exclui um processo da tabProcessos pelo Id.
- * Registros dependentes (Fichas, Votos, Histórico) são preservados.
+ * Exclui uma sessão e suas fichas, com trava de segurança para votos existentes.
+ * @param {string} idSessao - ID da sessão a ser excluída.
  */
-function formProcessos_excluirRegistro(id) {
+function formSessoes_excluirRegistro(idSessao) {
+  try {
+    const ss = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
+    
+    const sheetSess = ss.getSheetByName('tabSessoes');
+    const sheetFichas = ss.getSheetByName('tabFichas');
+    const sheetVotos = ss.getSheetByName('tabVotos');
+
+    if (!sheetSess || !sheetFichas || !sheetVotos) {
+      throw new Error("Abas necessárias não encontradas.");
+    }
+
+    // 1. MAPEAMENTO E COLETA DE FICHAS
+    const mapaF = getMapaColunas(sheetFichas);
+    const dadosF = sheetFichas.getDataRange().getValues();
+    const idsFichasDestaSessao = [];
+
+    for (let i = 1; i < dadosF.length; i++) {
+      // CORREÇÃO: Usando mapaF consistentemente
+      if (String(dadosF[i][mapaF['idsessao'] - 1]).trim() === String(idSessao).trim()) {
+        idsFichasDestaSessao.push(String(dadosF[i][mapaF['id'] - 1]).trim());
+      }
+    }
+
+    // 2. FREIO DE SEGURANÇA (TRAVA DE VOTOS)
+    if (idsFichasDestaSessao.length > 0) {
+      const mapaV = getMapaColunas(sheetVotos);
+      const dadosV = sheetVotos.getDataRange().getValues();
+      
+      const colFichaVoto = mapaV['idfichavotacao'] - 1;
+
+      for (let j = 1; j < dadosV.length; j++) {
+        const idFichaNoVoto = String(dadosV[j][colFichaVoto]).trim();
+        // Se o ID da ficha do voto estiver entre as fichas da sessão que queremos excluir
+        if (idsFichasDestaSessao.includes(idFichaNoVoto)) {
+          throw new Error("BLOQUEIO: Esta sessão possui votos registrados e não pode ser excluída para preservar o histórico.");
+        }
+      }
+    }
+
+    // 3. EXCLUSÃO DAS FICHAS (Apenas se passou pelo freio acima)
+    for (let k = dadosF.length - 1; k >= 1; k--) {
+      if (String(dadosF[k][mapaF['idsessao'] - 1]).trim() === String(idSessao).trim()) {
+        sheetFichas.deleteRow(k + 1);
+      }
+    }
+
+    // 4. EXCLUSÃO DA SESSÃO
+    const dadosS = sheetSess.getDataRange().getValues();
+    const mapaS = getMapaColunas(sheetSess);
+    const colIdSess = mapaS['id'] - 1;
+
+    for (let m = 1; m < dadosS.length; m++) {
+      if (String(dadosS[m][colIdSess]).trim() === String(idSessao).trim()) {
+        sheetSess.deleteRow(m + 1);
+        return { sucesso: true };
+      }
+    }
+
+    throw new Error("Sessão não encontrada.");
+
+  } catch (e) {
+    // Repassa o erro para o frontend
+    throw new Error(e.message);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FICHAS DE VOTAÇÃO
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Retorna as fichas de uma sessão enriquecidas com dados do processo.
+ * @param {string} idSessao
+ */
+function formSessoes_buscarFichas(idSessao) {
+  try {
+    const ss = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
+
+    const sheetFichas = ss.getSheetByName('tabFichas');
+    if (!sheetFichas) throw new Error("Aba 'tabFichas' não encontrada.");
+    const mapaF = getMapaColunas(sheetFichas);
+    const dadosF = sheetFichas.getDataRange().getValues();
+    dadosF.shift();
+
+    const chaveOrdem = _encontrarChave(mapaF, ['ordem', 'ordem_ficha']);
+
+    const sheetProc = ss.getSheetByName('tabProcessos');
+    const cacheProc = {};
+    if (sheetProc) {
+      const mapaP = getMapaColunas(sheetProc);
+      const dadosP = sheetProc.getDataRange().getValues();
+      dadosP.shift();
+      const chaveLocal = _encontrarChave(mapaP, ['local da ocorrência', 'local']);
+      dadosP.forEach(p => {
+        const pid = String(p[mapaP['id'] - 1] || '').trim();
+        if (pid) {
+          cacheProc[pid] = {
+            numero: String(p[mapaP['processo'] - 1] || 'S/N'),
+            requerente: String(p[mapaP['requerente'] - 1] || ''),
+            requerido: String(p[mapaP['requerido'] - 1] || ''),
+            status: mapaP['status'] ? String(p[mapaP['status'] - 1] || '') : '',
+            local: chaveLocal ? String(p[mapaP[chaveLocal] - 1] || '') : ''
+          };
+        }
+      });
+    }
+
+    const chaveRelator = _encontrarChave(mapaF, ['relator']);
+    const chaveExped = _encontrarChave(mapaF, ['expediente']);
+
+    const fichas = dadosF
+      .filter(f => String(f[mapaF['idsessao'] - 1]).trim() === String(idSessao).trim())
+      .map(f => {
+        const idFicha = String(f[mapaF['id'] - 1] || '');
+        const idProc = String(f[mapaF['idprocesso'] - 1] || '');
+        const proc = cacheProc[idProc] || { numero: 'S/N', requerente: '', requerido: '', status: '', local: '' };
+        const numOrdem = chaveOrdem ? parseInt(f[mapaF[chaveOrdem] - 1]) : 0;
+
+        return {
+          id: idFicha,
+          idsessao: String(f[mapaF['idsessao'] - 1] || ''), // ESSENCIAL: Adicionado para o Front-end
+          idprocesso: idProc,
+          ordem: isNaN(numOrdem) ? 0 : numOrdem,
+          relator: chaveRelator ? String(f[mapaF[chaveRelator] - 1] || '') : '',
+          expediente: chaveExped ? String(f[mapaF[chaveExped] - 1] || '') : '',
+          proc: proc
+        };
+      });
+
+    return { sucesso: true, fichas: fichas };
+  } catch (e) {
+    return { sucesso: false, erro: e.message };
+  }
+}
+
+/**
+ * Lógica de reordenamento das fichas
+ */
+function formSessoes_atualizarOrdemFichas(idSessao, idFicha, novaOrdem, ordemAntiga) {
+  try {
+    const ss = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
+    const sheet = ss.getSheetByName('tabFichas');
+    const mapa = getMapaColunas(sheet);
+    const range = sheet.getDataRange();
+    const dados = range.getValues();
+    
+    const colId = mapa['id'];
+    const colIdSessao = mapa['idsessao'];
+    const colOrdem = mapa['ordem'] || mapa['ordem_ficha'];
+
+    novaOrdem = parseInt(novaOrdem);
+    ordemAntiga = parseInt(ordemAntiga);
+
+    // Reordenação (igual antes)
+    for (let i = 1; i < dados.length; i++) {
+      const rowIdSessao = String(dados[i][colIdSessao - 1]);
+      const rowIdFicha = String(dados[i][colId - 1]);
+      let currentOrdem = parseInt(dados[i][colOrdem - 1]) || 0;
+
+      if (rowIdSessao === String(idSessao)) {
+        if (rowIdFicha === String(idFicha)) {
+          sheet.getRange(i + 1, colOrdem).setValue(novaOrdem);
+        } else {
+          if (novaOrdem > ordemAntiga) {
+            if (currentOrdem > ordemAntiga && currentOrdem <= novaOrdem) {
+              sheet.getRange(i + 1, colOrdem).setValue(currentOrdem - 1);
+            }
+          } else if (novaOrdem < ordemAntiga) {
+            if (currentOrdem >= novaOrdem && currentOrdem < ordemAntiga) {
+              sheet.getRange(i + 1, colOrdem).setValue(currentOrdem + 1);
+            }
+          }
+        }
+      }
+    }
+
+    // Após reordenar, retorna as fichas atualizadas da sessão
+    const fichasResult = formSessoes_buscarFichas(idSessao);
+    if (!fichasResult.sucesso) {
+      throw new Error('Erro ao buscar fichas após reordenação');
+    }
+    return { sucesso: true, fichas: fichasResult.fichas };
+  } catch (e) {
+    throw new Error('Erro ao reordenar: ' + e.message);
+  }
+}
+
+/**
+ * Salva apenas os campos de texto da ficha. 
+ */
+function formSessoes_salvarFicha(obj) {
+  try {
+    const ss = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
+    const sheet = ss.getSheetByName('tabFichas');
+    const mapa = getMapaColunas(sheet);
+    const dados = sheet.getDataRange().getValues();
+
+    const chaveRelator = _encontrarChave(mapa, ['relator']);
+    const chaveExped = _encontrarChave(mapa, ['expediente']);
+
+    for (let i = 1; i < dados.length; i++) {
+      if (String(dados[i][mapa['id'] - 1]).trim() === String(obj.id).trim()) {
+        if (chaveRelator) sheet.getRange(i + 1, mapa[chaveRelator]).setValue(obj.relator || '');
+        if (chaveExped)   sheet.getRange(i + 1, mapa[chaveExped]).setValue(obj.expediente || '');
+        return { sucesso: true };
+      }
+    }
+    throw new Error('Ficha não encontrada.');
+  } catch (e) {
+    throw new Error('Erro ao salvar campos da ficha: ' + e.message);
+  }
+}
+
+function formSessoes_atualizarOrdemLote(idSessao, ordemIds) {
+  try {
+    const ss = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
+    const sheet = ss.getSheetByName('tabFichas');
+    const mapa = getMapaColunas(sheet);
+    const dados = sheet.getDataRange().getValues();
+    
+    const colId = mapa['id'];
+    const colIdSessao = mapa['idsessao'];
+    const colOrdem = mapa['ordem'] || mapa['ordem_ficha'];
+
+    // Mapeia ID -> nova ordem (posição no array)
+    const ordemMap = {};
+    ordemIds.forEach((id, index) => {
+      ordemMap[String(id).trim()] = index + 1;
+    });
+
+    // Atualiza cada linha da sessão
+    for (let i = 1; i < dados.length; i++) {
+      const idSess = String(dados[i][colIdSessao - 1]).trim();
+      if (idSess === String(idSessao).trim()) {
+        const idFicha = String(dados[i][colId - 1]).trim();
+        if (ordemMap.hasOwnProperty(idFicha)) {
+          sheet.getRange(i + 1, colOrdem).setValue(ordemMap[idFicha]);
+        }
+      }
+    }
+
+    // Retorna as fichas atualizadas
+    const fichasResult = formSessoes_buscarFichas(idSessao);
+    if (!fichasResult.sucesso) throw new Error('Erro ao buscar fichas');
+    return { sucesso: true, fichas: fichasResult.fichas };
+  } catch (e) {
+    return { sucesso: false, erro: e.message };
+  }
+}
+
+/**
+ * Importa processos em massa e, se for Pleno, migra o voto mais recente.
+ */
+function formSessoes_importarProcessosEmMassa(idSessao, listaNumeros, orgao) {
+  try {
+    const ss = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
+    
+    // 1. Mapeia tabProcessos (Número -> ID)
+    const sheetProc = ss.getSheetByName('tabProcessos');
+    const dadosP = sheetProc.getDataRange().getValues();
+    const mapaP = getMapaColunas(sheetProc);
+    const cacheProcessos = {};
+    for (let i = 1; i < dadosP.length; i++) {
+      const num = String(dadosP[i][mapaP['processo'] - 1]).trim();
+      const id = String(dadosP[i][mapaP['id'] - 1]).trim();
+      if (num) cacheProcessos[num] = id;
+    }
+
+    // 2. Prepara tabFichas e tabVotos
+    const sheetFichas = ss.getSheetByName('tabFichas');
+    const sheetVotos  = ss.getSheetByName('tabVotos');
+    const mapaF = getMapaColunas(sheetFichas);
+    const mapaV = getMapaColunas(sheetVotos);
+    
+    const dadosF = sheetFichas.getDataRange().getValues();
+    const dadosV = sheetVotos.getDataRange().getValues();
+
+    // 3. Define a última ordem da sessão
+    let ultimaOrdem = 0;
+    for (let j = 1; j < dadosF.length; j++) {
+      if (String(dadosF[j][mapaF['idsessao'] - 1]) === String(idSessao)) {
+        const o = parseInt(dadosF[j][mapaF['ordem'] - 1]) || 0;
+        if (o > ultimaOrdem) ultimaOrdem = o;
+      }
+    }
+
+    const ehPleno = (orgao === "Pleno do SDP");
+    const relatorPadrao = ehPleno ? "Órgão Deliberativo" : "";
+    let adicionados = 0;
+    let naoEncontrados = [];
+
+    // 4. Processamento
+    listaNumeros.forEach(num => {
+      const idRealDoProcesso = cacheProcessos[num];
+
+      if (idRealDoProcesso) {
+        ultimaOrdem++;
+        const idNovaFicha = novoIdTimeStamp() + "_" + adicionados;
+        
+        // --- CRIAR A FICHA ---
+        const novaFicha = new Array(Object.keys(mapaF).length).fill('');
+        novaFicha[mapaF['id'] - 1] = idNovaFicha;
+        novaFicha[mapaF['idsessao'] - 1] = idSessao;
+        novaFicha[mapaF['idprocesso'] - 1] = idRealDoProcesso;
+        novaFicha[mapaF['ordem'] - 1] = ultimaOrdem;
+        novaFicha[mapaF['relator'] - 1] = relatorPadrao;
+        sheetFichas.appendRow(novaFicha);
+
+        // --- LÓGICA DO PLENO: BUSCAR E REPLICAR VOTO ---
+        if (ehPleno) {
+          let votoMaisRecente = null;
+          let maiorIdVoto = 0; // Usando o timestamp do ID para saber qual é o último
+
+          // Varre a tabVotos em busca do ID do processo
+          for (let k = 1; k < dadosV.length; k++) {
+            const idProcNoVoto = String(dadosV[k][mapaV['idprocesso'] - 1]).trim();
+            if (idProcNoVoto === idRealDoProcesso) {
+              const idVotoAtual = parseInt(dadosV[k][mapaV['id'] - 1]) || 0;
+              if (idVotoAtual >= maiorIdVoto) {
+                maiorIdVoto = idVotoAtual;
+                votoMaisRecente = dadosV[k];
+              }
+            }
+          }
+
+          // Se achou um voto anterior, replica para a nova ficha
+          if (votoMaisRecente) {
+            const novoVoto = new Array(Object.keys(mapaV).length).fill('');
+            
+            novoVoto[mapaV['id'] - 1] = novoIdTimeStamp() + "_V" + adicionados;
+            novoVoto[mapaV['idfichavotacao'] - 1] = idNovaFicha; // Vincula à ficha que acabamos de criar
+            novoVoto[mapaV['idprocesso'] - 1] = idRealDoProcesso;
+            novoVoto[mapaV['tipovoto'] - 1] = "Voto do relator";
+            novoVoto[mapaV['relator'] - 1] = "Órgão Deliberativo"; // Força o relator conforme solicitado
+            novoVoto[mapaV['voto'] - 1] = votoMaisRecente[mapaV['voto'] - 1]; // Copia o conteúdo do voto
+            
+            // Se houver coluna de URL de relatório, podemos copiar também
+            const colUrl = _encontrarChave(mapaV, ['urlvoto', 'url relatório']);
+            if (colUrl) {
+               novoVoto[mapaV[colUrl] - 1] = votoMaisRecente[mapaV[colUrl] - 1];
+            }
+
+            sheetVotos.appendRow(novoVoto);
+          }
+        }
+
+        adicionados++;
+      } else {
+        naoEncontrados.push(num);
+      }
+    });
+
+    return { 
+      sucesso: true, 
+      adicionados: adicionados, 
+      avisos: naoEncontrados.length > 0 ? `Processos ignorados (não cadastrados): ${naoEncontrados.join(', ')}` : null 
+    };
+
+  } catch (e) {
+    return { sucesso: false, erro: e.message };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// VOTOS
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Retorna os votos de uma ficha.
+ * @param {string} idFicha
+ */
+function formSessoes_buscarVotos(idFicha) {
+  try {
+    const ss        = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
+    const sheetVot  = ss.getSheetByName('tabVotos');
+    if (!sheetVot) throw new Error("Aba 'tabVotos' não encontrada.");
+
+    const mapa  = getMapaColunas(sheetVot);
+    const dados = sheetVot.getDataRange().getValues();
+    dados.shift();
+
+    const chaveUrl = _encontrarChave(mapa, ['url relatório','url voto', 'urlvoto', 'url_voto']);
+
+    const votos = dados
+      .filter(v => String(v[mapa['idfichavotacao'] - 1]).trim() === String(idFicha).trim())
+      .map(v => ({
+        id:             String(v[mapa['id'] - 1] || ''),
+        idfichavotacao: String(v[mapa['idfichavotacao'] - 1] || ''),
+        idprocesso:     String(v[mapa['idprocesso'] - 1] || ''),
+        tipovoto:       String(v[mapa['tipovoto'] - 1] || ''),
+        relator:        String(v[mapa['relator'] - 1] || ''),
+        voto:           String(v[mapa['voto'] - 1] || ''),
+        resultado:      String(v[mapa['resultado'] - 1] || ''),
+        urlvoto:        chaveUrl ? String(v[mapa[chaveUrl] - 1] || '') : ''
+      }));
+
+    return { sucesso: true, votos: votos };
+  } catch (e) {
+    return { sucesso: false, erro: e.message };
+  }
+}
+
+/**
+ * Salva um novo voto ou atualiza um existente.
+ * @param {Object} obj  { id?, idfichavotacao, idprocesso, tipovoto, relator, voto, resultado }
+ */
+function formSessoes_salvarVoto(obj) {
   try {
     const ss    = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
-    const sheet = ss.getSheetByName("tabProcessos");
-    if (!sheet) throw new Error("Aba 'tabProcessos' não encontrada.");
+    const sheet = ss.getSheetByName('tabVotos');
+    if (!sheet) throw new Error("Aba 'tabVotos' não encontrada.");
+
+    const mapa    = getMapaColunas(sheet);
+    const dados   = sheet.getDataRange().getValues();
+    const numCols = Object.keys(mapa).length;
+
+    const chaveUrl = _encontrarChave(mapa, ['url voto', 'urlvoto', 'url_voto']);
+
+    if (!obj.id) obj.id = novoIdTimeStamp();
+
+    let linhaAlvo = -1;
+    for (let i = 1; i < dados.length; i++) {
+      if (String(dados[i][mapa['id'] - 1]).trim() === String(obj.id).trim()) {
+        linhaAlvo = i + 1;
+        break;
+      }
+    }
+
+    const linha = linhaAlvo !== -1
+      ? dados[linhaAlvo - 1].slice()
+      : new Array(numCols).fill('');
+
+    linha[mapa['id'] - 1]             = obj.id;
+    linha[mapa['idfichavotacao'] - 1] = obj.idfichavotacao || '';
+    linha[mapa['idprocesso'] - 1]     = obj.idprocesso || '';
+    linha[mapa['tipovoto'] - 1]       = obj.tipovoto || '';
+    linha[mapa['relator'] - 1]        = obj.relator || '';
+    linha[mapa['voto'] - 1]           = obj.voto || '';
+    // Preserva Resultado existente quando a edição não informa novo valor
+    if (obj.resultado !== '' && obj.resultado !== undefined && obj.resultado !== null) {
+      linha[mapa['resultado'] - 1] = obj.resultado;
+    }
+    if (chaveUrl) linha[mapa[chaveUrl] - 1] = obj.urlvoto || '';
+
+    if (linhaAlvo !== -1) {
+      sheet.getRange(linhaAlvo, 1, 1, linha.length).setValues([linha]);
+    } else {
+      sheet.appendRow(linha);
+    }
+
+    return { sucesso: true, id: obj.id };
+  } catch (e) {
+    throw new Error('Erro ao salvar voto: ' + e.message);
+  }
+}
+
+/**
+ * Exclui um voto pelo Id.
+ */
+function formSessoes_excluirVoto(id) {
+  try {
+    const ss    = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
+    const sheet = ss.getSheetByName('tabVotos');
+    if (!sheet) throw new Error("Aba 'tabVotos' não encontrada.");
 
     const dados = sheet.getDataRange().getValues();
     for (let i = 1; i < dados.length; i++) {
@@ -179,315 +651,139 @@ function formProcessos_excluirRegistro(id) {
         return { sucesso: true };
       }
     }
-    throw new Error("Processo não encontrado para exclusão.");
+    throw new Error('Voto não encontrado.');
   } catch (e) {
     throw new Error(e.message);
   }
 }
 
-/**
- * Busca todos os registros do histórico de um processo, ordenados do mais recente.
- * @param {string} idProcesso Id Base36 do processo.
- */
-function formProcessos_buscarHistorico(idProcesso) {
-  try {
-    const ss        = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
-    const sheetHist = ss.getSheetByName("tabHistorico");
-    if (!sheetHist) throw new Error("Aba 'tabHistorico' não encontrada.");
-
-    const mapaHist  = getMapaColunas(sheetHist);
-    const dadosHist = sheetHist.getDataRange().getValues();
-    dadosHist.shift();
-
-    const chaveDesc = mapaHist['descrição'] !== undefined ? 'descrição' : 'descricão';
-
-    const registros = dadosHist
-      .filter(h => String(h[mapaHist['idprocesso'] - 1]).trim() === String(idProcesso).trim())
-      .map(h => {
-        const rawDate = h[mapaHist['datahora'] - 1];
-        const dObj    = rawDate ? new Date(rawDate) : null;
-        const dataOk  = dObj && !isNaN(dObj.getTime());
-        return {
-          data:      dataOk ? Utilities.formatDate(dObj, "GMT-3", "dd/MM/yyyy") : "—",
-          dataSort:  dataOk ? dObj.getTime() : 0,
-          tipo:      String(h[mapaHist['tipo'] - 1] || ""),
-          descricao: String(h[mapaHist[chaveDesc] - 1] || "")
-        };
-      })
-      .sort((a, b) => b.dataSort - a.dataSort);
-
-    return { sucesso: true, registros };
-
-  } catch (e) {
-    return { sucesso: false, erro: e.message };
-  }
-}
+// ─────────────────────────────────────────────────────────────────────────────
+// UPLOAD E GESTÃO DE RELATÓRIO EM PDF (AJUSTADO)
+// ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Altera o status de um processo e registra o evento no histórico.
- * @param {string} idProcesso  Id Base36 do processo.
- * @param {string} novoStatus  "Concluso" ou "Na secretaria".
- * @param {string} dataISO     Data da mudança no formato 'yyyy-mm-dd'.
+ * Faz upload de um PDF para a pasta "Relatórios" no mesmo diretório do documento.
+ * Salva a URL no campo URL Voto da tabVotos.
  */
-function formProcessos_alterarStatus(idProcesso, novoStatus, dataISO) {
+function formSessoes_uploadRelatorio(idVoto, base64Data, fileName) {
   try {
-    const ss        = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
-    const sheetProc = ss.getSheetByName("tabProcessos");
-    if (!sheetProc) throw new Error("Aba 'tabProcessos' não encontrada.");
+    const ss = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
+    
+    // Localiza a pasta pai da planilha de dados (Documento Mestre)
+    const planilhaFile = DriveApp.getFileById(ss.getId());
+    const parentIter = planilhaFile.getParents();
+    if (!parentIter.hasNext()) throw new Error('Não foi possível localizar a pasta do documento mestre.');
+    const parentFolder = parentIter.next();
 
-    const mapaProc  = getMapaColunas(sheetProc);
-    const dadosProc = sheetProc.getDataRange().getValues();
-    const colStatus = mapaProc['status'] - 1;
+    // Localiza ou cria a pasta "Relatórios"
+    let relFolder;
+    const folderIter = parentFolder.getFoldersByName('Relatórios');
+    relFolder = folderIter.hasNext() ? folderIter.next() : parentFolder.createFolder('Relatórios');
 
-    let linhaAlvo = -1;
-    for (let i = 1; i < dadosProc.length; i++) {
-      if (String(dadosProc[i][mapaProc['id'] - 1]).trim() === String(idProcesso).trim()) {
-        linhaAlvo = i + 1;
+    // Converte Base64 para Blob e cria o arquivo
+    // Tratamento para remover o prefixo data:application/pdf;base64, se existir
+    const cleanBase64 = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
+    const bytes = Utilities.base64Decode(cleanBase64);
+    const blob = Utilities.newBlob(bytes, 'application/pdf', fileName);
+    const file = relFolder.createFile(blob);
+    
+    // Define permissão de visualização para quem tem o link
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+    const fileUrl = file.getUrl();
+
+    // Atualiza a URL no registro de voto correspondente na tabVotos
+    const sheet = ss.getSheetByName('tabVotos');
+    if (!sheet) throw new Error("Aba 'tabVotos' não encontrada.");
+    
+    const mapa = getMapaColunas(sheet);
+    const chaveUrl = _encontrarChave(mapa, ['url voto', 'urlvoto', 'url_voto', 'url relatório']);
+    
+    if (!chaveUrl) throw new Error("Coluna de URL do relatório não encontrada na tabVotos.");
+
+    const dados = sheet.getDataRange().getValues();
+    let atualizou = false;
+
+    for (let i = 1; i < dados.length; i++) {
+      if (String(dados[i][mapa['id'] - 1]).trim() === String(idVoto).trim()) {
+        sheet.getRange(i + 1, mapa[chaveUrl]).setValue(fileUrl);
+        atualizou = true;
         break;
       }
     }
-    if (linhaAlvo === -1) throw new Error("Processo não encontrado.");
 
-    // Atualiza a coluna Status
-    sheetProc.getRange(linhaAlvo, colStatus + 1).setValue(novoStatus);
+    if (!atualizou) throw new Error("ID do voto não encontrado para vincular o relatório.");
 
-    // Registra no histórico
-    _registrarHistorico(ss, idProcesso, "Andamento", novoStatus, dataISO);
+    return { sucesso: true, url: fileUrl, nome: fileName };
+
+  } catch (e) {
+    console.error('Erro em formSessoes_uploadRelatorio: ' + e.message);
+    throw new Error('Erro no upload do relatório: ' + e.message);
+  }
+}
+
+/**
+ * Exclui o arquivo do Google Drive e limpa o campo na tabVotos.
+ * @param {string} idVoto - ID do registro na planilha.
+ * @param {string} urlArquivo - URL completa do arquivo para extração do ID do Drive.
+ */
+function formSessoes_excluirRelatorio(idVoto, urlArquivo) {
+  try {
+    if (!urlArquivo) throw new Error("URL do arquivo não informada.");
+
+    // 1. Extrair ID do arquivo da URL do Google Drive
+    // Padrão comum: /file/d/[ID]/view ou id=[ID]
+    let fileId = "";
+    const match = urlArquivo.match(/[-\w]{25,}/);
+    if (match) fileId = match[0];
+
+    // 2. Excluir arquivo do Drive (enviar para a lixeira)
+    if (fileId) {
+      try {
+        DriveApp.getFileById(fileId).setTrashed(true);
+      } catch (errDrive) {
+        console.warn("Aviso: Arquivo não encontrado no Drive ou já excluído.");
+      }
+    }
+
+    // 3. Limpar o registro na tabVotos
+    const ss = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
+    const sheet = ss.getSheetByName('tabVotos');
+    const mapa = getMapaColunas(sheet);
+    const chaveUrl = _encontrarChave(mapa, ['url voto', 'urlvoto', 'url_voto', 'url relatório']);
+    
+    const dados = sheet.getDataRange().getValues();
+    for (let i = 1; i < dados.length; i++) {
+      if (String(dados[i][mapa['id'] - 1]).trim() === String(idVoto).trim()) {
+        sheet.getRange(i + 1, mapa[chaveUrl]).setValue("");
+        break;
+      }
+    }
 
     return { sucesso: true };
   } catch (e) {
-    throw new Error("Erro ao alterar status: " + e.message);
+    console.error('Erro em formSessoes_excluirRelatorio: ' + e.message);
+    throw new Error('Erro ao excluir relatório: ' + e.message);
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// FUNÇÕES AUXILIARES INTERNAS
+// ─────────────────────────────────────────────────────────────────────────────
+
 /**
- * Importação em massa de processos a partir de texto estruturado.
- * Formato esperado por linha: Processo | Data | Hora | Requerente
- * 
- * Regras:
- * - Se o número do processo NÃO existir na tabela → cria novo registro com status "Concluso"
- * - Se o número do processo JÁ existir → apenas muda status para "Concluso" e registra histórico
- * Em ambos os casos, adiciona registro em tabHistorico:
- * Tipo: "Andamento" | Descrição: "Concluso ao órgão deliberativo"
- *
- * @param {Array} itens Lista de objetos { processo, data, requerente } parseados no frontend.
+ * Procura a chave do mapa em uma lista de possíveis nomes (case-insensitive, sem acentos opcionais).
  */
-function formProcessos_importarEmMassa(itens) {
-  try {
-    const ss        = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
-    const sheetProc = ss.getSheetByName("tabProcessos");
-    if (!sheetProc) throw new Error("Aba 'tabProcessos' não encontrada.");
-
-    const mapaProc  = getMapaColunas(sheetProc);
-    const dadosProc = sheetProc.getDataRange().getValues();
-    const colunas   = dadosProc[0].map(c => c.toLowerCase().trim());
-    const colStatus = mapaProc['status'] - 1;
-    const colId     = mapaProc['id']     - 1;
-    const colNum    = mapaProc['processo']   - 1;
-
-    let criados = 0, atualizados = 0;
-
-    itens.forEach(item => {
-      const numeroLimpo = String(item.processo || "").trim();
-      if (!numeroLimpo) return;
-
-      // Busca processo existente pelo número
-      let linhaExistente = -1;
-      let idExistente    = "";
-      for (let i = 1; i < dadosProc.length; i++) {
-        if (String(dadosProc[i][colNum]).trim() === numeroLimpo) {
-          linhaExistente = i + 1;
-          idExistente    = String(dadosProc[i][colId]);
-          break;
-        }
-      }
-
-      if (linhaExistente !== -1) {
-        // Processo existe: apenas atualiza status
-        sheetProc.getRange(linhaExistente, colStatus + 1).setValue("Concluso");
-        _registrarHistorico(ss, idExistente, "Andamento", "Concluso ao órgão deliberativo", item.data);
-        atualizados++;
-
-      } else {
-        // Processo novo: cria linha completa
-        const novoId    = novoIdTimeStamp();
-        Utilities.sleep(5); // Garante unicidade do Id
-        const novaLinha = colunas.map(col => {
-          if (col === 'id')         return novoId;
-          if (col === 'processo')   return numeroLimpo;
-          if (col === 'requerente') return item.requerente || "";
-          if (col === 'status')     return "Concluso";
-          return "";
-        });
-        sheetProc.appendRow(novaLinha);
-        _registrarHistorico(ss, novoId, "Andamento", "Concluso ao órgão deliberativo", item.data);
-        criados++;
-      }
+function _encontrarChave(mapa, candidatos) {
+  for (const cand of candidatos) {
+    if (mapa[cand] !== undefined) return cand;
+    // Tenta sem acentos
+    const semAcento = cand.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const chaveEncontrada = Object.keys(mapa).find(k => {
+      const kNorm = k.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      return kNorm === semAcento;
     });
-
-    return {
-      sucesso: true,
-      mensagem: `Importação concluída: ${criados} processo(s) criado(s), ${atualizados} atualizado(s).`
-    };
-
-  } catch (e) {
-    throw new Error("Erro na importação em massa: " + e.message);
+    if (chaveEncontrada) return chaveEncontrada;
   }
-}
-
-/**
- * Adiciona um processo à pauta de uma sessão existente (tabFichas).
- */
-function formProcessos_adicionarAPauta(idProcesso, idSessao) {
-  try {
-    const ss          = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
-    const sheetFichas = ss.getSheetByName("tabFichas");
-    if (!sheetFichas) throw new Error("Aba 'tabFichas' não encontrada.");
-
-    const mapa      = getMapaColunas(sheetFichas);
-    const dados     = sheetFichas.getDataRange().getValues();
-    const colSessao = mapa['idsessao']   - 1;
-    const colProc   = mapa['idprocesso'] - 1;
-    const colOrdem  = mapa['ordem']      - 1; // Coluna Ordem
-
-    let maiorOrdem = 0;
-
-    // Percorre os dados para validar duplicidade e calcular a próxima Ordem
-    for (let i = 1; i < dados.length; i++) {
-      const sessaoNaLinha = String(dados[i][colSessao]).trim();
-      
-      // Validação de duplicidade
-      if (
-        sessaoNaLinha === String(idSessao).trim()  &&
-        String(dados[i][colProc]).trim()   === String(idProcesso).trim()
-      ) {
-        throw new Error("Este processo já está na pauta desta sessão.");
-      }
-
-      // Lógica da Ordem: Verifica o maior número de ordem APENAS para a mesma sessão
-      if (sessaoNaLinha === String(idSessao).trim()) {
-        const ordemAtual = parseInt(dados[i][colOrdem]) || 0;
-        if (ordemAtual > maiorOrdem) {
-          maiorOrdem = ordemAtual;
-        }
-      }
-    }
-
-    const proximaOrdem = maiorOrdem + 1;
-
-    const numCols   = Object.keys(mapa).length;
-    const novaLinha = new Array(numCols).fill("");
-    
-    novaLinha[mapa['id'] - 1]         = novoIdTimeStamp();
-    novaLinha[colSessao]              = idSessao;
-    novaLinha[colProc]                = idProcesso;
-    novaLinha[colOrdem]               = proximaOrdem; // Grava a nova ordem
-    novaLinha[mapa['expediente'] - 1] = "Aguardando relato";
-
-    sheetFichas.appendRow(novaLinha);
-    return { sucesso: true, mensagem: "Processo adicionado à pauta (Ordem: " + proximaOrdem + ")." };
-
-  } catch (e) {
-    throw new Error(e.message);
-  }
-}
-
-/**
- * Cria nova sessão (Órgão + Data + Sala/Local opcional) e inclui o processo na pauta com Ordem 1.
- */
-function formProcessos_criarSessaoEPautar(idProcesso, orgao, dataISO, local) {
-  try {
-    const ss           = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
-    const sheetSessoes = ss.getSheetByName("tabSessoes");
-    if (!sheetSessoes) throw new Error("Aba 'tabSessoes' não encontrada.");
-
-    const mapa      = getMapaColunas(sheetSessoes);
-    const numCols   = Object.keys(mapa).length;
-    const novaLinha = new Array(numCols).fill("");
-
-    const novoIdSessao = novoIdTimeStamp();
-    novaLinha[mapa['id'] - 1] = novoIdSessao;
-
-    // Processamento da Data
-    if (dataISO) {
-      const p = dataISO.split('-');
-      if (p.length === 3) {
-        novaLinha[mapa['datasessao'] - 1] = 
-          new Date(parseInt(p[0]), parseInt(p[1]) - 1, parseInt(p[2]), 12, 0, 0);
-      }
-    }
-
-    // Mapeamento dinâmico de Órgão e Local
-    const chaveOrgao = Object.keys(mapa).find(k => k.includes('rg'));
-    const chaveLocal = Object.keys(mapa).find(k => k.includes('local'));
-    if (chaveOrgao) novaLinha[mapa[chaveOrgao] - 1] = orgao;
-    if (chaveLocal && local) novaLinha[mapa[chaveLocal] - 1] = local;
-
-    // Insere a nova sessão
-    sheetSessoes.appendRow(novaLinha);
-    
-    // Pausa técnica para garantir que o Google Sheets registre a nova linha antes da consulta de ordem
-    Utilities.sleep(500); 
-
-    // CHAMA A FUNÇÃO DE ADICIONAR (que já ajustamos para calcular Ordem: maior + 1)
-    // Como a sessão é nova, a função adicionarAPauta encontrará "maiorOrdem = 0" e definirá Ordem = 1.
-    const resPauta = formProcessos_adicionarAPauta(idProcesso, novoIdSessao);
-    
-    return { 
-      sucesso: true, 
-      mensagem: "Sessão criada e processo incluído na pauta (Ordem: 1)." 
-    };
-
-  } catch (e) {
-    throw new Error("Erro ao criar sessão: " + e.message);
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Funções auxiliares internas
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Insere um registro na tabHistorico.
- * @param {Spreadsheet} ss          Instância da planilha já aberta.
- * @param {string}      idProcesso  Id do processo.
- * @param {string}      tipo        Ex: "Andamento", "Ato processual".
- * @param {string}      descricao   Texto do evento.
- * @param {string}      dataISO     Data no formato 'yyyy-mm-dd' (pode ser "dd/mm/yyyy" para retrocompatibilidade).
- */
-function _registrarHistorico(ss, idProcesso, tipo, descricao, dataISO) {
-  const sheetHist = ss.getSheetByName("tabHistorico");
-  if (!sheetHist) return;
-
-  const mapaHist = getMapaColunas(sheetHist);
-  const numCols  = Object.keys(mapaHist).length;
-  const linha    = new Array(numCols).fill("");
-
-  const chaveDesc = mapaHist['descrição'] !== undefined ? 'descrição' : 'descricão';
-
-  linha[mapaHist['id']          - 1] = novoIdTimeStamp();
-  linha[mapaHist['idprocesso']  - 1] = idProcesso;
-  linha[mapaHist['tipo']        - 1] = tipo;
-  linha[mapaHist[chaveDesc]     - 1] = descricao;
-
-  // Converte data: aceita 'yyyy-mm-dd' ou 'dd/mm/yyyy'
-  if (dataISO) {
-    let dObj;
-    if (dataISO.includes('-')) {
-      const p = dataISO.split('-');
-      dObj = p.length === 3
-        ? new Date(parseInt(p[0]), parseInt(p[1]) - 1, parseInt(p[2]), 12, 0, 0)
-        : null;
-    } else if (dataISO.includes('/')) {
-      const p = dataISO.split('/');
-      dObj = p.length === 3
-        ? new Date(parseInt(p[2]), parseInt(p[1]) - 1, parseInt(p[0]), 12, 0, 0)
-        : null;
-    }
-    if (dObj && !isNaN(dObj.getTime())) {
-      linha[mapaHist['datahora'] - 1] = dObj;
-    }
-  }
-
-  sheetHist.appendRow(linha);
+  return null;
 }
