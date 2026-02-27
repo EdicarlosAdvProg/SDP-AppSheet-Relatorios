@@ -10,24 +10,7 @@
 
 Vamos reestrutura a barra lateral:
 
-* Eu já movi o itens do menu para um menu oculto expansível com interação do mouse
-
-* Agora, no corpo principal da barra lateral deverá conter os dados das Sessão e das tabelas relacionadas, ou Seja, em suma: A pauta da sessão;
-
-* abra sempre o painel com os dados da Sessão mais recente;
-
-* mostre a data e órgão no topo e uma forma de escolher outra sessão;
-
-* mostre a lista de fichas de votação ordenado pelo campo [Ordem] de tabFichas;
-
-* a lista de fichas devem ser cards enfileirados com as informações em hierarquia: Nível 1 -> Ordem e número do processo; Nível 2 -> Requerente; Nível 3 -> Procurador; Nível 4 -> Relator (de tabFicha)
-
-* abaixo da lista de fichas (Pauta), estará a lista de participantes, que inicialmente será carregada com os nomes do campo [Membros] de tabSessoes (a lista terá que ser extraída da string, sendo os nomes separados por ";")
-
-* dispor de forma de adicionar e excluir nomes da lista (salvar em tabSessoes);
-
-* abaixo da lista de sessões deve conter a lista de procuradores, inicialmente carregada como a lista de nomes separados por ";" no campo [Procuradores] de tabSessoes;
-
-* da mesma forma que a lista de membros participantes, deverá ter formas de adicionar e remover nomes de procuradores (lembre-se que temos o cadastro de procuradores em tabProcuradores)
-
-* Por fim, ao final das 3 listas um campo de texto longo para o Expediente
+<script>
+  // Esta linha pega o JSON que injetamos no Passo 1
+  window.DADOS_INICIAIS = <?!= dadosIniciaisJSON ?>;
+</script>

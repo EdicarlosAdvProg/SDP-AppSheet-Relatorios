@@ -256,22 +256,43 @@
   // ============================================================
 
   function formSessoes_confirmarExclusao(id, data) {
+    // Reseta o visual do modal caso tenha sido alterado por um erro anterior
+    document.getElementById('iconConfirmacao').innerText = 'delete_forever';
+    document.getElementById('iconConfirmacao').className = 'material-icons large red-text text-darken-2';
+    document.getElementById('tituloConfirmacao').innerText = 'Confirmar exclusão';
+    
     document.getElementById('msgConfirmacao').innerText =
-      `A sessão de ${data} será removida permanentemente.\n\nOs processos pautados e votos vinculados serão preservados.\nEsta ação não pode ser desfeita.`;
+      `A sessão de ${data} será removida permanentemente.\n\nAs fichas (pauta) sem votos também serão excluídas.\nEsta ação não pode ser desfeita.`;
 
     const btnConf = document.getElementById('btnConfirmarAcao');
     const novoBtn = btnConf.cloneNode(true);
     novoBtn.innerHTML = 'Excluir Sessão';
     btnConf.parentNode.replaceChild(novoBtn, btnConf);
+
     novoBtn.onclick = function () {
-      M.Modal.getInstance(document.getElementById('modalConfirmacao')).close();
+      // Desabilita o botão para evitar múltiplos cliques
+      novoBtn.disabled = true;
+      novoBtn.innerHTML = 'Processando...';
+
       google.script.run
         .withSuccessHandler(function () {
-          M.toast({ html: 'Sessão excluída.', classes: 'blue-grey darken-2' });
+          M.toast({ html: 'Sessão excluída com sucesso.', classes: 'blue-grey darken-2' });
+          M.Modal.getInstance(document.getElementById('modalConfirmacao')).close();
           formSessoes_carregar();
         })
         .withFailureHandler(function (err) {
-          M.toast({ html: 'Erro: ' + err.message, classes: 'red darken-2' });
+          // TRATAMENTO DO FREIO DE SEGURANÇA
+          novoBtn.disabled = false;
+          novoBtn.innerHTML = 'Excluir Sessão';
+          
+          // Se for o erro de bloqueio, avisa com destaque
+          if (err.message.includes("BLOQUEIO")) {
+            M.toast({ html: err.message.replace("Error: ", ""), classes: 'orange darken-4', displayLength: 6000 });
+            // Opcional: Fechar o modal automaticamente já que não pode excluir
+            M.Modal.getInstance(document.getElementById('modalConfirmacao')).close();
+          } else {
+            M.toast({ html: 'Erro: ' + err.message, classes: 'red darken-2' });
+          }
         })
         .formSessoes_excluirRegistro(id);
     };

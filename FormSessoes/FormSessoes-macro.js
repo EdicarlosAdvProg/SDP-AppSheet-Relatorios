@@ -175,23 +175,72 @@ function formSessoes_salvarRegistro(obj) {
 }
 
 /**
- * Exclui uma sessão. Fichas e votos vinculados são preservados.
+ * Exclui uma sessão e suas fichas, com trava de segurança para votos existentes.
+ * @param {string} idSessao - ID da sessão a ser excluída.
  */
-function formSessoes_excluirRegistro(id) {
+function formSessoes_excluirRegistro(idSessao) {
   try {
-    const ss    = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
-    const sheet = ss.getSheetByName('tabSessoes');
-    if (!sheet) throw new Error("Aba 'tabSessoes' não encontrada.");
+    const ss = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
+    
+    const sheetSess = ss.getSheetByName('tabSessoes');
+    const sheetFichas = ss.getSheetByName('tabFichas');
+    const sheetVotos = ss.getSheetByName('tabVotos');
 
-    const dados = sheet.getDataRange().getValues();
-    for (let i = 1; i < dados.length; i++) {
-      if (String(dados[i][0]).trim() === String(id).trim()) {
-        sheet.deleteRow(i + 1);
+    if (!sheetSess || !sheetFichas || !sheetVotos) {
+      throw new Error("Abas necessárias não encontradas.");
+    }
+
+    // 1. MAPEAMENTO E COLETA DE FICHAS
+    const mapaF = getMapaColunas(sheetFichas);
+    const dadosF = sheetFichas.getDataRange().getValues();
+    const idsFichasDestaSessao = [];
+
+    for (let i = 1; i < dadosF.length; i++) {
+      // CORREÇÃO: Usando mapaF consistentemente
+      if (String(dadosF[i][mapaF['idsessao'] - 1]).trim() === String(idSessao).trim()) {
+        idsFichasDestaSessao.push(String(dadosF[i][mapaF['id'] - 1]).trim());
+      }
+    }
+
+    // 2. FREIO DE SEGURANÇA (TRAVA DE VOTOS)
+    if (idsFichasDestaSessao.length > 0) {
+      const mapaV = getMapaColunas(sheetVotos);
+      const dadosV = sheetVotos.getDataRange().getValues();
+      
+      const colFichaVoto = mapaV['idfichavotacao'] - 1;
+
+      for (let j = 1; j < dadosV.length; j++) {
+        const idFichaNoVoto = String(dadosV[j][colFichaVoto]).trim();
+        // Se o ID da ficha do voto estiver entre as fichas da sessão que queremos excluir
+        if (idsFichasDestaSessao.includes(idFichaNoVoto)) {
+          throw new Error("BLOQUEIO: Esta sessão possui votos registrados e não pode ser excluída para preservar o histórico.");
+        }
+      }
+    }
+
+    // 3. EXCLUSÃO DAS FICHAS (Apenas se passou pelo freio acima)
+    for (let k = dadosF.length - 1; k >= 1; k--) {
+      if (String(dadosF[k][mapaF['idsessao'] - 1]).trim() === String(idSessao).trim()) {
+        sheetFichas.deleteRow(k + 1);
+      }
+    }
+
+    // 4. EXCLUSÃO DA SESSÃO
+    const dadosS = sheetSess.getDataRange().getValues();
+    const mapaS = getMapaColunas(sheetSess);
+    const colIdSess = mapaS['id'] - 1;
+
+    for (let m = 1; m < dadosS.length; m++) {
+      if (String(dadosS[m][colIdSess]).trim() === String(idSessao).trim()) {
+        sheetSess.deleteRow(m + 1);
         return { sucesso: true };
       }
     }
-    throw new Error('Sessão não encontrada para exclusão.');
+
+    throw new Error("Sessão não encontrada.");
+
   } catch (e) {
+    // Repassa o erro para o frontend
     throw new Error(e.message);
   }
 }
