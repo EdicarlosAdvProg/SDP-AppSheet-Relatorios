@@ -3,15 +3,21 @@
  */
 function PainelLateral_exibirSidebar() {
   try {
-    const html = HtmlService.createTemplateFromFile('PainelLateral-layout')
-        .evaluate()
-        .setTitle('Ferramentas da Sessão')
+    const html = HtmlService.createTemplateFromFile('PainelLateral-layout');
+    
+    // Coleta o pacote de dados (Sessão recente, Fichas e Votos dela)
+    const dadosIniciais = PainelLateral_obterPacoteInicial();
+    
+    // Injeta na variável que o HTML vai ler
+    html.dadosIniciaisJSON = JSON.stringify(dadosIniciais);
+    
+    const display = html.evaluate()
+        .setTitle('SDP-OAB')
         .setSandboxMode(HtmlService.SandboxMode.IFRAME);
     
-    DocumentApp.getUi().showSidebar(html);
+    DocumentApp.getUi().showSidebar(display);
   } catch (err) {
-    const ui = DocumentApp.getUi();
-    ui.alert('Erro ao abrir painel: ' + err.message);
+    DocumentApp.getUi().alert('Erro: ' + err.message);
   }
 }
 
@@ -259,5 +265,101 @@ function PainelLateral_salvarCampoSessao(sessaoId, nomeCampo, novoValor) {
 
   } catch (err) {
     throw new Error('PainelLateral_salvarCampoSessao: ' + err.message);
+  }
+}
+
+function PainelLateral_obterPacoteInicial() {
+  const sessoes = PainelLateral_listarSessoes();
+  const idRecente = sessoes.length > 0 ? sessoes[0].id : null;
+  
+  // Busca pauta (fichas) e votos apenas da sessão recente
+  const pautaAtiva = idRecente ? PainelLateral_carregarPauta(idRecente) : null;
+  const votosSessao = idRecente ? PainelLateral_obterVotosDaSessao(idRecente) : [];
+
+  return {
+    config: { sessaoAtivaId: idRecente },
+    sessoes: sessoes,
+    pautaAtiva: pautaAtiva, 
+    votosSessao: votosSessao,
+    cadastros: {
+      membros: PainelLateral_listarMembrosCompleto(), 
+      procuradores: PainelLateral_listarProcuradoresCadastrados()
+    }
+  };
+}
+
+function PainelLateral_obterVotosDaSessao(sessaoId) {
+  const ss = PainelLateral_getPlanilha();
+  const sheetVotos = ss.getSheetByName('tabVotos');
+  const dadosVotos = sheetVotos.getDataRange().getValues();
+  const mapaVotos = getMapaColunas(sheetVotos);
+  
+  // Pegamos os votos onde o ID do Processo ou ID da Ficha pertença a esta sessão
+  // Nota: Na sua pautaAtiva já temos os IDs das fichas carregados
+  return dadosVotos.slice(1).map(v => ({
+    idFicha: v[(mapaVotos['idfichavotacao'] || 2) - 1],
+    voto: v[(mapaVotos['voto'] || 6) - 1]
+  })).filter(v => v.voto !== ""); // Filtro simples para não enviar lixo
+}
+
+/**
+ * Retorna a lista completa de nomes da tabMembros para o cache de autocompletes.
+ */
+function PainelLateral_listarMembrosCompleto() {
+  try {
+    const ss = PainelLateral_getPlanilha();
+    const sheet = ss.getSheetByName('tabMembros');
+    if (!sheet) return [];
+
+    const dados = sheet.getDataRange().getValues();
+    const mapa = getMapaColunas(sheet);
+    const iNome = (mapa['nome'] || 2) - 1;
+
+    return dados.slice(1)
+      .map(row => (row[iNome] || '').toString().trim())
+      .filter(nome => nome !== '');
+  } catch (err) {
+    Logger.log('Erro em listarMembrosCompleto: ' + err.message);
+    return [];
+  }
+}
+
+/**
+ * Busca votos em tabVotos filtrando apenas pelos IDs das Fichas da sessão atual.
+ * Versão otimizada para grandes volumes.
+ */
+function PainelLateral_obterVotosDaSessao(sessaoId) {
+  try {
+    const ss = PainelLateral_getPlanilha();
+    
+    // 1. Primeiro identificamos os IDs das fichas que pertencem a esta sessão
+    const sheetFichas = ss.getSheetByName('tabFichas');
+    const dadosFichas = sheetFichas.getDataRange().getValues();
+    const mapaFichas = getMapaColunas(sheetFichas);
+    const iFid = (mapaFichas['id'] || 1) - 1;
+    const iFsessao = (mapaFichas['idsessao'] || 2) - 1;
+    
+    const idsFichasDaSessao = dadosFichas.slice(1)
+      .filter(r => r[iFsessao] == sessaoId)
+      .map(r => r[iFid]);
+
+    if (idsFichasDaSessao.length === 0) return [];
+
+    // 2. Filtramos a tabVotos apenas para estas fichas
+    const sheetVotos = ss.getSheetByName('tabVotos');
+    const dadosVotos = sheetVotos.getDataRange().getValues();
+    const mapaVotos = getMapaColunas(sheetVotos);
+    const iVidFicha = (mapaVotos['idfichavotacao'] || 2) - 1;
+    const iVvoto = (mapaVotos['voto'] || 6) - 1;
+
+    return dadosVotos.slice(1)
+      .filter(v => idsFichasDaSessao.indexOf(v[iVidFicha]) !== -1)
+      .map(v => ({
+        idFicha: v[iVidFicha],
+        voto: v[iVvoto] || ''
+      }));
+  } catch (err) {
+    Logger.log('Erro em obterVotosDaSessao: ' + err.message);
+    return [];
   }
 }

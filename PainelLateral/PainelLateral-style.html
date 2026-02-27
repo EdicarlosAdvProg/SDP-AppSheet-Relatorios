@@ -1,564 +1,77 @@
 <style>
-  *,
-  *::before,
-  *::after {
-    box-sizing: border-box;
+  /* =====================================================
+     0. VARIÁVEIS E RESET
+     Paleta oficial OAB-GO. Nenhuma outra cor deve ser
+     introduzida fora deste bloco sem justificativa.
+  ===================================================== */
+  :root {
+    --oab-vermelho:   #ff0000;
+    --oab-azul:       #004480;
+    --oab-azul-escuro:#002f5d;
+    --oab-dourado:    #a68945;
+    --oab-fundo:      #d1d8db;
+    --oab-branco:     #ffffff;
+    --oab-cinza-md:   #b0bec5;  /* divisores, bordas leves */
+    --oab-cinza-txt:  #546e7a;  /* textos secundários */
+    --oab-cinza-bg:   #eceff1;  /* fundo de itens */
   }
+
+  *, *::before, *::after { box-sizing: border-box; }
 
   body {
     font-family: 'Inter', sans-serif;
-    background-color: #d1d8db;
+    background-color: var(--oab-fundo);
     margin: 0;
     padding: 0;
-    overflow-x: hidden;
+    /* overflow-x NÃO deve ser hidden: cortaria o menu retrátil na expansão */
   }
 
-  /* ===== HEADER ===== */
+  /* =====================================================
+     1. HEADER FIXO
+     Barra superior vermelha com logo e seletor de sessão.
+  ===================================================== */
   .sidebar-header {
     position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 52px;
-    background-color: #ff0000;
+    top: 0; left: 0; right: 0;
+    height: 60px;
+    background-color: var(--oab-vermelho);
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: space-between;
+    padding: 0 12px;
     z-index: 1100;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
   }
 
   .logo {
     height: 34px;
-  }
-
-  /* ===== ÁREA PRINCIPAL ===== */
-  .main-container {
-    margin-top: 52px;
-    /* Altura do header */
-    margin-right: 50px;
-    /* Largura do menu retrátil */
-    padding: 12px 10px 100px;
-    min-height: calc(100vh - 52px);
-    overflow-y: auto;
-  }
-
-  /* ===== ESTADOS DE CARREGAMENTO ===== */
-  .estado-loading,
-  .estado-erro {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 40px 20px;
-    color: #004480;
-    font-size: 13px;
-    gap: 10px;
-    text-align: center;
-  }
-
-  .estado-loading i {
-    font-size: 28px;
-    color: #a68945;
-  }
-
-  .estado-erro i {
-    font-size: 28px;
-    color: #ff0000;
-  }
-
-  .hidden {
-    display: none !important;
-  }
-
-  /* ===== CARD DE SESSÃO ===== */
-  .card-sessao {
-    background: #fff;
-    border-radius: 12px;
-    padding: 12px 14px;
-    margin-bottom: 12px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-  }
-
-  .sessao-info {
-    display: flex;
-    flex-direction: column;
-    margin-bottom: 10px;
-  }
-
-  .sessao-orgao {
-    font-size: 13px;
-    font-weight: 700;
-    color: #002f5d;
-    line-height: 1.3;
-  }
-
-  .sessao-data {
-    font-size: 11px;
-    color: #a68945;
-    font-weight: 600;
-    margin-top: 2px;
-  }
-
-  .sessao-selector-wrap {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .label-campo {
-    font-size: 10px;
-    font-weight: 600;
-    color: #666;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-
-  .select-sessao {
-    width: 100%;
-    padding: 6px 8px;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    font-family: 'Inter', sans-serif;
-    font-size: 12px;
-    color: #002f5d;
-    background: #f5f7f9;
-    cursor: pointer;
-  }
-
-  .select-sessao:focus {
-    outline: 2px solid #004480;
-  }
-
-  /* ===== TÍTULOS DE SEÇÃO ===== */
-  .secao-titulo {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 12px;
-    font-weight: 700;
-    color: #004480;
-    text-transform: uppercase;
-    letter-spacing: 0.6px;
-    margin: 16px 0 8px;
-  }
-
-  .badge-count {
-    background: #002f5d;
-    color: #fff;
-    font-size: 10px;
-    font-weight: 700;
-    padding: 1px 6px;
-    border-radius: 50px;
-    min-width: 20px;
-    text-align: center;
-  }
-
-  /* ===== CARDS DE FICHA ===== */
-  .fichas-lista {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-bottom: 4px;
-  }
-
-  .ficha-card {
-    background: #fff;
-    border-radius: 10px;
-    padding: 10px 12px;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.07);
-    border-left: 4px solid #a68945;
-    cursor: default;
-    transition: box-shadow 0.2s;
-  }
-
-  .ficha-card:hover {
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.13);
-  }
-
-  .ficha-nivel1 {
-    display: flex;
-    align-items: baseline;
-    gap: 6px;
-    margin-bottom: 5px;
-  }
-
-  .ficha-ordem {
-    background: #002f5d;
-    color: #fff;
-    font-size: 10px;
-    font-weight: 700;
-    padding: 2px 7px;
-    border-radius: 50px;
-    white-space: nowrap;
-  }
-
-  .ficha-processo {
-    font-size: 13px;
-    font-weight: 700;
-    color: #002f5d;
-  }
-
-  .ficha-nivel2,
-  .ficha-nivel3,
-  .ficha-nivel4 {
-    font-size: 11px;
-    color: #444;
-    display: flex;
-    align-items: baseline;
-    gap: 4px;
-    margin-top: 3px;
-  }
-
-  .ficha-label {
-    font-weight: 700;
-    color: #888;
-    font-size: 10px;
-    text-transform: uppercase;
-    white-space: nowrap;
-  }
-
-  .ficha-valor {
-    color: #222;
-  }
-
-  /* ===== LISTA DE PESSOAS ===== */
-  .lista-pessoas {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    margin-bottom: 8px;
-  }
-
-  .pessoa-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: #fff;
-    border-radius: 8px;
-    padding: 7px 10px;
-    font-size: 12px;
-    color: #222;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-  }
-
-  .pessoa-nome {
-    flex: 1;
-  }
-
-  .btn-remover {
-    background: none;
-    border: none;
-    color: #cc0000;
-    cursor: pointer;
-    font-size: 13px;
-    padding: 2px 4px;
-    border-radius: 4px;
-    transition: background 0.2s;
-  }
-
-  .btn-remover:hover {
-    background: #ffe5e5;
-  }
-
-  /* ===== ADICIONAR ITEM ===== */
-  .adicionar-item {
-    display: flex;
-    gap: 6px;
-    align-items: flex-start;
-    margin-bottom: 4px;
-    position: relative;
-  }
-
-  .autocomplete-wrap {
-    flex: 1;
-    position: relative;
-  }
-
-  .input-campo {
-    flex: 1;
-    width: 100%;
-    padding: 7px 10px;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    font-family: 'Inter', sans-serif;
-    font-size: 12px;
-    color: #222;
-    background: #fff;
-  }
-
-  .input-campo:focus {
-    outline: 2px solid #004480;
-  }
-
-  .autocomplete-lista {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    background: #fff;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    max-height: 140px;
-    overflow-y: auto;
-    z-index: 500;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
-  }
-
-  .autocomplete-item {
-    padding: 7px 10px;
-    font-size: 12px;
-    cursor: pointer;
-    color: #222;
-  }
-
-  .autocomplete-item:hover {
-    background: #e8f0fb;
-    color: #002f5d;
-  }
-
-  /* ===== FEEDBACK DE SALVAMENTO ===== */
-  .feedback-salvando {
-    font-size: 11px;
-    color: #a68945;
-    font-weight: 600;
-    text-align: right;
-    padding-right: 4px;
-    margin-bottom: 6px;
-    animation: fadeIn 0.3s;
-  }
-
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-    }
-
-    to {
-      opacity: 1;
-    }
-  }
-
-  /* ===== EXPEDIENTE ===== */
-  .expediente-wrap {
-    margin-bottom: 20px;
-  }
-
-  .textarea-expediente {
-    width: 100%;
-    min-height: 100px;
-    padding: 10px 12px;
-    border: 1px solid #ccc;
-    border-radius: 10px;
-    font-family: 'Inter', sans-serif;
-    font-size: 12px;
-    color: #222;
-    resize: vertical;
-    background: #fff;
-  }
-
-  .textarea-expediente:focus {
-    outline: 2px solid #004480;
-  }
-
-  /* ===== BOTÕES ===== */
-  .btn-pill {
-    border: none;
-    border-radius: 50px;
-    font-family: 'Inter', sans-serif;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.2s, color 0.2s;
-    white-space: nowrap;
-  }
-
-  .btn-primario {
-    background: #004480;
-    color: #fff;
-    padding: 7px 14px;
-    font-size: 12px;
-  }
-
-  .btn-primario:hover {
-    background: #002f5d;
-  }
-
-  .btn-secundario {
-    background: #d1d8db;
-    color: #002f5d;
-    padding: 7px 14px;
-    font-size: 12px;
-  }
-
-  .btn-secundario:hover {
-    background: #002f5d;
-    color: #fff;
-  }
-
-  .btn-sm {
-    padding: 6px 12px;
-    font-size: 11px;
-  }
-
-  /* ===== MENU LATERAL RETRÁTIL ===== */
-  .nav-sidebar {
-    position: fixed;
-    right: 0;
-    top: 52px;
-    bottom: 0;
-    width: 50px;
-    background-color: #004480;
-    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    z-index: 1000;
-    box-shadow: -2px 0 5px rgba(0, 0, 0, 0.2);
-    overflow: hidden;
-  }
-
-  .nav-sidebar:hover {
-    width: 200px;
-  }
-
-  .nav-group {
-    display: flex;
-    flex-direction: column;
-    padding-top: 10px;
-  }
-
-  .nav-item {
-    display: flex;
-    align-items: center;
-    width: 200px;
-    height: 50px;
-    border: none;
-    background: transparent;
-    color: white;
-    cursor: pointer;
-    transition: background 0.2s;
-    padding: 0;
-  }
-
-  .nav-item:hover {
-    background-color: #002f5d;
-  }
-
-  .nav-item i {
-    min-width: 50px;
-    font-size: 18px;
-    text-align: center;
-  }
-
-  .nav-label {
-    white-space: nowrap;
-    font-size: 13px;
-    font-weight: 600;
-    opacity: 0;
-    transition: opacity 0.2s;
-  }
-
-  .nav-sidebar:hover .nav-label {
-    opacity: 1;
-  }
-
-  /* ===== FAB ===== */
-  .fab-container {
-    position: fixed;
-    bottom: 20px;
-    right: 65px;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    z-index: 999;
-  }
-
-  .fab-main {
-    width: 45px;
-    height: 45px;
-    border-radius: 50%;
-    background-color: #ff0000;
-    color: white;
-    border: none;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-    cursor: pointer;
-    transition: transform 0.25s;
-    font-size: 16px;
-  }
-
-  .fab-options {
-    display: none;
-    flex-direction: column;
-    align-items: flex-end;
-    margin-bottom: 10px;
-    gap: 10px;
-  }
-
-  .fab-options.show {
-    display: flex;
-  }
-
-  .fab-item {
-    display: flex;
-    align-items: center;
-    cursor: pointer;
-  }
-
-  .fab-item span {
-    background: #004480;
-    color: white;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 10px;
-    margin-right: 8px;
-  }
-
-  .fab-sub {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background-color: #fff;
-    color: #004480;
-    border: 1px solid #004480;
-    cursor: pointer;
-  }
-
-  /* ===== EMPTY STATE ===== */
-  .empty-state {
-    font-size: 11px;
-    color: #999;
-    text-align: center;
-    padding: 10px;
-    font-style: italic;
-  }
-
-  /* ===== DROPDOWN CUSTOMIZADO ===== */
-
-  .sidebar-header {
-    height: 60px;
-    padding: 0 10px;
-    justify-content: space-between;
-    /* Logo à esquerda, Dropdown à direita */
-  }
-
-  /* Dropdown Customizado */
+    flex-shrink: 0;
+  }
+
+  /* =====================================================
+     2. DROPDOWN CUSTOMIZADO DE SESSÕES
+     Exibido no header. Não usa o Materialize Select,
+     pois o contexto de cor (fundo vermelho) exige controle
+     total sobre os estilos.
+  ===================================================== */
   .custom-dropdown {
     position: relative;
-    width: 190px;
-    margin-left: 10px;
+    width: 185px;
   }
 
   .dropdown-selected {
-    background: rgba(255, 255, 255, 0.15);
+    background: rgba(255,255,255,0.18);
+    border: 1px solid rgba(255,255,255,0.3);
     border-radius: 8px;
     padding: 6px 10px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    border: 1px solid rgba(255, 255, 255, 0.2);
     transition: background 0.2s;
   }
 
-  .dropdown-selected:hover {
-    background: rgba(255, 255, 255, 0.25);
-  }
+  .dropdown-selected:hover { background: rgba(255,255,255,0.28); }
 
   .selected-info {
     display: flex;
@@ -567,60 +80,54 @@
   }
 
   #displayOrgao {
-    color: #fff;
+    color: var(--oab-branco);
     font-size: 11px;
     font-weight: 700;
     white-space: nowrap;
-    text-overflow: ellipsis;
     overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   #displayData {
-    color: #ffd7d7;
+    color: rgba(255,255,255,0.75);
     font-size: 10px;
     font-weight: 500;
   }
 
-  .dropdown-selected i {
-    color: #fff;
-    font-size: 12px;
-    margin-left: 8px;
-  }
+  .dropdown-arrow { color: var(--oab-branco); font-size: 12px; margin-left: 6px; }
 
-  /* Lista de Cards do Dropdown */
+  /* Lista de cards do dropdown */
   .dropdown-list {
     position: absolute;
-    top: calc(100% + 5px);
+    top: calc(100% + 6px);
     right: 0;
     width: 220px;
-    background: #fff;
+    background: var(--oab-branco);
     border-radius: 12px;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-    overflow: hidden;
-    z-index: 1200;
-    max-height: 300px;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.22);
     overflow-y: auto;
+    max-height: 280px;
+    z-index: 1200;
   }
 
   .dropdown-item-card {
-    padding: 12px 15px;
-    border-bottom: 1px solid #f0f0f0;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--oab-cinza-bg);
     cursor: pointer;
     transition: background 0.2s;
   }
 
-  .dropdown-item-card:hover {
-    background: #f8f9fa;
-  }
+  .dropdown-item-card:last-child { border-bottom: none; }
+  .dropdown-item-card:hover { background: var(--oab-cinza-bg); }
 
   .dropdown-item-card.active {
-    border-left: 4px solid #a68945;
+    border-left: 4px solid var(--oab-dourado);
     background: #f0f4f8;
   }
 
   .item-data {
     display: block;
-    color: #a68945;
+    color: var(--oab-dourado);
     font-size: 10px;
     font-weight: 700;
     text-transform: uppercase;
@@ -628,14 +135,523 @@
 
   .item-orgao {
     display: block;
-    color: #002f5d;
-    font-size: 13px;
+    color: var(--oab-azul-escuro);
+    font-size: 12px;
     font-weight: 600;
     margin-top: 2px;
   }
 
-  /* Ajuste no Main Container para o novo header */
+  /* =====================================================
+     3. ÁREA PRINCIPAL DE CONTEÚDO
+     Respeita margens do header e do menu lateral direito.
+  ===================================================== */
   .main-container {
     margin-top: 60px;
+    margin-right: 46px;          /* largura visível da barra (só ícones) */
+    padding: 14px 10px 100px;
+    min-height: calc(100vh - 60px);
+    overflow-x: hidden;
+  }
+
+  /* =====================================================
+     4. ESTADOS DE CARREGAMENTO E ERRO
+  ===================================================== */
+  .estado-loading,
+  .estado-erro {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 40px 16px;
+    color: var(--oab-azul);
+    font-size: 13px;
+    text-align: center;
+  }
+
+  /* Spinner do Materialize na cor azul OAB */
+  .spinner-oab .circle-clipper .circle {
+    border-color: var(--oab-azul) !important;
+  }
+
+  .hidden { display: none !important; }
+
+  /* =====================================================
+     5. TÍTULOS DE SEÇÃO
+  ===================================================== */
+  .secao-titulo {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--oab-azul);
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    margin: 18px 0 8px;
+    border-bottom: 2px solid var(--oab-cinza-bg);
+    padding-bottom: 5px;
+  }
+
+  .badge-count {
+    background: var(--oab-azul-escuro);
+    color: var(--oab-branco);
+    font-size: 9px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 50px;
+    min-width: 18px;
+    text-align: center;
+  }
+
+  /* =====================================================
+     6. CARDS DE FICHA (COLLECTION)
+     Utiliza estrutura de lista com borda lateral dourada.
+  ===================================================== */
+  .fichas-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .ficha-card {
+    background: var(--oab-branco);
+    border-radius: 10px;
+    padding: 10px 12px;
+    border-left: 4px solid var(--oab-dourado);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+    transition: box-shadow 0.2s;
+  }
+
+  .ficha-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
+
+  .ficha-nivel1 {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 5px;
+  }
+
+  .ficha-ordem {
+    background: var(--oab-azul-escuro);
+    color: var(--oab-branco);
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 50px;
+    white-space: nowrap;
+  }
+
+  .ficha-processo {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--oab-azul-escuro);
+  }
+
+  .ficha-nivel2, .ficha-nivel3, .ficha-nivel4 {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--oab-cinza-txt);
+    margin-top: 3px;
+  }
+
+  .ficha-label {
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--oab-cinza-md);
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .ficha-valor { color: #263238; }
+
+  /* =====================================================
+     7. CHIPS DE PESSOAS (MATERIALIZE - OVERRIDE)
+     Chips para Membros e Procuradores com cor OAB.
+  ===================================================== */
+  .chips-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 8px;
+    min-height: 28px; /* Evita colapso quando vazio */
+  }
+
+  /* Override do chip padrão do Materialize */
+  .chip.oab-chip {
+    background-color: var(--oab-azul);
+    color: var(--oab-branco);
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    height: 26px;
+    line-height: 26px;
+    padding: 0 10px 0 10px;
+    border-radius: 50px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: background 0.2s;
+  }
+
+  .chip.oab-chip:hover { background-color: var(--oab-azul-escuro); }
+
+  .chip.oab-chip .material-icons.close {
+    color: rgba(255,255,255,0.7);
+    font-size: 16px;
+    cursor: pointer;
+    margin: 0;
+    transition: color 0.2s;
+  }
+
+  .chip.oab-chip .material-icons.close:hover { color: var(--oab-branco); }
+
+  /* =====================================================
+     8. INPUTS E AUTOCOMPLETE (MATERIALIZE - OVERRIDE)
+     Cores OAB substituem as padrões do Materialize.
+  ===================================================== */
+  /* Wrapper compacto para a sidebar */
+  .input-compact {
+    margin: 0;
+    flex: 1;
+  }
+
+  .input-compact input { margin-bottom: 0 !important; }
+
+  /* Linha de borda dos inputs */
+  .input-field input[type=text]:not(.browser-default),
+  .input-field input[type=text]:not(.browser-default):focus {
+    border-bottom: 1px solid var(--oab-cinza-md) !important;
+    box-shadow: none !important;
+    background-color: var(--oab-branco) !important;
+    border-radius: 8px 8px 0 0;
+    padding-left: 10px !important;
+  }
+
+  .input-field input[type=text]:not(.browser-default):focus {
+    border-bottom: 1px solid var(--oab-azul) !important;
+    box-shadow: 0 1px 0 0 var(--oab-azul) !important;
+  }
+
+  /* Ícone prefixo — mantido para eventual uso em outros contextos */
+  .input-field .prefix { color: var(--oab-cinza-md) !important; font-size: 18px; }
+  .input-field .prefix.active { color: var(--oab-vermelho) !important; }
+  .prefix-sm { top: 8px !important; }
+
+  /* Cor do texto */
+  .input-field input[type=text] {
+    color: #263238 !important;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    height: 2.2rem !important;
+  }
+
+  /* Autocomplete dropdown do Materialize */
+  .autocomplete-content {
+    border-radius: 8px !important;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.18) !important;
+    z-index: 2000 !important;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .autocomplete-content li span {
+    color: var(--oab-azul-escuro) !important;
+    font-size: 12px;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .autocomplete-content li:hover { background-color: var(--oab-cinza-bg) !important; }
+
+  /* =====================================================
+     9. BLOCO "ADICIONAR" (Input linha cheia + botão abaixo)
+     Input ocupa toda a largura disponível. O botão "Adicionar"
+     fica posicionado abaixo, alinhado à direita, como um
+     link-ação que não compete com o campo de texto.
+  ===================================================== */
+  .adicionar-bloco {
+    margin-bottom: 10px;
+  }
+
+  .adicionar-bloco .input-field {
+    margin: 0 0 4px 0;
+    width: 100%;
+  }
+
+  .adicionar-bloco .input-field input[type=text] {
+    width: 100% !important;
+    margin: 0 !important;
+  }
+
+  .adicionar-acao {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  /* Botão "Adicionar" discreto, estilo texto com acento azul */
+  .btn-adicionar-inline {
+    background: none;
+    border: none;
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--oab-azul);
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: color 0.2s, background 0.15s;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .btn-adicionar-inline:hover {
+    color: var(--oab-azul-escuro);
+    background: rgba(0, 68, 128, 0.07);
+  }
+
+  .btn-adicionar-inline i { font-size: 14px; }
+
+  /* =====================================================
+     10. EXPEDIENTE (TEXTAREA MATERIALIZE)
+  ===================================================== */
+  .expediente-wrap { margin-bottom: 16px; }
+
+  .expediente-wrap .input-field { margin-bottom: 0; }
+
+  .textarea-expediente {
+    font-family: 'Inter', sans-serif !important;
+    font-size: 12px !important;
+    color: #263238 !important;
+    background-color: var(--oab-branco) !important;
+    border: 1px solid var(--oab-cinza-md) !important;
+    border-radius: 10px !important;
+    padding: 10px 12px !important;
+    min-height: 90px;
+    box-shadow: none !important;
+    resize: vertical;
+  }
+
+  .textarea-expediente:focus {
+    border-color: var(--oab-azul) !important;
+    box-shadow: none !important;
+    outline: none !important;
+  }
+
+  /* Ajuste do label do Materialize para textarea com placeholder */
+  .input-field .materialize-textarea + label { display: none; }
+
+  /* =====================================================
+     11. BOTÕES ESTILO PÍLULA
+  ===================================================== */
+  .btn-pill {
+    border: none;
+    border-radius: 50px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    cursor: pointer;
+    line-height: 1;
+    white-space: nowrap;
+    transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+  }
+
+  .btn-primario {
+    background-color: var(--oab-azul);
+    color: var(--oab-branco);
+    padding: 0 14px;
+    height: 32px;
+    font-size: 12px;
+  }
+
+  .btn-primario:hover {
+    background-color: var(--oab-azul-escuro);
+    box-shadow: 0 3px 8px rgba(0,0,0,0.2);
+  }
+
+  .btn-secundario {
+    background-color: var(--oab-cinza-bg);
+    color: var(--oab-azul-escuro);
+    padding: 0 14px;
+    height: 32px;
+    font-size: 12px;
+  }
+
+  .btn-secundario:hover {
+    background-color: var(--oab-azul-escuro);
+    color: var(--oab-branco);
+  }
+
+  .btn-small { height: 28px; padding: 0 12px; font-size: 11px; }
+
+  /* =====================================================
+     12. MENU LATERAL — SLIDE-IN NO HOVER
+     O container tem sempre largura total (190px) mas fica
+     deslocado para fora da tela (right: -144px), exibindo
+     apenas os 46px dos ícones. No hover desliza para right:0.
+     Nenhum overflow:hidden é necessário → fundo sempre sólido.
+  ===================================================== */
+  .nav-sidebar {
+    position: fixed;
+    right: -144px;               /* esconde a parte do label fora da tela */
+    top: 60px;
+    bottom: 0;
+    width: 190px;
+    background-color: var(--oab-azul);
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    padding-top: 8px;
+    gap: 2px;
+    z-index: 1000;
+    border-left: 3px solid var(--oab-azul-escuro);
+    box-shadow: -2px 0 8px rgba(0,0,0,0.22);
+    transition: right 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .nav-sidebar:hover {
+    right: 0;                    /* desliza totalmente para dentro da tela */
+  }
+
+  .nav-item {
+    width: 100%;
+    height: 48px;
+    border: none;
+    background-color: var(--oab-azul);
+    color: var(--oab-branco);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    padding: 0;
+    transition: background-color 0.2s;
+    flex-shrink: 0;
+  }
+
+  .nav-item:hover {
+    background-color: var(--oab-azul-escuro);
+  }
+
+  /* Ícone: área fixa de 46px (parte sempre visível) */
+  .nav-item i {
+    min-width: 46px;
+    width: 46px;
+    text-align: center;
+    font-size: 17px;
+    flex-shrink: 0;
+  }
+
+  /* Label: aparece à direita do ícone */
+  .nav-label {
+    white-space: nowrap;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--oab-branco);
+    letter-spacing: 0.3px;
+  }
+
+  /* =====================================================
+     13. BOTÃO FLUTUANTE (FAB)
+  ===================================================== */
+  .fab-container {
+    position: fixed;
+    bottom: 20px;
+    right: 58px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    z-index: 999;
+  }
+
+  .fab-main {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background-color: var(--oab-vermelho);
+    color: var(--oab-branco);
+    border: none;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    cursor: pointer;
+    font-size: 16px;
+    transition: transform 0.25s, background 0.2s;
+  }
+
+  .fab-main:hover { background-color: #cc0000; }
+
+  .fab-options {
+    display: none;
+    flex-direction: column;
+    align-items: flex-end;
+    margin-bottom: 10px;
+    gap: 8px;
+  }
+
+  .fab-options.show { display: flex; }
+
+  .fab-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+  }
+
+  .fab-label {
+    background: var(--oab-azul-escuro);
+    color: var(--oab-branco);
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-family: 'Inter', sans-serif;
+    font-size: 10px;
+    font-weight: 600;
+  }
+
+  .fab-sub {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background-color: var(--oab-branco);
+    color: var(--oab-azul);
+    border: 1px solid var(--oab-azul);
+    cursor: pointer;
+    font-size: 13px;
+    transition: background 0.2s, color 0.2s;
+  }
+
+  .fab-sub:hover {
+    background-color: var(--oab-azul);
+    color: var(--oab-branco);
+  }
+
+  /* =====================================================
+     14. ESTADO VAZIO (Empty State)
+  ===================================================== */
+  .empty-state {
+    font-size: 11px;
+    color: var(--oab-cinza-md);
+    text-align: center;
+    padding: 8px 0;
+    font-style: italic;
+  }
+
+  /* =====================================================
+     15. TOAST CUSTOMIZADO (MATERIALIZE - OVERRIDE)
+     Toasts de feedback com cor OAB.
+  ===================================================== */
+  .toast.toast-oab-ok {
+    background-color: var(--oab-azul) !important;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+  }
+
+  .toast.toast-oab-erro {
+    background-color: var(--oab-vermelho) !important;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
   }
 </style>

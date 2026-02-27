@@ -3,14 +3,23 @@
 
 <head>
   <base target="_top">
+
+  <!-- ===== FONTES E ÍCONES ===== -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- ===== MATERIALIZE CSS ===== -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+
   <?!= include('PainelLateral-style'); ?>
 </head>
 
 <body>
 
-  <!-- ===== HEADER FIXO ===== -->
+  <!-- =====================================================
+       HEADER FIXO: Logo + Seletor de Sessão
+  ====================================================== -->
   <div class="sidebar-header">
     <img src="https://www.oabgo.org.br/wp-content/themes/oab/images/logo.png" alt="OAB-GO" class="logo">
 
@@ -20,34 +29,42 @@
           <span id="displayOrgao">Carregando...</span>
           <span id="displayData">--/--/----</span>
         </div>
-        <i class="fa-solid fa-chevron-down"></i>
+        <i class="fa-solid fa-chevron-down dropdown-arrow"></i>
       </div>
-      <div class="dropdown-list hidden" id="listaSessoesDropdown">
-      </div>
+      <div class="dropdown-list hidden" id="listaSessoesDropdown"></div>
     </div>
-
   </div>
 
-  <!-- ===== CONTEÚDO PRINCIPAL (scrollável) ===== -->
+  <!-- =====================================================
+       CONTEÚDO PRINCIPAL (scrollável)
+  ====================================================== -->
   <div class="main-container" id="mainContainer">
 
-    <!-- Estado de carregamento inicial -->
+    <!-- Estado: Carregando -->
     <div class="estado-loading" id="estadoLoading">
-      <i class="fa-solid fa-circle-notch fa-spin"></i>
+      <div class="preloader-wrapper small active">
+        <div class="spinner-layer spinner-oab">
+          <div class="circle-clipper left"><div class="circle"></div></div>
+          <div class="gap-patch"><div class="circle"></div></div>
+          <div class="circle-clipper right"><div class="circle"></div></div>
+        </div>
+      </div>
       <p>Carregando pauta...</p>
     </div>
 
-    <!-- Estado de erro -->
+    <!-- Estado: Erro -->
     <div class="estado-erro hidden" id="estadoErro">
-      <i class="fa-solid fa-triangle-exclamation"></i>
+      <i class="material-icons" style="font-size:32px;color:#ff0000;">warning</i>
       <p id="mensagemErro">Erro ao carregar dados.</p>
-      <button class="btn-pill btn-secundario" onclick="PL_JS_inicializar()">Tentar novamente</button>
+      <button class="btn-pill btn-secundario btn-small" onclick="PL_JS_inicializar()">Tentar novamente</button>
     </div>
 
     <!-- Conteúdo da pauta (visível após carregamento) -->
     <div class="pauta-container hidden" id="pautaContainer">
 
-      <!-- ===== SEÇÃO: FICHAS DE VOTAÇÃO ===== -->
+      <!-- =====================================================
+           SEÇÃO: FICHAS DE VOTAÇÃO
+      ====================================================== -->
       <div class="secao-titulo">
         <i class="fa-solid fa-list-check"></i> Pauta
         <span class="badge-count" id="badgeFichas">0</span>
@@ -56,86 +73,103 @@
         <!-- Gerado pelo JS -->
       </div>
 
-      <!-- ===== SEÇÃO: MEMBROS PARTICIPANTES ===== -->
+      <!-- =====================================================
+           SEÇÃO: MEMBROS PARTICIPANTES
+      ====================================================== -->
       <div class="secao-titulo">
         <i class="fa-solid fa-users"></i> Participantes
         <span class="badge-count" id="badgeMembros">0</span>
       </div>
-      <div class="lista-pessoas" id="listaMembros">
-        <!-- Gerado pelo JS -->
-      </div>
-      <div class="adicionar-item">
-        <input type="text" class="input-campo" id="inputNovoMembro" placeholder="Nome do membro...">
-        <button class="btn-pill btn-primario btn-sm" onclick="PL_JS_adicionarMembro()">
-          <i class="fa-solid fa-plus"></i> Adicionar
-        </button>
-      </div>
-      <div class="feedback-salvando hidden" id="feedbackMembros">Salvando...</div>
 
-      <!-- ===== SEÇÃO: PROCURADORES ===== -->
+      <div class="chips-container" id="listaMembros">
+        <!-- Chips gerados pelo JS -->
+      </div>
+
+      <div class="adicionar-bloco">
+        <div class="input-field input-compact">
+          <input type="text" id="inputNovoMembro" class="autocomplete" autocomplete="off"
+                 placeholder="Nome do membro...">
+        </div>
+        <div class="adicionar-acao">
+          <button class="btn-adicionar-inline" onclick="PL_JS_adicionarMembro()">
+            <i class="material-icons">add_circle_outline</i> Adicionar
+          </button>
+        </div>
+      </div>
+
+      <!-- =====================================================
+           SEÇÃO: PROCURADORES
+      ====================================================== -->
       <div class="secao-titulo">
         <i class="fa-solid fa-briefcase"></i> Procuradores
         <span class="badge-count" id="badgeProcuradores">0</span>
       </div>
-      <div class="lista-pessoas" id="listaProcuradores">
-        <!-- Gerado pelo JS -->
-      </div>
-      <div class="adicionar-item">
-        <div class="autocomplete-wrap">
-          <input type="text" class="input-campo" id="inputNovoProcurador" placeholder="Nome do procurador..."
-            oninput="PL_JS_filtrarProcuradores(this.value)" autocomplete="off">
-          <div class="autocomplete-lista hidden" id="autocompleteProcurador"></div>
-        </div>
-        <button class="btn-pill btn-primario btn-sm" onclick="PL_JS_adicionarProcurador()">
-          <i class="fa-solid fa-plus"></i> Adicionar
-        </button>
-      </div>
-      <div class="feedback-salvando hidden" id="feedbackProcuradores">Salvando...</div>
 
-      <!-- ===== SEÇÃO: EXPEDIENTE ===== -->
+      <div class="chips-container" id="listaProcuradores">
+        <!-- Chips gerados pelo JS -->
+      </div>
+
+      <div class="adicionar-bloco">
+        <div class="input-field input-compact">
+          <input type="text" id="inputNovoProcurador" class="autocomplete" autocomplete="off"
+                 placeholder="Nome do procurador...">
+        </div>
+        <div class="adicionar-acao">
+          <button class="btn-adicionar-inline" onclick="PL_JS_adicionarProcurador()">
+            <i class="material-icons">add_circle_outline</i> Adicionar
+          </button>
+        </div>
+      </div>
+
+      <!-- =====================================================
+           SEÇÃO: EXPEDIENTE
+      ====================================================== -->
       <div class="secao-titulo">
         <i class="fa-solid fa-file-lines"></i> Expediente
       </div>
       <div class="expediente-wrap">
-        <textarea class="textarea-expediente" id="expedienteTexto"
-          placeholder="Registre aqui os assuntos do expediente..." onblur="PL_JS_salvarExpediente()"></textarea>
-        <div class="feedback-salvando hidden" id="feedbackExpediente">Salvando...</div>
+        <div class="input-field">
+          <textarea id="expedienteTexto" class="materialize-textarea textarea-expediente"
+                    placeholder="Registre os assuntos do expediente..." onblur="PL_JS_salvarExpediente()"></textarea>
+        </div>
       </div>
 
     </div><!-- /pautaContainer -->
   </div><!-- /mainContainer -->
 
-  <!-- ===== MENU LATERAL RETRÁTIL ===== -->
-  <nav class="nav-sidebar">
-    <div class="nav-group">
-      <button class="nav-item" onclick="google.script.run.formProcessos_abrirModal()">
-        <i class="fa-solid fa-folder"></i>
-        <span class="nav-label">Processos</span>
-      </button>
-      <button class="nav-item" onclick="google.script.run.abrirFormMembros()">
-        <i class="fa-solid fa-users"></i>
-        <span class="nav-label">Membros</span>
-      </button>
-      <button class="nav-item" onclick="google.script.run.formSessoes_abrirModal()">
-        <i class="fa-solid fa-calendar-check"></i>
-        <span class="nav-label">Sessões</span>
-      </button>
-      <button class="nav-item" onclick="google.script.run.PainelLateral_exibirSobre()">
-        <i class="fa-solid fa-circle-question"></i>
-        <span class="nav-label">Sobre</span>
-      </button>
-    </div>
-  </nav>
+  <!-- =====================================================
+       MENU LATERAL: Slide-in no hover (direita)
+  ====================================================== -->
+  <div class="nav-sidebar">
+    <button class="nav-item" onclick="google.script.run.formProcessos_abrirModal()">
+      <i class="fa-solid fa-folder"></i>
+      <span class="nav-label">Processos</span>
+    </button>
+    <button class="nav-item" onclick="google.script.run.abrirFormMembros()">
+      <i class="fa-solid fa-users"></i>
+      <span class="nav-label">Membros</span>
+    </button>
+    <button class="nav-item" onclick="google.script.run.formSessoes_abrirModal()">
+      <i class="fa-solid fa-calendar-check"></i>
+      <span class="nav-label">Sessões</span>
+    </button>
+    <button class="nav-item" onclick="google.script.run.PainelLateral_exibirSobre()">
+      <i class="fa-solid fa-circle-question"></i>
+      <span class="nav-label">Sobre</span>
+    </button>
+  </div>
 
-  <!-- ===== FAB ===== -->
+  <!-- =====================================================
+       FAB (Ação Flutuante)
+  ====================================================== -->
   <div class="fab-container">
     <div class="fab-options" id="fabOptions">
       <div class="fab-item" onclick="PL_JS_acaoRapida('Novo Processo')">
-        <span>Novo processo</span>
+        <span class="fab-label">Novo processo</span>
         <button class="fab-sub"><i class="fa-solid fa-file-medical"></i></button>
       </div>
       <div class="fab-item" onclick="PL_JS_acaoRapida('Adicionar Membro')">
-        <span>Adicionar membro</span>
+        <span class="fab-label">Adicionar membro</span>
         <button class="fab-sub"><i class="fa-solid fa-user-plus"></i></button>
       </div>
     </div>
@@ -144,7 +178,18 @@
     </button>
   </div>
 
-  <?!= include('PainelLateral-js'); ?>
-</body>
+  <!-- ===== MATERIALIZE JS ===== -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
 
+  <?!= include('PainelLateral-js'); ?>
+
+  <!-- Injeta dados pré-carregados do servidor -->
+  <script>
+    window.DADOS_INICIAIS = <?!= dadosIniciaisJSON ?>;
+    document.addEventListener('DOMContentLoaded', function () {
+      PL_JS_inicializarComDadosIniciais();
+    });
+  </script>
+
+</body>
 </html>

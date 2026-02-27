@@ -1,22 +1,51 @@
 <script>
   // ================================================================
-  // ESTADO GLOBAL DO PAINEL
+  // ESTADO GLOBAL DO PAINEL LATERAL
+  // Centraliza todos os dados em memória para evitar chamadas
+  // desnecessárias ao servidor.
   // ================================================================
   var PL_estado = {
-    sessaoAtualId: null,
-    membros: [],
-    procuradores: [],
-    todosProc: [],   // Cache de tabProcuradores para autocomplete
-    timerExpediente: null
+    sessaoAtualId:       null,
+    pautasCarregadas:    {},   // Cache por sessaoId
+    membros:             [],
+    procuradores:        [],
+    cacheMembros:        [],   // Lista completa para autocomplete
+    cacheProcuradores:   []    // Lista completa para autocomplete
   };
 
   // ================================================================
-  // INICIALIZAÇÃO
+  // PONTO DE ENTRADA ÚNICO
+  // Chamado pelo DOMContentLoaded no layout, utilizando os dados
+  // pré-injetados pelo servidor (DADOS_INICIAIS) para evitar
+  // round-trip de rede desnecessário na abertura.
   // ================================================================
-  document.addEventListener('DOMContentLoaded', function () {
-    PL_JS_inicializar();
-  });
+  function PL_JS_inicializarComDadosIniciais() {
+    var inicial = window.DADOS_INICIAIS;
+    if (!inicial) {
+      PL_JS_mostrarErro('Falha ao receber dados iniciais do servidor.');
+      return;
+    }
 
+    // 1. Popula caches de autocomplete
+    PL_estado.cacheMembros      = inicial.cadastros.membros      || [];
+    PL_estado.cacheProcuradores = inicial.cadastros.procuradores || [];
+
+    // 2. Monta o dropdown de sessões
+    PL_JS_onSessoesCarregadas(inicial.sessoes);
+
+    // 3. Renderiza a pauta da sessão mais recente (já veio pronta)
+    if (inicial.pautaAtiva && inicial.config.sessaoAtivaId) {
+      PL_estado.pautasCarregadas[inicial.config.sessaoAtivaId] = inicial.pautaAtiva;
+      PL_JS_onPautaCarregada(inicial.pautaAtiva);
+    } else {
+      PL_JS_mostrarLoading(false);
+    }
+
+    // 4. Configura autocompletes do Materialize APÓS renderização
+    PL_JS_configurarAutocompletes();
+  }
+
+  // Fallback: Re-inicializar buscando sessões do servidor
   function PL_JS_inicializar() {
     PL_JS_mostrarLoading(true);
     google.script.run
@@ -25,10 +54,14 @@
       .PainelLateral_listarSessoes();
   }
 
-  /** Popula o dropdown customizado e seleciona a mais recente */
+  // ================================================================
+  // DROPDOWN DE SESSÕES
+  // ================================================================
+
+  /** Popula o dropdown com a lista de sessões e seleciona a primeira */
   function PL_JS_onSessoesCarregadas(sessoes) {
     if (!sessoes || sessoes.length === 0) {
-      PL_JS_mostrarErro('Nenhuma sessão encontrada.');
+      PL_JS_mostrarErro('Nenhuma sessão encontrada na planilha.');
       return;
     }
 
@@ -40,21 +73,16 @@
       card.className = 'dropdown-item-card';
       card.setAttribute('data-id', s.id);
       card.onclick = function () { PL_JS_selecionarSessao(s.id); };
-
       card.innerHTML =
-        '<span class="item-data">' + s.data + '</span>' +
+        '<span class="item-data">' + PL_JS_esc(s.data) + '</span>' +
         '<span class="item-orgao">' + PL_JS_esc(s.orgao) + '</span>';
-
       listContainer.appendChild(card);
     });
 
-    // Carrega procuradores para autocomplete em paralelo
-    google.script.run
-      .withSuccessHandler(function (lista) { PL_estado.todosProc = lista || []; })
-      .PainelLateral_listarProcuradoresCadastrados();
-
-    // Seleciona a mais recente por padrão
-    PL_JS_selecionarSessao(sessoes[0].id);
+    // Seleciona a sessão mais recente por padrão
+    if (sessoes.length > 0) {
+      PL_JS_selecionarSessao(sessoes[0].id);
+    }
   }
 
   function PL_JS_toggleDropdown() {
@@ -64,43 +92,29 @@
   function PL_JS_selecionarSessao(id) {
     document.getElementById('listaSessoesDropdown').classList.add('hidden');
 
-    // Atualiza destaque visual no dropdown
-    var items = document.querySelectorAll('.dropdown-item-card');
-    items.forEach(function (el) {
+    // Atualiza destaque visual
+    document.querySelectorAll('.dropdown-item-card').forEach(function (el) {
       el.classList.toggle('active', el.getAttribute('data-id') == id);
     });
 
     PL_JS_carregarPauta(id);
   }
 
+  /** Carrega a pauta: usa cache local se disponível, senão vai ao servidor */
   function PL_JS_carregarPauta(sessaoId) {
+    if (PL_estado.pautasCarregadas[sessaoId]) {
+      PL_JS_onPautaCarregada(PL_estado.pautasCarregadas[sessaoId]);
+      return;
+    }
+
     PL_JS_mostrarLoading(true);
     google.script.run
-      .withSuccessHandler(PL_JS_onPautaCarregada)
+      .withSuccessHandler(function (dados) {
+        PL_estado.pautasCarregadas[sessaoId] = dados;
+        PL_JS_onPautaCarregada(dados);
+      })
       .withFailureHandler(PL_JS_onErro)
       .PainelLateral_carregarPauta(sessaoId);
-  }
-
-  /** ÚNICA VERSÃO: Renderiza os dados da pauta */
-  function PL_JS_onPautaCarregada(dados) {
-    PL_estado.sessaoAtualId = dados.sessao.id;
-    PL_estado.membros = dados.membros || [];
-    PL_estado.procuradores = dados.procuradores || [];
-
-    // Atualiza o Display do Header (Dropdown Customizado)
-    document.getElementById('displayOrgao').textContent = dados.sessao.orgao || '—';
-    document.getElementById('displayData').textContent = dados.sessao.data || '—';
-
-    // Renderiza as seções
-    PL_JS_renderizarFichas(dados.fichas || []);
-    PL_JS_renderizarMembros();
-    PL_JS_renderizarProcuradores();
-
-    document.getElementById('expedienteTexto').value = dados.expediente || '';
-
-    // Finaliza o loading
-    PL_JS_mostrarLoading(false);
-    document.getElementById('pautaContainer').classList.remove('hidden');
   }
 
   // Fecha dropdown ao clicar fora
@@ -112,9 +126,36 @@
   });
 
   // ================================================================
-  // RENDERIZAÇÃO E LOGICA DE NEGÓCIO
+  // RENDERIZAÇÃO DA PAUTA
+  // Recebe o objeto completo { sessao, fichas, membros,
+  // procuradores, expediente } e atualiza toda a UI.
   // ================================================================
+  function PL_JS_onPautaCarregada(dados) {
+    PL_estado.sessaoAtualId  = dados.sessao.id;
+    PL_estado.membros        = dados.membros       || [];
+    PL_estado.procuradores   = dados.procuradores  || [];
 
+    // Atualiza header
+    document.getElementById('displayOrgao').textContent = dados.sessao.orgao || '—';
+    document.getElementById('displayData').textContent  = dados.sessao.data  || '—';
+
+    // Renderiza seções
+    PL_JS_renderizarFichas(dados.fichas || []);
+    PL_JS_renderizarChips('listaMembros',     'badgeMembros',     PL_estado.membros,      'PL_JS_removerMembro');
+    PL_JS_renderizarChips('listaProcuradores','badgeProcuradores',PL_estado.procuradores, 'PL_JS_removerProcurador');
+
+    document.getElementById('expedienteTexto').value = dados.expediente || '';
+    // Dispara resize do Materialize textarea
+    M.textareaAutoResize(document.getElementById('expedienteTexto'));
+
+    PL_JS_mostrarLoading(false);
+    document.getElementById('estadoErro').classList.add('hidden');
+    document.getElementById('pautaContainer').classList.remove('hidden');
+  }
+
+  // ================================================================
+  // FICHAS DE VOTAÇÃO
+  // ================================================================
   function PL_JS_renderizarFichas(fichas) {
     var container = document.getElementById('fichasLista');
     document.getElementById('badgeFichas').textContent = fichas.length;
@@ -148,111 +189,143 @@
     }).join('');
   }
 
-  function PL_JS_renderizarMembros() {
-    var container = document.getElementById('listaMembros');
-    document.getElementById('badgeMembros').textContent = PL_estado.membros.length;
-    if (PL_estado.membros.length === 0) {
-      container.innerHTML = '<div class="empty-state">Nenhum participante.</div>';
+  // ================================================================
+  // CHIPS — RENDERIZAÇÃO GENÉRICA
+  // Utilizada tanto para Membros quanto para Procuradores.
+  // callbackRemover: nome da função como string (ex: 'PL_JS_removerMembro')
+  // ================================================================
+  function PL_JS_renderizarChips(containerId, badgeId, lista, callbackRemover) {
+    var container = document.getElementById(containerId);
+    document.getElementById(badgeId).textContent = lista.length;
+
+    if (lista.length === 0) {
+      container.innerHTML = '<div class="empty-state">Nenhum registro.</div>';
       return;
     }
-    container.innerHTML = PL_estado.membros.map(function (nome, i) {
-      return '<div class="pessoa-item"><span class="pessoa-nome">' + PL_JS_esc(nome) + '</span>' +
-        '<button class="btn-remover" onclick="PL_JS_removerMembro(' + i + ')"><i class="fa-solid fa-xmark"></i></button></div>';
+
+    container.innerHTML = lista.map(function (nome, i) {
+      return [
+        '<div class="chip oab-chip">',
+          PL_JS_esc(nome),
+          '<i class="material-icons close" onclick="' + callbackRemover + '(' + i + ')">close</i>',
+        '</div>'
+      ].join('');
     }).join('');
   }
 
+  // ================================================================
+  // MEMBROS
+  // ================================================================
   function PL_JS_adicionarMembro() {
     var input = document.getElementById('inputNovoMembro');
-    var nome = input.value.trim();
+    var nome  = input.value.trim();
     if (!nome || PL_estado.membros.indexOf(nome) !== -1) { input.value = ''; return; }
+
     PL_estado.membros.push(nome);
     input.value = '';
-    PL_JS_renderizarMembros();
+    PL_JS_renderizarChips('listaMembros', 'badgeMembros', PL_estado.membros, 'PL_JS_removerMembro');
     PL_JS_persistirMembros();
   }
 
   function PL_JS_removerMembro(indice) {
     PL_estado.membros.splice(indice, 1);
-    PL_JS_renderizarMembros();
+    PL_JS_renderizarChips('listaMembros', 'badgeMembros', PL_estado.membros, 'PL_JS_removerMembro');
     PL_JS_persistirMembros();
   }
 
   function PL_JS_persistirMembros() {
-    PL_JS_mostrarFeedback('feedbackMembros', 'Salvando...');
     google.script.run
-      .withSuccessHandler(function () { PL_JS_mostrarFeedback('feedbackMembros', 'Salvo.', true); })
+      .withSuccessHandler(function () { PL_JS_toast('Membros salvos.', 'ok'); })
+      .withFailureHandler(function (e) { PL_JS_toast('Erro: ' + e.message, 'erro'); })
       .PainelLateral_salvarMembros(PL_estado.sessaoAtualId, PL_estado.membros);
   }
 
-  function PL_JS_renderizarProcuradores() {
-    var container = document.getElementById('listaProcuradores');
-    document.getElementById('badgeProcuradores').textContent = PL_estado.procuradores.length;
-    if (PL_estado.procuradores.length === 0) {
-      container.innerHTML = '<div class="empty-state">Nenhum procurador.</div>';
-      return;
-    }
-    container.innerHTML = PL_estado.procuradores.map(function (nome, i) {
-      return '<div class="pessoa-item"><span class="pessoa-nome">' + PL_JS_esc(nome) + '</span>' +
-        '<button class="btn-remover" onclick="PL_JS_removerProcurador(' + i + ')"><i class="fa-solid fa-xmark"></i></button></div>';
-    }).join('');
-  }
-
+  // ================================================================
+  // PROCURADORES
+  // ================================================================
   function PL_JS_adicionarProcurador() {
     var input = document.getElementById('inputNovoProcurador');
-    var nome = input.value.trim();
+    var nome  = input.value.trim();
     if (!nome || PL_estado.procuradores.indexOf(nome) !== -1) { input.value = ''; return; }
+
     PL_estado.procuradores.push(nome);
     input.value = '';
-    PL_JS_fecharAutocomplete();
-    PL_JS_renderizarProcuradores();
+    PL_JS_renderizarChips('listaProcuradores', 'badgeProcuradores', PL_estado.procuradores, 'PL_JS_removerProcurador');
     PL_JS_persistirProcuradores();
   }
 
   function PL_JS_removerProcurador(indice) {
     PL_estado.procuradores.splice(indice, 1);
-    PL_JS_renderizarProcuradores();
+    PL_JS_renderizarChips('listaProcuradores', 'badgeProcuradores', PL_estado.procuradores, 'PL_JS_removerProcurador');
     PL_JS_persistirProcuradores();
   }
 
   function PL_JS_persistirProcuradores() {
-    PL_JS_mostrarFeedback('feedbackProcuradores', 'Salvando...');
     google.script.run
-      .withSuccessHandler(function () { PL_JS_mostrarFeedback('feedbackProcuradores', 'Salvo.', true); })
+      .withSuccessHandler(function () { PL_JS_toast('Procuradores salvos.', 'ok'); })
+      .withFailureHandler(function (e) { PL_JS_toast('Erro: ' + e.message, 'erro'); })
       .PainelLateral_salvarProcuradores(PL_estado.sessaoAtualId, PL_estado.procuradores);
   }
 
-  function PL_JS_filtrarProcuradores(termo) {
-    var lista = document.getElementById('autocompleteProcurador');
-    if (!termo || termo.length < 2) { PL_JS_fecharAutocomplete(); return; }
-    var termLower = termo.toLowerCase();
-    var filtrados = PL_estado.todosProc.filter(function (n) { return n.toLowerCase().indexOf(termLower) !== -1; });
-    if (filtrados.length === 0) { PL_JS_fecharAutocomplete(); return; }
-    lista.innerHTML = filtrados.slice(0, 8).map(function (n) {
-      return '<div class="autocomplete-item" onclick="PL_JS_selecionarProcurador(\'' + PL_JS_esc(n).replace(/'/g, "\\'") + '\')">' + PL_JS_esc(n) + '</div>';
-    }).join('');
-    lista.classList.remove('hidden');
-  }
-
-  function PL_JS_selecionarProcurador(nome) {
-    document.getElementById('inputNovoProcurador').value = nome;
-    PL_JS_fecharAutocomplete();
-  }
-
-  function PL_JS_fecharAutocomplete() {
-    document.getElementById('autocompleteProcurador').classList.add('hidden');
-  }
-
+  // ================================================================
+  // EXPEDIENTE
+  // ================================================================
   function PL_JS_salvarExpediente() {
     var texto = document.getElementById('expedienteTexto').value;
-    PL_JS_mostrarFeedback('feedbackExpediente', 'Salvando...');
     google.script.run
-      .withSuccessHandler(function () { PL_JS_mostrarFeedback('feedbackExpediente', 'Salvo.', true); })
+      .withSuccessHandler(function () { PL_JS_toast('Expediente salvo.', 'ok'); })
+      .withFailureHandler(function (e) { PL_JS_toast('Erro: ' + e.message, 'erro'); })
       .PainelLateral_salvarExpediente(PL_estado.sessaoAtualId, texto);
   }
 
+  // ================================================================
+  // AUTOCOMPLETES DO MATERIALIZE
+  // Deve ser chamado após a injeção dos dados iniciais.
+  // O minLength: 0 garante que a lista apareça ao focar.
+  // ================================================================
+  function PL_JS_configurarAutocompletes() {
+    // Converte arrays em formato de objeto { "nome": null } exigido pelo Materialize
+    function toMaterializeData(arr) {
+      var obj = {};
+      (arr || []).forEach(function (n) { obj[n] = null; });
+      return obj;
+    }
+
+    // Autocomplete de Membros
+    var elMembro = document.getElementById('inputNovoMembro');
+    if (elMembro) {
+      var instMembro = M.Autocomplete.init(elMembro, {
+        data:      toMaterializeData(PL_estado.cacheMembros),
+        limit:     10,
+        minLength: 0
+      });
+      elMembro.addEventListener('focus', function () { instMembro.open(); });
+      elMembro.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); PL_JS_adicionarMembro(); }
+      });
+    }
+
+    // Autocomplete de Procuradores
+    var elProc = document.getElementById('inputNovoProcurador');
+    if (elProc) {
+      var instProc = M.Autocomplete.init(elProc, {
+        data:      toMaterializeData(PL_estado.cacheProcuradores),
+        limit:     10,
+        minLength: 0
+      });
+      elProc.addEventListener('focus', function () { instProc.open(); });
+      elProc.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); PL_JS_adicionarProcurador(); }
+      });
+    }
+  }
+
+  // ================================================================
+  // FAB (BOTÃO FLUTUANTE)
+  // ================================================================
   function PL_JS_toggleFab() {
     var options = document.getElementById('fabOptions');
-    var btn = document.getElementById('fabMain');
+    var btn     = document.getElementById('fabMain');
     options.classList.toggle('show');
     btn.style.transform = options.classList.contains('show') ? 'rotate(45deg)' : 'rotate(0deg)';
   }
@@ -265,30 +338,45 @@
   // ================================================================
   // UTILITÁRIOS DE UI
   // ================================================================
+
+  /** Exibe/oculta o spinner de carregamento */
   function PL_JS_mostrarLoading(ativo) {
     document.getElementById('estadoLoading').classList.toggle('hidden', !ativo);
     if (ativo) document.getElementById('pautaContainer').classList.add('hidden');
   }
 
+  /** Exibe mensagem de erro centralizada */
   function PL_JS_mostrarErro(msg) {
     PL_JS_mostrarLoading(false);
     document.getElementById('mensagemErro').textContent = msg || 'Erro desconhecido.';
     document.getElementById('estadoErro').classList.remove('hidden');
   }
 
+  /** Handler de erro padrão para google.script.run */
   function PL_JS_onErro(err) {
     PL_JS_mostrarErro(err && err.message ? err.message : String(err));
   }
 
-  function PL_JS_mostrarFeedback(elementId, msg, autoOcultar) {
-    var el = document.getElementById(elementId);
-    el.textContent = msg;
-    el.classList.remove('hidden');
-    if (autoOcultar) setTimeout(function () { el.classList.add('hidden'); }, 2500);
+  /**
+   * Exibe um toast do Materialize com estilo OAB.
+   * @param {string} msg
+   * @param {'ok'|'erro'} tipo
+   */
+  function PL_JS_toast(msg, tipo) {
+    M.toast({
+      html:      msg,
+      classes:   tipo === 'erro' ? 'toast-oab-erro' : 'toast-oab-ok',
+      displayLength: 2500
+    });
   }
 
+  /** Escapa HTML para evitar XSS ao inserir dados da planilha no DOM */
   function PL_JS_esc(str) {
     if (!str) return '';
-    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    return String(str)
+      .replace(/&/g,  '&amp;')
+      .replace(/</g,  '&lt;')
+      .replace(/>/g,  '&gt;')
+      .replace(/"/g,  '&quot;');
   }
 </script>
