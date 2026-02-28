@@ -43,3 +43,33 @@ function getMapaColunas(sheet, linhaCabecalho = 1) {
   
   return mapa;
 }
+
+function novoIdTimeStamp() {
+  const ano = new Date().getFullYear() - 2025;
+  const ms = Date.now() % 46656000000;
+  return ano.toString(36) + ms.toString(36).padStart(5, '0');
+}
+
+/**
+ * Recebe um ID Base36 existente e gera o próximo ID sequencial
+ * @param {string} ultimoId O último ID gerado (ex: "1a4f3h")
+ * @return {string} Novo ID incrementado em 1 unidade de tempo
+ */
+function gerarProximoIdIncremental(ultimoId) {
+  if (!ultimoId || ultimoId.length < 2) return novoIdTimeStamp();
+
+  // 1. Separa o prefixo do ano (primeiro caractere) e o corpo do timestamp
+  const prefixoAno = ultimoId.substring(0, 1);
+  const corpoMsBase36 = ultimoId.substring(1);
+
+  // 2. Converte o corpo de Base 36 para Decimal (número inteiro)
+  let msDecimal = parseInt(corpoMsBase36, 36);
+
+  // 3. Incrementa 1 unidade
+  msDecimal++;
+
+  // 4. Converte de volta para Base 36 e garante o preenchimento de 5 dígitos
+  const novoCorpoMs = msDecimal.toString(36).padStart(5, '0');
+
+  return prefixoAno + novoCorpoMs;
+}

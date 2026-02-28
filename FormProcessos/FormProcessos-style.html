@@ -24,7 +24,7 @@
     position: sticky;
     top: 0;
     z-index: 1000;
-    background-color: rgba(209, 216, 219, 0.88);
+    background-color: rgba(209, 216, 219, 0.85);
     backdrop-filter: blur(8px);
     padding: 20px 0;
   }
@@ -34,7 +34,6 @@
     padding: 0 25px;
     border-radius: 12px;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
-    transition: box-shadow 0.3s ease;
   }
 
   .search-card:focus-within {
@@ -43,196 +42,299 @@
 
   .search-card .material-icons.prefix,
   .search-card input[type=text],
-  .search-card label { color: #004480 !important; }
+  .search-card label {
+    color: #004480 !important;
+  }
 
   /* =====================================================
-     3. CARDS DE SESSÃO (LISTA PRINCIPAL)
+     2. CABEÇALHO E BARRA DE PESQUISA (FIXO)
   ===================================================== */
-  .collection-item-sessao {
+  .search-header-container {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    background-color: rgba(209, 216, 219, 0.85);
+    backdrop-filter: blur(8px);
+    padding: 20px 0;
+  }
+
+  /* PADRONIZAÇÃO DE LABELS (Rótulos) */
+  /* Cor e Tamanho Padrão (Sem Foco) */
+  .input-field label,
+  .input-field input:not([type]):+label,
+  .input-field input[type=text]:not(.browser-default)+label,
+  .input-field textarea.materialize-textarea+label {
+    color: #004480 !important; /* Azul OAB */
+    font-size: 0.9rem !important;
+  }
+
+  /* Cor e Tamanho quando Ativo/Focado */
+  .input-field input:focus+label,
+  .input-field textarea:focus+label,
+  .input-field input.validate+label,
+  .input-field .prefix.active ~ label,
+  .input-field label.active {
+    color: #002f5d !important; /* Azul Escuro (Destaque) */
+    font-size: 0.8rem !important; /* Leve redução ao subir */
+    font-weight: 700 !important;
+  }
+
+  /* Bordas dos Inputs em Foco */
+  .input-field input:focus,
+  .input-field textarea:focus,
+  .input-field .autocomplete-content {
+    border-bottom: 1px solid #004480 !important;
+    box-shadow: 0 1px 0 0 #004480 !important;
+  }
+
+  /* Ícones Prefixos */
+  .input-field .prefix {
+    color: #004480 !important;
+    transition: color .2s;
+  }
+
+  .input-field .prefix.active {
+    color: #ff0000 !important; /* Vermelho OAB no foco */
+  }
+
+  /* =====================================================
+     3. CARDS TRIPARTITES (LISTA DE PROCESSOS)
+  ===================================================== */
+  .collection-item-processo {
     background-color: #fff !important;
     border-radius: 12px !important;
     margin-bottom: 15px !important;
-    padding: 0 !important;
+    padding: 20px 25px !important;
     border: 2px solid transparent !important;
     transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
     display: flex;
-    align-items: stretch;
-    overflow: hidden;
+    align-items: center;
+    position: relative;
     cursor: default;
   }
 
-  .collection-item-sessao:hover {
+  .collection-item-processo:hover {
     transform: translateY(-5px);
     border: 2px solid #002f5d !important;
-    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.13);
+    box-shadow: 0 12px 20px rgba(0, 0, 0, 0.12);
   }
 
-  .sess-col-data {
-    background: linear-gradient(160deg, #002f5d 0%, #004480 100%);
-    color: #fff;
-    min-width: 110px;
-    max-width: 110px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 16px 10px;
-    text-align: center;
-    flex-shrink: 0;
-  }
-
-  .sess-data-dia {
-    font-size: 2.4rem;
-    font-weight: 800;
-    line-height: 1;
-    color: #fff;
-  }
-
-  .sess-data-mes {
-    font-size: 0.75rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: rgba(255,255,255,0.75);
-    margin-top: 4px;
-  }
-
-  .sess-data-ano {
-    font-size: 0.7rem;
-    color: rgba(255,255,255,0.55);
-    margin-top: 2px;
-  }
-
-  .sess-col-info {
-    flex: 1;
-    padding: 16px 20px;
+  .p-col-info {
+    width: 60%;
     border-right: 1px solid #f0f0f0;
-    min-width: 0;
+    padding-right: 20px;
   }
 
-  .sess-orgao {
+  .p-col-hist {
+    width: 15%;
+    padding: 0 15px;
+    text-align: center;
+    border-right: 1px solid #f0f0f0;
+  }
+
+  .p-col-actions {
+    width: 25%;
+    display: flex;
+    justify-content: space-evenly;
+    align-items: center;
+    padding-left: 10px;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .lvl-1 {
     display: block;
-    font-size: 1.05rem;
+    font-size: 1.15rem;
     font-weight: 800;
     color: #004480;
-    margin-bottom: 5px;
-    white-space: nowrap;
+    margin-bottom: 4px;
+  }
+
+  .lvl-2,
+  .lvl-3 {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #424242;
+    margin: 1px 0;
+  }
+
+  .lvl-4 {
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #616161;
+  }
+
+  .lvl-5 {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: #757575;
+  }
+
+  .text-missing {
+    color: #ff0000 !important;
+    font-style: normal !important;
+    font-weight: 700 !important;
+  }
+
+  .lvl-icon {
+    font-size: 14px !important;
+    margin-right: 5px !important;
+    vertical-align: middle;
+  }
+
+  /* Coluna de histórico */
+  .h-lvl-1 {
+    display: block;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    font-weight: 800;
+    color: #a68945;
+    margin-bottom: 2px;
+  }
+
+  .h-lvl-2 {
+    display: block;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #002f5d;
+  }
+
+  .h-lvl-3 {
+    display: block;
+    font-size: 0.75rem;
+    color: #616161;
+    font-style: italic;
+    line-height: 1.2;
+    margin-top: 4px;
+    max-height: 36px;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
-  .sess-local {
-    display: block;
-    font-size: 0.82rem;
-    color: #616161;
-    margin-bottom: 5px;
-  }
-
-  .sess-participantes {
-    display: block;
-    font-size: 0.78rem;
-    color: #888;
-    font-style: italic;
-  }
-
-  .sess-col-metricas {
-    min-width: 120px;
-    max-width: 130px;
-    padding: 16px 14px;
-    display: flex;
-    flex-direction: column;
+  /* =====================================================
+     4. STATUS CHIPS
+  ===================================================== */
+  .status-chip {
+    display: inline-flex;
     align-items: center;
-    justify-content: center;
-    border-right: 1px solid #f0f0f0;
-    text-align: center;
-  }
-
-  .sess-metrica-num {
-    font-size: 2rem;
-    font-weight: 800;
-    color: #a68945;
-    line-height: 1;
-  }
-
-  .sess-metrica-label {
+    gap: 3px;
     font-size: 0.65rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: #aaa;
     font-weight: 700;
-    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 2px 8px;
+    border-radius: 50px;
+    vertical-align: middle;
+    margin-left: 8px;
   }
 
-  /* Container de ações transformado em Grade */
-  .sess-col-actions {
-    display: grid !important;
-    /* Cria colunas de tamanho fixo */
-    grid-template-columns: repeat(2, 40px); 
-    /* Espaçamento entre os ícones */
-    grid-gap: 8px; 
-    align-items: center;
-    justify-content: center;
-    padding-left: 15px;
-    border-left: 1px solid #eee;
+  .status-chip i {
+    font-size: 11px;
+  }
+
+  .s-tramitacao {
+    background: #e3f2fd;
+    color: #1565c0;
+  }
+
+  .s-arquivado {
+    background: #eceff1;
+    color: #546e7a;
+  }
+
+  .s-deferido {
+    background: #e8f5e9;
+    color: #2e7d32;
+  }
+
+  .s-indeferido {
+    background: #ffebee;
+    color: #c62828;
+  }
+
+  .s-recurso {
+    background: #fff3e0;
+    color: #e65100;
+  }
+
+  .s-diligencia {
+    background: #f3e5f5;
+    color: #6a1b9a;
+  }
+
+  .s-concluso {
+    background: #e8f5e9;
+    color: #1b5e20;
+  }
+
+  .s-secretaria {
+    background: #fce4ec;
+    color: #880e4f;
+  }
+
+  .s-vazio {
+    background: #f5f5f5;
+    color: #9e9e9e;
   }
 
   /* =====================================================
-     4. BOTÕES DE AÇÃO DOS CARDS
+     5. BOTÕES DE AÇÃO DOS CARDS
   ===================================================== */
-  /* Ajuste nos botões de ação para não perderem o formato circular */
   .act-btn {
-    margin: 0 !important; /* Remove margens que podem quebrar a grade */
     cursor: pointer;
-    transition: transform 0.2s;
+    font-size: 21px;
+    transition: transform 0.18s ease, color 0.18s ease;
+    border-radius: 50%;
+    padding: 4px;
   }
 
   .act-btn:hover {
-    transform: scale(1.2);
+    transform: scale(1.28);
   }
 
-  /* Cores específicas para o novo ícone */
-  .c-magic { color: #a68945; } /* Dourado OAB */
-  .c-edit   { color: #004480; }
-  .c-fichas { color: #a68945; }
-  .c-del    { color: #ff0000; }
+  .c-edit {
+    color: #004480;
+  }
+
+  .c-del {
+    color: #ff0000;
+  }
+
+  .c-hist {
+    color: #6a1b9a;
+  }
+
+  .c-pauta {
+    color: #a68945;
+  }
+
+  .c-concluso {
+    color: #2e7d32;
+  }
+
+  .c-secretaria {
+    color: #880e4f;
+  }
 
   /* =====================================================
-     5. FAB PRINCIPAL E TOOLTIPS
+     6. FAB E TOOLTIPS
   ===================================================== */
-  .btn-oab-red { background-color: #ff0000 !important; }
-
-  .btn-hover-zoom {
-    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+  .btn-oab-red {
+    background-color: #ff0000 !important;
   }
 
   .btn-hover-zoom:hover {
-    transform: scale(1.15) !important;
+    transform: scale(1.2) !important;
     background-color: #002f5d !important;
   }
 
-  .material-tooltip { background-color: #004480 !important; }
-
-  /* =====================================================
-     6. BOTÕES AUXILIARES
-  ===================================================== */
-  .btn-oab-blue {
+  .material-tooltip {
     background-color: #004480 !important;
-    border-radius: 50px;
-    font-weight: 700;
-    text-transform: none;
   }
-
-  .btn-oab-blue:hover { background-color: #002f5d !important; }
-
-  .btn-oab-gold {
-    background-color: #a68945 !important;
-    border-radius: 50px;
-    font-weight: 700;
-    text-transform: none;
-  }
-
-  .btn-oab-gold:hover { background-color: #7a6330 !important; }
 
   /* =====================================================
      7. MODAIS — BASE
@@ -241,7 +343,7 @@
     border-radius: 12px !important;
     max-height: 90% !important;
     width: 92% !important;
-    max-width: 850px;
+    max-width: 900px;
   }
 
   .modal.modal-pequena {
@@ -250,7 +352,23 @@
     overflow-y: hidden !important;
   }
 
-  .modal.modal-sessao-cad { max-width: 680px !important; }
+  .modal.modal-pauta {
+    max-width: 580px !important;
+  }
+
+  .modal.modal-historico {
+    max-width: 700px !important;
+  }
+
+  .modal.modal-importar {
+    max-width: 700px !important;
+  }
+
+  .modal.modal-status {
+    max-width: 420px !important;
+    height: auto !important;
+    overflow-y: hidden !important;
+  }
 
   .modal-content h5 {
     font-weight: 700;
@@ -279,687 +397,418 @@
     padding: 0 24px;
   }
 
-  .btn-salvar-modal:hover { background-color: #002f5d !important; }
+  .btn-salvar-modal:hover {
+    background-color: #002f5d !important;
+  }
 
   /* =====================================================
-     8. MODAL DE FICHAS — ESTRUTURA PRINCIPAL
+     8. MODAL DE CADASTRO (PROCESSO)
   ===================================================== */
-  .modal.modal-fichas {
-    max-width: 1050px !important;
-    width: 96% !important;
-    height: 88% !important;
-    max-height: 88% !important;
-    overflow: hidden !important;
-    padding: 0 !important;
-    display: flex !important;
-    flex-direction: column !important;
-  }
-
-  .modal.modal-fichas .modal-content {
-    padding: 0 !important;
-    flex: 1;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-  }
-
-  /* Cabeçalho fixo do modal fichas */
-  .fichas-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 14px 20px 12px 20px;
-    border-bottom: 2px solid #f0f0f0;
-    background: #fff;
-    flex-shrink: 0;
-  }
-
-  .fichas-header h5 {
-    border-left: 5px solid #a68945;
-    padding-left: 12px;
-    margin: 0;
-    color: #004480;
-    font-size: 1rem;
+  .modal-secao {
+    font-size: 0.7rem;
     font-weight: 700;
     text-transform: uppercase;
-  }
-
-  /* Corpo dividido — ocupa todo o espaço restante */
-  .fichas-body {
-    display: flex;
-    flex: 1;
-    overflow: hidden;
-    min-height: 0; /* essencial para flex + overflow funcionar */
-  }
-
-  /* =====================================================
-     9. PAINEL ESQUERDO — LISTA DE PROCESSOS
-  ===================================================== */
-  .fichas-painel-esq {
-    width: 270px;
-    min-width: 240px;
-    flex-shrink: 0;
-    border-right: 2px solid #f0f0f0;
-    display: flex;
-    flex-direction: column;
-    background: #f8f9fa;
-    min-height: 0;
-  }
-
-  .fichas-painel-titulo {
-    padding: 10px 14px;
-    font-size: 0.68rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: #888;
+    letter-spacing: 0.1em;
+    color: #999;
     border-bottom: 1px solid #eee;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    flex-shrink: 0;
+    padding-bottom: 5px;
+    margin: 4px 0 14px 0;
   }
 
-  .badge-count {
-    background: #004480;
-    color: #fff;
-    border-radius: 50px;
-    font-size: 0.65rem;
-    padding: 1px 6px;
-    font-weight: 700;
-    margin-left: auto;
+  .materialize-textarea.juridico {
+    min-height: 80px !important;
+    font-size: 0.88rem;
+    line-height: 1.55;
   }
 
-  .fichas-lista-proc {
-    flex: 1;
-    overflow-y: auto;
-    min-height: 0;
+  /* Estilo para campos que parecem inputs mas expandem se o texto for longo */
+  textarea.materialize-textarea.expandivel {
+    min-height: 3rem !important; /* Altura aproximada de um input comum */
+    padding-top: 0.8rem !important;
+    padding-bottom: 0.8rem !important;
+    font-size: 1rem; /* Mesma fonte do campo Processo */
+    line-height: 1.2;
+    overflow-y: hidden; /* Esconde barra de rolagem enquanto expande */
+    resize: none;
   }
 
-  .ficha-proc-item {
-    padding: 12px 14px;
-    border-bottom: 1px solid #eee;
-    cursor: pointer;
-    transition: all 0.15s ease;
-  }
-
-  .ficha-proc-item:hover { background: #e8f0fe; }
-
-  .ficha-proc-item.selecionado {
-    background: #e8f0fe;
-    border-left: 4px solid #004480;
-    padding-left: 10px;
-  }
-
-  .ficha-proc-num {
-    font-size: 0.9rem;
-    font-weight: 800;
-    color: #004480;
-    display: block;
-    margin-bottom: 2px;
-  }
-
-  .ficha-proc-req-short {
-    font-size: 0.75rem;
-    color: #555;
-    display: block;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .ficha-proc-status-mini {
-    display: inline-block;
-    font-size: 0.6rem;
-    font-weight: 700;
-    padding: 1px 6px;
-    border-radius: 50px;
-    margin-top: 4px;
-    text-transform: uppercase;
+  /* Garante que o rótulo (label) acompanhe a altura reduzida */
+  .input-field > textarea.materialize-textarea.expandivel + label {
+    top: 0;
   }
 
   /* =====================================================
-     10. PAINEL DIREITO — ESTRUTURA
+     9. MODAL DE PAUTA — ABAS E LISTA DE SESSÕES
   ===================================================== */
-  .fichas-painel-dir {
-    flex: 1;
+  .pauta-tabs {
     display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    background: #fff;
-    position: relative; /* ancora o FAB interno */
-    min-height: 0;
-  }
-
-  /* Estado vazio */
-  .fichas-vazio-msg {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    color: #bbb;
-    text-align: center;
-    padding: 40px;
-    font-size: 0.9rem;
-  }
-
-  /* Cabeçalho azul do processo — FIXO no topo do painel direito */
-  .ficha-proc-info {
-    background: linear-gradient(135deg, #002f5d 0%, #004480 100%);
-    padding: 14px 20px;
-    flex-shrink: 0;
-  }
-
-  .ficha-proc-numero {
-    font-size: 1.2rem;
-    font-weight: 800;
-    color: #fff;
-  }
-
-  .ficha-proc-req {
-    font-size: 0.82rem;
-    color: rgba(255,255,255,0.8);
-    margin-top: 3px;
-  }
-
-  .ficha-proc-local {
-    font-size: 0.75rem;
-    color: rgba(255,255,255,0.55);
-    font-style: italic;
-    margin-top: 2px;
-  }
-
-  .ficha-status-chip {
-    display: inline-block;
-    font-size: 0.65rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    padding: 2px 8px;
-    border-radius: 50px;
-    margin-top: 6px;
-    background: rgba(255,255,255,0.2);
-    color: #fff;
-    letter-spacing: 0.05em;
-  }
-
-  /* fichasConteudo: flex column ocupando todo espaço disponível,
-     overflow hidden para ceder o scroll ao filho fichas-dir-scroll */
-  #fichasConteudo {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    min-height: 0;
-  }
-
-  /* ÚNICO contêiner de scroll: campos + label + formulário + votos,
-     tudo no mesmo frame rolável */
-  .fichas-dir-scroll {
-    flex: 1;
-    overflow-y: auto;
-    min-height: 0;
-    padding-bottom: 20px; /* antes 72px */
-  }
-
-  /* Campos editáveis (relator, expediente) */
-  .ficha-campos {
-    padding: 4px 20px 0 20px;
-    border-bottom: 2px solid #f0f0f0;
-  }
-
-  /* Label da seção votos */
-  .ficha-secao-votos {
-    font-size: 0.68rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: #888;
-    padding: 12px 20px 8px 20px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .ficha-secao-votos-total {
-    background: #f0f4f8;
-    color: #666;
-    font-size: 0.65rem;
-    padding: 2px 8px;
-    border-radius: 50px;
-  }
-
-  /* =====================================================
-     11. VOTOS — LISTA ACCORDION
-  ===================================================== */
-  .votos-lista {
-    padding: 0 16px 4px 16px;
-  }
-
-  .voto-accordion {
-    border: 1.5px solid #eee;
-    border-radius: 10px;
-    margin-bottom: 8px;
-    overflow: hidden;
-    transition: border-color 0.2s, box-shadow 0.2s;
-  }
-
-  .voto-accordion.aberto {
-    border-color: #004480;
-    box-shadow: 0 4px 12px rgba(0,68,128,0.1);
-  }
-
-  /* Cabeçalho clicável do voto */
-  .voto-accordion-header {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 14px;
-    cursor: pointer;
-    background: #fff;
-    transition: background 0.15s;
-    user-select: none;
-  }
-
-  .voto-accordion-header:hover { background: #f8f9fa; }
-
-  .voto-accordion.aberto .voto-accordion-header {
-    background: #f0f4ff;
-    border-bottom: 1px solid #e0e8ff;
-  }
-
-  .voto-tipo-chip {
-    flex-shrink: 0;
-    font-size: 0.62rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    padding: 3px 9px;
-    border-radius: 50px;
-    letter-spacing: 0.04em;
-    white-space: nowrap;
-  }
-
-  .voto-tipo-relator { background: #e3f2fd; color: #1565c0; }
-  .voto-tipo-membro  { background: #f3e5f5; color: #6a1b9a; }
-  .voto-tipo-minerva { background: #fff3e0; color: #e65100; }
-  .voto-tipo-vogal   { background: #e8f5e9; color: #2e7d32; }
-  .voto-tipo-default { background: #f5f5f5; color: #666; }
-
-  .voto-header-info {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .voto-header-votante {
-    font-size: 0.82rem;
-    font-weight: 700;
-    color: #333;
-    display: block;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  /* Seta de expansão */
-  .voto-chevron {
-    font-size: 20px;
-    color: #aaa;
-    transition: transform 0.25s ease;
-    flex-shrink: 0;
-  }
-
-  .voto-accordion.aberto .voto-chevron { transform: rotate(180deg); }
-
-  /* Corpo do voto expandido */
-  .voto-accordion-body {
-    display: none;
-    padding: 12px 14px 12px 14px;
-    background: #f8f9fa;
-  }
-
-  .voto-accordion.aberto .voto-accordion-body { display: block; }
-
-  .voto-detalhe-linha {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 8px;
-    align-items: baseline;
-  }
-
-  .voto-detalhe-label {
-    font-size: 0.68rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    color: #aaa;
-    letter-spacing: 0.06em;
-    min-width: 72px;
-    flex-shrink: 0;
-  }
-
-  .voto-detalhe-valor {
-    font-size: 0.82rem;
-    color: #333;
-    font-weight: 600;
-  }
-
-  .voto-resultado-chip {
-    display: inline-block;
-    font-size: 0.68rem;
-    font-weight: 700;
-    padding: 2px 10px;
-    border-radius: 50px;
-    background: #e8f5e9;
-    color: #2e7d32;
-  }
-
-  /* Container de ações do relatório para alinhar Abrir e Excluir */
-.voto-pdf-container {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 8px;
-}
-
-/* Botão de abrir PDF (Ajustado) */
-.voto-pdf-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: #fff !important;
-  background: #004480; /* Azul OAB */
-  padding: 6px 14px;
-  border-radius: 50px;
-  transition: all 0.2s ease;
-  text-decoration: none !important;
-  border: none;
-  cursor: pointer;
-}
-
-.voto-pdf-link:hover {
-  background: #002f5d;
-  transform: translateY(-1px);
-  box-shadow: 0 3px 8px rgba(0,0,0,0.15);
-}
-
-.voto-pdf-link i { font-size: 16px; }
-
-/* Botão de excluir PDF (Novo) */
-.btn-pdf-excluir {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: #fff;
-  color: #ff0000;
-  border: 1px solid #ffcdd2;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-pdf-excluir:hover {
-  background: #ff0000;
-  color: #fff;
-  border-color: #ff0000;
-}
-
-/* Botão para adicionar PDF quando estiver vazio (Novo) */
-.btn-pdf-adicionar {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: #a68945 !important; /* Dourado OAB */
-  background: #fff;
-  border: 1.5px dashed #a68945;
-  padding: 5px 12px;
-  border-radius: 50px;
-  cursor: pointer;
-  transition: all 0.2s;
-  margin-top: 5px;
-}
-
-.btn-pdf-adicionar:hover {
-  background: #fdf6e3;
-  transform: scale(1.02);
-}
-
-  .voto-accordion-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-    margin-top: 10px;
-    padding-top: 8px;
-    border-top: 1px solid #eee;
-  }
-
-  .btn-voto-del {
-    background: none;
-    border: 1px solid #ffcdd2;
-    color: #c62828;
-    font-size: 0.75rem;
-    font-weight: 700;
-    padding: 4px 12px;
-    border-radius: 50px;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    transition: background 0.15s;
-  }
-
-  .btn-voto-del:hover { background: #ffebee; }
-
-  .btn-voto-salvar {
-    background: none;
-    border: 1px solid #c8d8f8;
-    color: #004480;
-    font-size: 0.75rem;
-    font-weight: 700;
-    padding: 4px 12px;
-    border-radius: 50px;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    transition: background 0.15s;
-  }
-
-  .btn-voto-salvar:hover { background: #e8f0fe; }
-
-  /* Placar de resultado no cabeçalho do accordion */
-  .voto-resultado-placar {
-    font-size: 0.8rem;
-    font-weight: 800;
-    color: #a68945;
-    background: #fdf6e3;
-    border: 1.5px solid #e8d9a0;
-    padding: 3px 9px;
-    border-radius: 50px;
-    white-space: nowrap;
-    flex-shrink: 0;
-    letter-spacing: 0.03em;
-  }
-
-  /* Variante somente leitura no corpo expandido */
-  .voto-resultado-readonly {
-    display: inline-block;
-    margin-top: 2px;
-  }
-
-  /* Grupos de campos editáveis no corpo do accordion */
-  .voto-campo-grupo {
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-    margin-bottom: 2px;
-  }
-
-  .voto-campo-label {
-    font-size: 0.68rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    color: #aaa;
-    letter-spacing: 0.06em;
-    min-width: 64px;
-    flex-shrink: 0;
-    margin-top: 8px;
-  }
-
-  .voto-campo-input {
-    flex: 1;
-    margin: 0 !important;
-    padding-top: 0 !important;
-  }
-
-  .voto-campo-input input,
-  .voto-campo-input .select-wrapper input {
-    font-size: 0.82rem !important;
-    height: 2rem !important;
-    margin: 0 !important;
-  }
-
-  .voto-campo-input .select-wrapper + label,
-  .voto-campo-input label { display: none !important; }
-
-  /* Textarea do campo Voto (texto longo) */
-  .voto-textarea {
-    font-size: 0.82rem !important;
-    min-height: 60px !important;
-    padding-top: 4px !important;
-    line-height: 1.5 !important;
-  }
-
-  .voto-campo-grupo-voto {
-    align-items: flex-start !important;
-  }
-
-  .votos-vazio {
-    text-align: center;
-    padding: 30px 20px;
-    color: #bbb;
-    font-size: 0.85rem;
-  }
-
-  /* =====================================================
-     13. FORMULÁRIO DE NOVO VOTO (EXPANSÍVEL)
-  ===================================================== */
-  .painel-novo-voto {
-    margin: 6px 16px 12px 16px;
-    background: #f1f4f9;
-    border: 1.5px dashed #004480;
-    border-radius: 10px;
-    padding: 14px 16px 6px 16px;
-    animation: slideDown 0.2s ease;
-  }
-
-  @keyframes slideDown {
-    from { opacity: 0; transform: translateY(-8px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-
-  .painel-novo-voto-titulo {
-    font-size: 0.72rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: #004480;
-    margin-bottom: 6px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  /* Área de upload de PDF */
-  .upload-area {
-    border: 1.5px dashed #a68945;
     border-radius: 8px;
-    padding: 12px;
-    text-align: center;
+    overflow: hidden;
+    border: 1.5px solid #dde2e8;
+    margin-bottom: 20px;
+  }
+
+  .pauta-tab-btn {
+    flex: 1;
+    background: #f4f6f8;
+    border: none;
+    padding: 10px 0;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #666;
     cursor: pointer;
     transition: all 0.2s;
-    margin: 4px 0 8px 0;
-    background: #fff;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
     display: flex;
-    flex-direction: column;
     align-items: center;
-    gap: 4px;
+    justify-content: center;
+    gap: 6px;
   }
 
-  .upload-area:hover {
-    background: #fdf6e3;
-    border-color: #7a6330;
+  .pauta-tab-btn.ativo {
+    background: #004480;
+    color: #fff;
   }
 
-  .upload-area .material-icons {
-    font-size: 26px;
-    color: #a68945;
+  .pauta-tab-btn:first-child {
+    border-right: 1.5px solid #dde2e8;
   }
 
-  .upload-area p {
-    font-size: 0.72rem;
-    color: #888;
-    margin: 0;
-    line-height: 1.3;
+  .pauta-painel {
+    display: none;
   }
 
-  .upload-area p strong { color: #a68945; font-weight: 700; }
-
-  .upload-area.selecionado {
-    background: #f0f4ff;
-    border-color: #004480;
-    border-style: solid;
-  }
-
-  .upload-area.selecionado .material-icons { color: #004480; }
-  .upload-area.selecionado p { color: #004480; }
-
-  /* =====================================================
-     14. INPUT FIELDS DENTRO DOS MODAIS
-  ===================================================== */
-  .input-field label,
-  .input-field input:not([type]):+label,
-  .input-field input[type=text]:not(.browser-default)+label,
-  .input-field textarea.materialize-textarea+label {
-    color: #004480 !important;
-    font-size: 0.9rem !important;
-  }
-
-  .input-field input:focus+label,
-  .input-field textarea:focus+label,
-  .input-field label.active {
-    color: #002f5d !important;
-    font-size: 0.8rem !important;
-    font-weight: 700 !important;
-  }
-
-  .input-field input:focus,
-  .input-field textarea:focus {
-    border-bottom: 1px solid #004480 !important;
-    box-shadow: 0 1px 0 0 #004480 !important;
-  }
-
-  .input-field .prefix { color: #004480 !important; }
-  .input-field .prefix.active { color: #ff0000 !important; }
-
-  /* =====================================================
-     15. MISCELÂNEA
-  ===================================================== */
-  .lista-vazia-msg {
-    text-align: center;
-    padding: 60px 20px;
-    color: #aaa;
-  }
-
-  .lista-vazia-msg i {
-    font-size: 52px;
+  .pauta-painel.ativo {
     display: block;
-    margin-bottom: 14px;
-    color: #ccc;
   }
+
+  .sessao-lista {
+    max-height: 260px;
+    overflow-y: auto;
+    border: 1.5px solid #eee;
+    border-radius: 8px;
+    margin-bottom: 6px;
+  }
+
+  .sessao-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 16px;
+    border-bottom: 1px solid #f5f5f5;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .sessao-item:last-child {
+    border-bottom: none;
+  }
+
+  .sessao-item:hover {
+    background: #f0f4ff;
+  }
+
+  .sessao-item.selecionado {
+    background: #e8f0fe;
+    border-left: 4px solid #004480;
+  }
+
+  .sessao-item-data {
+    flex-shrink: 0;
+    background: #f0f4f8;
+    border-radius: 6px;
+    padding: 6px 12px;
+    text-align: center;
+    min-width: 90px;
+  }
+
+  .sessao-item-data span {
+    display: block;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #002f5d;
+  }
+
+  .sessao-item-orgao {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #333;
+    flex: 1;
+  }
+
+  .sessao-item-local {
+    font-size: 0.75rem;
+    color: #888;
+    display: block;
+    margin-top: 2px;
+  }
+
+  .sessao-lista-vazia {
+    padding: 30px;
+    text-align: center;
+    color: #aaa;
+    font-size: 0.9rem;
+  }
+
+  /* =====================================================
+     10. MODAL DE HISTÓRICO
+  ===================================================== */
+  .hist-header {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #888;
+    border-bottom: 2px solid #eee;
+    padding-bottom: 8px;
+    margin-bottom: 12px;
+    display: flex;
+    gap: 12px;
+  }
+
+  .hist-header .h-col-data {
+    width: 90px;
+    flex-shrink: 0;
+  }
+
+  .hist-header .h-col-tipo {
+    width: 100px;
+    flex-shrink: 0;
+  }
+
+  .hist-header .h-col-desc {
+    flex: 1;
+  }
+
+  .hist-item {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 10px 0;
+    border-bottom: 1px solid #f5f5f5;
+  }
+
+  .hist-item:last-child {
+    border-bottom: none;
+  }
+
+  .hist-item .h-col-data {
+    width: 90px;
+    flex-shrink: 0;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #002f5d;
+  }
+
+  .hist-item .h-col-tipo {
+    width: 100px;
+    flex-shrink: 0;
+  }
+
+  .hist-tipo-chip {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 50px;
+    letter-spacing: 0.04em;
+  }
+
+  .tipo-andamento {
+    background: #e3f2fd;
+    color: #1565c0;
+  }
+
+  .tipo-sessao {
+    background: #f3e5f5;
+    color: #6a1b9a;
+  }
+
+  .tipo-ato {
+    background: #fff3e0;
+    color: #e65100;
+  }
+
+  .tipo-outro {
+    background: #f5f5f5;
+    color: #666;
+  }
+
+  .hist-item .h-col-desc {
+    flex: 1;
+    font-size: 0.83rem;
+    color: #424242;
+    line-height: 1.5;
+  }
+
+  .hist-lista-scroll {
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+
+  .hist-vazio {
+    text-align: center;
+    padding: 40px;
+    color: #aaa;
+    font-size: 0.9rem;
+  }
+
+  /* =====================================================
+     11. MODAL DE IMPORTAÇÃO EM MASSA (PINCEL MÁGICO)
+  ===================================================== */
+  .importar-instrucoes {
+    background: #f0f4f8;
+    border-left: 4px solid #a68945;
+    border-radius: 6px;
+    padding: 12px 16px;
+    margin-bottom: 18px;
+    font-size: 0.82rem;
+    color: #444;
+    line-height: 1.6;
+  }
+
+  .importar-instrucoes strong {
+    color: #002f5d;
+  }
+
+  .importar-preview {
+    margin-top: 14px;
+    border: 1.5px solid #e0e0e0;
+    border-radius: 8px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .importar-preview table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+  }
+
+  .importar-preview th {
+    background: #004480;
+    color: #fff;
+    padding: 7px 10px;
+    font-weight: 700;
+    text-align: left;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    position: sticky;
+    top: 0;
+  }
+
+  .importar-preview td {
+    padding: 6px 10px;
+    border-bottom: 1px solid #f0f0f0;
+    color: #333;
+  }
+
+  .importar-preview tr:last-child td {
+    border-bottom: none;
+  }
+
+  .importar-preview tr:hover td {
+    background: #f8f9ff;
+  }
+
+  .importar-contagem {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #004480;
+    margin-top: 8px;
+    padding: 4px 2px;
+  }
+
+  .importar-contagem.erro {
+    color: #c62828;
+  }
+
+  textarea#importarTexto {
+    min-height: 130px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    border: 1.5px solid #dde2e8 !important;
+    border-radius: 6px !important;
+    padding: 10px !important;
+    box-shadow: none !important;
+    resize: vertical;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  textarea#importarTexto:focus {
+    border-color: #004480 !important;
+    outline: none;
+  }
+
+  /* =====================================================
+     12. MODAL DE ALTERAÇÃO DE STATUS
+  ===================================================== */
+  .status-toggle-info {
+    text-align: center;
+    padding: 16px 0 8px 0;
+  }
+
+  .status-de {
+    display: inline-block;
+    font-size: 0.85rem;
+    font-weight: 700;
+    padding: 4px 14px;
+    border-radius: 50px;
+    margin-bottom: 8px;
+  }
+
+  .status-seta {
+    display: block;
+    font-size: 2rem;
+    color: #a68945;
+    margin: 4px 0;
+    line-height: 1;
+  }
+
+  .status-para {
+    display: inline-block;
+    font-size: 0.95rem;
+    font-weight: 700;
+    padding: 6px 18px;
+    border-radius: 50px;
+    background: #004480;
+    color: #fff;
+  }
+
+  /* Datepicker customizado */
+  .datepicker-modal {
+    z-index: 9999 !important;
+  }
+
+  .is-today.is-selected .datepicker-day-button,
+  .is-selected .datepicker-day-button {
+    background-color: #004480 !important;
+  }
+
+  .datepicker-cancel,
+  .datepicker-done {
+    color: #004480 !important;
+  }
+
+
+  /* =====================================================
+      13. MODAL DE DATA PICKER DO MATERIALIZE
+  ===================================================== */
+
+    /* Força o Datepicker a aparecer na frente de qualquer modal expansível */
+  .datepicker-modal {
+    z-index: 9999 !important; 
+  }
+
+  /* Ajuste específico para o painel expansível não cortar o calendário */
+  #pautaPainel_nova {
+    overflow: visible !important;
+  }
+
 </style>

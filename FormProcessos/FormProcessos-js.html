@@ -629,67 +629,69 @@
    * Linhas de cabeçalho e vazias são ignoradas automaticamente.
    */
   function importar_parsear() {
-    const texto = (document.getElementById('importarTexto').value || '').trim();
+    const texto = document.getElementById('importarTexto').value;
     const contagem = document.getElementById('importarContagem');
-    const preview  = document.getElementById('importarPreview');
+    const preview = document.getElementById('importarPreview');
+    const tbody = document.getElementById('importarTbody');
 
-    if (!texto) {
-      contagem.textContent = '';
-      preview.style.display = 'none';
-      itensParsedImport = [];
-      return;
-    }
+    // Limpa estado anterior
+    contagem.textContent = '';
+    preview.style.display = 'none';
+    itensParsedImport = [];
 
-    const linhas = texto.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-    const itens  = [];
+    if (!texto.trim()) return;
+
+    const linhas = texto.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+    const itens = [];
+
+    // Regex que captura os campos: processo | data | hora | requerente | requerido (opcional)
+    // Exemplo: 202558246 | 19/11/2025 | 11:33 | CLEITON VIEIRA CONCEICAO |
+    // ou: 202559909 | 05/12/2025 | 14:58 | DIVINO ADRIANO DOS SANTOS | FERNANDO RIBEIRO DE OLIVEIRA
+    const regex = /^\s*(\d+)\s*\|\s*(\d{2}\/\d{2}\/\d{4})\s*\|\s*(\d{2}:\d{2})\s*\|\s*([^|]+?)\s*(?:\|\s*(.*?)\s*)?$/;
 
     linhas.forEach(linha => {
-      // Divide por TAB primeiro; se não houver TAB, divide por 2+ espaços consecutivos
-      let partes = linha.includes('\t')
-        ? linha.split('\t').map(p => p.trim())
-        : linha.split(/\s{2,}/).map(p => p.trim());
+      const match = linha.match(regex);
+      if (match) {
+        const processo = match[1];      // número do processo
+        const data = match[2];          // data no formato dd/mm/aaaa
+        const hora = match[3];          // hora no formato hh:mm
+        const requerente = match[4].trim(); // nome do requerente (obrigatório)
+        const requerido = match[5] ? match[5].trim() : ''; // requerido (opcional)
 
-      // Precisa ter pelo menos 4 colunas (Processo, Data, Hora, Requerente)
-      if (partes.length < 4) return;
-
-      // Ignora linhas de cabeçalho (primeira coluna contém "processo" ou similar)
-      const primCol = partes[0].toLowerCase();
-      if (primCol === 'processo' || primCol === 'n°' || primCol === 'nº' || primCol === 'num') return;
-
-      // A coluna de requerente pode conter espaços — junta tudo a partir da 4ª coluna
-      const requerente = partes.slice(3).join(' ');
-
-      itens.push({
-        processo:   partes[0],
-        data:       partes[1],   // Formato dd/mm/yyyy que vem do texto
-        hora:       partes[2],
-        requerente: requerente
-      });
+        itens.push({
+          processo: processo,
+          data: data,
+          hora: hora,
+          requerente: requerente,
+          requerido: requerido
+        });
+      }
+      // Linhas que não casam (cabeçalho, separadores, etc.) são ignoradas
     });
 
     itensParsedImport = itens;
 
     if (itens.length === 0) {
-      contagem.className   = 'importar-contagem erro';
+      contagem.className = 'importar-contagem erro';
       contagem.textContent = 'Nenhuma linha válida reconhecida. Verifique o formato.';
       preview.style.display = 'none';
       return;
     }
 
-    contagem.className   = 'importar-contagem';
+    contagem.className = 'importar-contagem';
     contagem.textContent = `${itens.length} linha(s) reconhecida(s).`;
 
-    // Monta preview (máx 8 linhas visíveis)
+    // Preview das primeiras 50 linhas
     const linhasPreview = itens.slice(0, 50);
-    const tbody = linhasPreview.map(it => `
+    tbody.innerHTML = linhasPreview.map(item => `
       <tr>
-        <td>${it.processo}</td>
-        <td>${it.data} ${it.hora}</td>
-        <td>${it.requerente}</td>
+        <td>${item.processo}</td>
+        <td>${item.data} ${item.hora}</td>
+        <td>${item.requerente}</td>
+        <td>${item.requerido || ''}</td>
       </tr>
     `).join('');
 
-    document.getElementById('importarTbody').innerHTML = tbody;
     preview.style.display = 'block';
   }
 

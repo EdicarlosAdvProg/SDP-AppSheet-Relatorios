@@ -1,14 +1,11 @@
 <!DOCTYPE html>
 <html>
-
 <head>
   <base target="_top">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
-  <?!= include('FormSessoes-style'); ?>
+  <?!= include('FormProcessos-style'); ?>
 </head>
-
 <body>
 
   <div class="main-container">
@@ -19,60 +16,51 @@
         <div class="row" style="margin-bottom: 0;">
           <div class="input-field col s12">
             <i class="material-icons prefix">search</i>
-            <input type="text" id="inputBuscaSessao" oninput="formSessoes_filtrar()" autocomplete="off">
-            <label for="inputBuscaSessao">Pesquisar por data, órgão ou local...</label>
+            <input type="text" id="inputBuscaProc" oninput="formProcessos_filtrar()" autocomplete="off">
+            <label for="inputBuscaProc">Pesquisar por processo, requerente ou procurador...</label>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Lista de Sessões -->
+    <!-- Lista de Processos -->
     <div class="list-wrapper">
       <div id="loaderLista" class="center-align" style="padding: 20px; display: none;">
         <div class="preloader-wrapper small active">
           <div class="spinner-layer spinner-blue-only">
-            <div class="circle-clipper left">
-              <div class="circle"></div>
-            </div>
-            <div class="gap-patch">
-              <div class="circle"></div>
-            </div>
-            <div class="circle-clipper right">
-              <div class="circle"></div>
-            </div>
+            <div class="circle-clipper left"><div class="circle"></div></div>
+            <div class="gap-patch"><div class="circle"></div></div>
+            <div class="circle-clipper right"><div class="circle"></div></div>
           </div>
         </div>
       </div>
-      <div id="listaSessoes" class="collection" style="border: none;"></div>
+      <div id="listaProcessos" class="collection" style="border: none;"></div>
     </div>
 
-    <!-- FAB principal -->
+    <!-- FAB -->
     <div class="fixed-action-btn">
       <a class="btn-floating btn-large btn-oab-red">
         <i class="large material-icons">menu</i>
       </a>
       <ul>
         <li>
-          <a class="btn-floating btn-oab-red tooltipped btn-hover-zoom" data-position="left"
-            data-tooltip="Criar Pauta (em breve)" onclick="formSessoes_emBreve('Criação de Pauta')">
-            <i class="material-icons">assignment</i>
+          <a class="btn-floating btn-oab-red tooltipped btn-hover-zoom"
+             data-position="left" data-tooltip="Importar processos em massa"
+             onclick="abrirModalImportar()">
+            <i class="material-icons">auto_fix_high</i>
           </a>
         </li>
         <li>
-          <a class="btn-floating btn-oab-red tooltipped btn-hover-zoom" data-position="left"
-            data-tooltip="Criar Ata (em breve)" onclick="formSessoes_emBreve('Geração de Ata')">
-            <i class="material-icons">description</i>
-          </a>
-        </li>
-        <li>
-          <a class="btn-floating btn-oab-red tooltipped btn-hover-zoom" data-position="left" data-tooltip="Nova Sessão"
-            onclick="formSessoes_abrirNova()">
+          <a class="btn-floating btn-oab-red tooltipped btn-hover-zoom"
+             data-position="left" data-tooltip="Novo Processo"
+             onclick="abrirNovoProcesso()">
             <i class="material-icons">add</i>
           </a>
         </li>
         <li>
-          <a class="btn-floating btn-oab-red tooltipped btn-hover-zoom" data-position="left"
-            data-tooltip="Sincronizar lista" onclick="formSessoes_carregar()">
+          <a class="btn-floating btn-oab-red tooltipped btn-hover-zoom"
+             data-position="left" data-tooltip="Sincronizar lista"
+             onclick="formProcessos_carregar()">
             <i class="material-icons">refresh</i>
           </a>
         </li>
@@ -82,22 +70,158 @@
   </div><!-- /main-container -->
 
 
-  <!-- ==================================================================
-       MODAL: CADASTRO / EDIÇÃO DE SESSÃO
-  ================================================================== -->
-  <div id="modalSessaoCad" class="modal modal-sessao-cad">
+  <!-- ============================================================
+       MODAL: CADASTRO / EDIÇÃO DE PROCESSO
+  ============================================================ -->
+  <div id="modalProcessoCad" class="modal">
     <div class="modal-content">
-      <h5 id="sessaoModalTitulo">Nova Sessão</h5>
-      <form id="sessaoForm" autocomplete="off">
-        <input type="hidden" id="sess_f_Id">
+      <h5 id="procModalTitulo">Novo Processo</h5>
+      <form id="procForm" autocomplete="off">
+        <input type="hidden" id="proc_f_Id">
 
         <div class="row" style="margin-bottom: 0;">
           <div class="input-field col s12 m4">
-            <input id="sess_f_Data" type="text" class="datepicker" readonly>
-            <label for="sess_f_Data">Data da Sessão *</label>
+            <input id="proc_f_Processo" type="text" required>
+            <label for="proc_f_Processo">Número do Processo *</label>
           </div>
           <div class="input-field col s12 m8">
-            <select id="sess_f_Orgao">
+            <input id="proc_f_Local" type="text">
+            <label for="proc_f_Local">Local da Ocorrência (Informe a Cidade onde ocorreu o fato)</label>
+          </div>
+        </div>
+
+        <div class="row" style="margin-bottom: 0;">
+          <div class="input-field col s12 m6">
+            <textarea id="proc_f_Requerente" class="materialize-textarea expandivel" required></textarea>
+            <label for="proc_f_Requerente">Requerente *</label>
+          </div>
+          <div class="input-field col s12 m6">
+            <textarea id="proc_f_Requerido" class="materialize-textarea expandivel"></textarea>
+            <label for="proc_f_Requerido">Requerido</label>
+          </div>
+        </div>
+
+        <div class="row" style="margin-bottom: 0;">
+          <div class="input-field col s12 m8">
+            <input id="proc_f_Procurador" type="text" class="autocomplete">
+            <label for="proc_f_Procurador">Procurador(a) Responsável</label>
+          </div>
+          <div class="input-field col s12 m4">
+            <select id="proc_f_Status">
+              <option value="" disabled selected>Escolha o Status</option>
+              <option value="Concluso">Concluso</option>
+              <option value="Na secretaria">Na secretaria</option>
+              <option value="Arquivado">Arquivado</option>
+            </select>
+            <label>Status</label>
+          </div>
+        </div>
+
+        <div class="modal-secao">Conteúdo Jurídico</div>
+
+        <div class="row" style="margin-bottom: 0;">
+          <div class="input-field col s12">
+            <textarea id="proc_f_Ementa" class="materialize-textarea juridico"></textarea>
+            <label for="proc_f_Ementa">Ementa</label>
+          </div>
+        </div>
+
+        <div class="row" style="margin-bottom: 0;">
+          <div class="input-field col s12">
+            <textarea id="proc_f_Resumo" class="materialize-textarea juridico"></textarea>
+            <label for="proc_f_Resumo">Resumo</label>
+          </div>
+        </div>
+
+        <div class="row" style="margin-bottom: 0;">
+          <div class="input-field col s12">
+            <textarea id="proc_f_Provas" class="materialize-textarea juridico"></textarea>
+            <label for="proc_f_Provas">Provas (links ou descrição)</label>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-close waves-effect waves-grey btn-flat grey-text text-darken-1"
+        style="margin-right: 10px;">Cancelar</button>
+      <button id="procBtnSalvar" class="waves-effect waves-light btn btn-salvar-modal"
+        onclick="formProcessos_salvar()">
+        <i class="material-icons left">save</i>Salvar
+      </button>
+    </div>
+  </div>
+
+
+  <!-- ============================================================
+       MODAL: HISTÓRICO DO PROCESSO
+  ============================================================ -->
+  <div id="modalHistorico" class="modal modal-historico">
+    <div class="modal-content">
+      <h5 id="histModalTitulo">Histórico</h5>
+      <div id="histLista" class="hist-lista-scroll">
+        <!-- Renderizado via JS -->
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-close waves-effect waves-grey btn-flat grey-text text-darken-1">Fechar</button>
+    </div>
+  </div>
+
+
+  <!-- ============================================================
+       MODAL: ALTERAÇÃO DE STATUS (Concluso ↔ Na secretaria)
+  ============================================================ -->
+  <div id="modalStatus" class="modal modal-status">
+    <div class="modal-content">
+      <h5>Alterar Status</h5>
+      <p id="statusProcNumero" style="margin-top:-14px; margin-bottom:18px; color:#555; font-size:0.88rem;"></p>
+
+      <div class="status-toggle-info">
+        <span id="statusDeChip" class="status-de s-vazio">
+          <span id="statusDeTexto">—</span>
+        </span>
+        <span class="status-seta">↓</span>
+        <span id="statusParaChip" class="status-para s-concluso">
+          <span id="statusParaTexto">—</span>
+        </span>
+      </div>
+
+      <div class="input-field" style="margin-top: 24px;">
+        <input id="proc_statusDataPicker" type="text" class="datepicker" readonly>
+        <label for="proc_statusDataPicker">Data da mudança de status *</label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-close waves-effect waves-grey btn-flat grey-text text-darken-1"
+        style="margin-right: 10px;">Cancelar</button>
+      <button id="statusBtnConfirmar" class="waves-effect waves-light btn btn-salvar-modal"
+        onclick="confirmarAlteracaoStatus()">
+        Confirmar
+      </button>
+    </div>
+  </div>
+
+
+  <!-- ============================================================
+       MODAL: ADICIONAR À PAUTA
+  ============================================================ -->
+  <div id="modalPauta" class="modal modal-pauta modal-fixed-footer">
+    <div class="modal-content" style="position: relative;">
+      <h5>Incluir na Pauta</h5>
+      <p style="margin-top:-14px; margin-bottom:18px; color:#555; font-size:0.88rem;">
+        <strong id="pautaProcNumero">Processo</strong>
+      </p>
+
+      <div id="pautaPainel_nova" style="display: none; background: #f1f4f9; padding: 15px; border-radius: 8px; border: 1.5px dashed #004480; margin-bottom: 20px;">
+        <h6 style="color:#004480; font-weight:700; font-size:0.9rem; margin-top:0;">Criar Nova Sessão</h6>
+        
+        <div class="row" style="margin-bottom: 0;">
+          <div class="input-field col s12 m4">
+            <input id="proc_novaDataPicker" type="text" class="datepicker" readonly>
+            <label for="proc_novaDataPicker">Data da Sessão *</label>
+          </div>
+          <div class="input-field col s12 m8">
+            <select id="proc_novaSessaoOrgao">
               <option value="" disabled selected>Selecione o órgão *</option>
               <option value="Órgão Deliberativo do SDP">Órgão Deliberativo do SDP</option>
               <option value="Pleno do SDP">Pleno do SDP</option>
@@ -108,220 +232,94 @@
 
         <div class="row" style="margin-bottom: 0;">
           <div class="input-field col s12">
-            <input id="sess_f_Local" type="text">
-            <label for="sess_f_Local">Local / Sala</label>
+            <input id="proc_novaSessaoLocal" type="text">
+            <label for="proc_novaSessaoLocal">Sala / Local (Opcional)</label>
           </div>
         </div>
 
-        <div class="row" style="margin-bottom: 0;">
-          <div class="input-field col s12 m6">
-            <input id="sess_f_Presidente" type="text" class="autocomplete">
-            <label for="sess_f_Presidente">Presidente da Sessão</label>
-          </div>
-          <div class="input-field col s12 m6">
-            <input id="sess_f_Secretario" type="text" class="autocomplete">
-            <label for="sess_f_Secretario">Secretário(a)</label>
-          </div>
+        <div class="right-align">
+          <button class="btn-flat btn-small red-text" onclick="pauta_toggleNovaSessao(false)">Cancelar Nova</button>
         </div>
-      </form>
+      </div>
+
+      <div id="pautaPainel_existente">
+        <label style="font-weight:700; color:#004480; text-transform:uppercase; font-size:0.7rem;">Selecione uma Sessão Existente:</label>
+        <div id="sessaoLista" class="sessao-lista" style="margin-top:8px;"></div>
+      </div>
+
+      <div style="position: sticky; bottom: 10px; right: 10px; text-align: right; pointer-events: none;">
+        <button id="pautaBtnAddSessao" class="btn-floating btn-large waves-effect waves-light btn-oab-red" 
+                style="pointer-events: auto;" onclick="pauta_toggleNovaSessao(true)" title="Criar Nova Sessão">
+          <i class="material-icons">add</i>
+        </button>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="modal-close waves-effect waves-grey btn-flat grey-text text-darken-1"
+        style="margin-right: 10px;">Cancelar</button>
+      <button id="pautaBtnConfirmar" class="waves-effect waves-light btn btn-salvar-modal"
+        onclick="pauta_confirmar()">Confirmar Inclusão</button>
+    </div>
+  </div>
+
+
+  <!-- ============================================================
+       MODAL: IMPORTAÇÃO EM MASSA (PINCEL MÁGICO)
+  ============================================================ -->
+  <div id="modalImportar" class="modal modal-importar">
+    <div class="modal-content">
+      <h5>Importação em Massa</h5>
+
+      <div class="importar-instrucoes">
+        Cole abaixo o texto com a lista de processos. As colunas devem estar separadas por
+        <strong>TAB</strong> ou <strong>dois ou mais espaços</strong>, na seguinte ordem:<br>
+        <strong>Processo &nbsp;·&nbsp; Data &nbsp;·&nbsp; Hora &nbsp;·&nbsp; Requerente</strong><br><br>
+        Linhas de cabeçalho são detectadas e ignoradas automaticamente.<br>
+        <strong>Regra:</strong> se o número já existir, o status será alterado para
+        <em>Concluso</em> e um registro de histórico será criado. Se não existir, um novo
+        processo será cadastrado com status <em>Concluso</em>.
+      </div>
+
+      <textarea id="importarTexto"
+        placeholder="Cole aqui o texto copiado da tabela..."
+        oninput="importar_parsear()"></textarea>
+
+      <div id="importarContagem" class="importar-contagem"></div>
+
+      <!-- Preview dos dados reconhecidos -->
+      <div id="importarPreview" class="importar-preview" style="display:none;">
+        <table>
+          <thead>
+            <tr>
+              <th>Processo</th>
+              <th>Data / Hora</th>
+              <th>Requerente</th>
+              <th>Requerido</th>
+            </tr>
+          </thead>
+          <tbody id="importarTbody"></tbody>
+        </table>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="modal-close waves-effect waves-grey btn-flat grey-text text-darken-1"
         style="margin-right: 10px;">Cancelar</button>
-      <button id="sessBtnSalvar" class="waves-effect waves-light btn btn-salvar-modal" onclick="formSessoes_salvar()">
-        <i class="material-icons left">save</i>Salvar
+      <button id="importarBtnConfirmar" class="waves-effect waves-light btn btn-salvar-modal"
+        onclick="importar_confirmar()">
+        <i class="material-icons left">auto_fix_high</i>Importar
       </button>
     </div>
   </div>
 
 
-  <!-- ==================================================================
-       MODAL: FICHAS DE VOTAÇÃO (PAINEL DIVIDIDO)
-  ================================================================== -->
-  <div id="modalFichas" class="modal modal-fichas">
-    <div class="modal-content">
-
-      <!-- Cabeçalho fixo -->
-      <div class="fichas-header">
-        <div>
-          <h5 id="fichasModalTitulo">Fichas de Votação</h5>
-          <span id="fichasModalSubtitulo" class="grey-text"
-            style="font-size: 0.8rem; display:block; margin-top: 2px;"></span>
-        </div>
-        <button class="modal-close waves-effect waves-grey btn-flat grey-text" style="padding: 0 8px;">
-          <i class="material-icons">close</i>
-        </button>
-      </div>
-
-      <!-- Corpo dividido -->
-      <div class="fichas-body">
-
-        <!-- PAINEL ESQUERDO: Lista de processos pautados -->
-        <div class="fichas-painel-esq">
-          <div class="fichas-painel-titulo">
-            <i class="material-icons" style="font-size:15px;">gavel</i>
-            Processos pautados
-            <span id="fichasContagem" class="badge-count">0</span>
-          </div>
-          <div id="fichasListaProcessos" class="fichas-lista-proc">
-            <!-- Renderizado via JS -->
-          </div>
-        </div>
-
-        <!-- PAINEL DIREITO: Detalhes da ficha selecionada -->
-        <div class="fichas-painel-dir" id="fichasPainelDir">
-
-          <!-- Estado vazio -->
-          <div id="fichasVazio" class="fichas-vazio-msg">
-            <i class="material-icons"
-              style="font-size: 48px; color: #ddd; display:block; margin-bottom: 12px;">touch_app</i>
-            <p>Selecione um processo ao lado para visualizar a ficha de votação.</p>
-          </div>
-
-          <!-- Conteúdo da ficha (exibido ao selecionar um processo) -->
-          <div id="fichasConteudo" style="display: none;">
-
-            <!-- Cabeçalho azul: info do processo (fixo no topo) -->
-            <div class="ficha-proc-info">
-              <div class="ficha-proc-numero" id="fichaNumProc">---</div>
-              <div class="ficha-proc-req" id="fichaReqProc">---</div>
-              <div class="ficha-proc-local" id="fichaLocalProc"></div>
-              <span id="fichaStatusChip" class="ficha-status-chip" style="display:none;"></span>
-            </div>
-
-            <!-- Área scrollável única: campos + label + formulário + votos -->
-            <div class="fichas-dir-scroll">
-
-              <!-- Campos editáveis: relator e expediente -->
-              <div class="ficha-campos">
-                <input type="hidden" id="ficha_f_Id">
-                <input type="hidden" id="ficha_f_IdProcesso">
-
-                <div class="row" style="margin-bottom: 0; margin-top: 8px;">
-                  <div class="input-field col s12 m2">
-                    <input id="ficha_f_Ordem" type="number" min="1">
-                    <label for="ficha_f_Ordem">Ordem</label>
-                  </div>
-                  
-                  <div class="input-field col s12 m6">
-                    <input id="ficha_f_Relator" type="text" class="autocomplete">
-                    <label for="ficha_f_Relator">Relator(a)</label>
-                  </div>
-                  
-                  <div class="col s12 m4" style="padding-top: 18px; text-align:right;">
-                    <button class="btn btn-small btn-oab-gold waves-effect waves-light"
-                      onclick="formSessoes_salvarFicha()">
-                      <i class="material-icons left" style="font-size:15px;">save</i>Salvar
-                    </button>
-                  </div>
-                </div>
-
-                <div class="row" style="margin-bottom: 0;">
-                  <div class="input-field col s12">
-                    <textarea id="ficha_f_Expediente" class="materialize-textarea"
-                      style="min-height:40px; font-size: 0.88rem;"></textarea>
-                    <label for="ficha_f_Expediente">Expediente / Observações</label>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Label da seção votos com botão adicionar -->
-              <div class="ficha-secao-votos" style="display: flex; justify-content: space-between; align-items: center;">
-                <span>Votos registrados</span>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <span id="fichaVotosTotal" class="ficha-secao-votos-total">0 voto(s)</span>
-                  <button class="btn-floating btn-small waves-effect waves-light btn-oab-blue" onclick="formSessoes_abrirNovoVoto()" title="Adicionar voto">
-                    <i class="material-icons">add</i>
-                  </button>
-                </div>
-              </div>
-
-              <!-- Formulário de novo voto (aparece ao clicar no FAB) -->
-              <div id="painelNovoVoto" style="display: none;">
-                <div class="painel-novo-voto">
-                  <div class="painel-novo-voto-titulo">
-                    <span><i class="material-icons"
-                        style="font-size:14px; vertical-align:middle; margin-right:4px;">how_to_vote</i>Novo Voto</span>
-                    <button class="btn-flat btn-small grey-text" style="padding: 0;"
-                      onclick="formSessoes_fecharNovoVoto()">
-                      <i class="material-icons" style="font-size:18px;">close</i>
-                    </button>
-                  </div>
-
-                  <input type="hidden" id="voto_f_Id">
-
-                  <div class="row" style="margin-bottom: 0;">
-                    <div class="input-field col s12 m5">
-                      <select id="voto_f_Tipo">
-                        <option value="" disabled selected>Selecione *</option>
-                        <option value="Voto do relator">Voto do relator</option>
-                        <option value="Voto divergente">Voto divergente</option>
-                      </select>
-                      <label>Tipo de Voto *</label>
-                    </div>
-                    <div class="input-field col s12 m7">
-                      <input id="voto_f_Relator" type="text" class="autocomplete">
-                      <label for="voto_f_Relator">Votante (Membro)</label>
-                    </div>
-                  </div>
-
-                  <div class="row" style="margin-bottom: 0;">
-                    <div class="input-field col s12">
-                      <textarea id="voto_f_Voto" class="materialize-textarea"
-                        style="min-height: 60px; font-size: 0.88rem;"></textarea>
-                      <label for="voto_f_Voto">Voto (texto)</label>
-                    </div>
-                  </div>
-
-                  <div class="row" style="margin-bottom: 0;">
-                    <div class="input-field col s12 m4">
-                      <input id="voto_f_Resultado" type="number" min="0">
-                      <label for="voto_f_Resultado">Resultado (placar)</label>
-                    </div>
-                  </div>
-
-                  <!-- Área de upload do PDF -->
-                  <div class="upload-area" id="uploadAreaVoto" onclick="document.getElementById('inputPDFVoto').click()"
-                    style="border: 2px dashed #a68945; padding: 15px; text-align: center; cursor: pointer; border-radius: 8px; margin-bottom: 15px;">
-                    <i class="material-icons" style="color: #a68945; font-size: 32px;">upload_file</i>
-                    <p style="margin: 5px 0;">
-                      <strong id="labelUploadVoto">Clique para anexar o relatório em PDF</strong><br>
-                      <span style="font-size: 0.8rem; color: #777;">Opcional · PDF único</span>
-                    </p>
-                  </div>
-                  <input type="file" id="inputPDFVoto" accept=".pdf" style="display:none;"
-                    onchange="formSessoes_selecionarPDF(this)">
-
-                  <div class="right-align" style="padding-bottom: 10px;">
-                    <button class="btn btn-oab-blue waves-effect waves-light" onclick="formSessoes_salvarVoto()">
-                      <i class="material-icons left">save</i>Salvar Voto
-                    </button>
-                  </div>
-                </div>
-              </div><!-- /painelNovoVoto -->
-
-              <!-- Lista de votos em accordion -->
-              <div id="fichasListaVotos" class="votos-lista">
-                <!-- Renderizado via JS -->
-              </div>
-
-            </div><!-- /fichas-dir-scroll -->
-
-          </div><!-- /fichasConteudo -->
-
-        </div><!-- /fichas-painel-dir -->
-      </div><!-- /fichas-body -->
-
-    </div><!-- /modal-content -->
-  </div><!-- /modalFichas -->
-
-  <!-- ==================================================================
-       MODAL: CONFIRMAÇÃO GENÉRICA
-  ================================================================== -->
+  <!-- ============================================================
+       MODAL: CONFIRMAÇÃO DE EXCLUSÃO
+  ============================================================ -->
   <div id="modalConfirmacao" class="modal modal-pequena">
     <div class="modal-content center-align">
-      <i id="iconConfirmacao" class="material-icons large red-text text-darken-2"
-        style="font-size: 52px; margin-bottom: 8px;">delete_forever</i>
+      <i class="material-icons large red-text text-darken-2"
+        style="font-size:52px; margin-bottom:8px;">delete_forever</i>
       <h5 id="tituloConfirmacao" style="border-left:none; color:#c62828; text-align:center;">
         Confirmar exclusão
       </h5>
@@ -334,43 +332,14 @@
         style="border-radius: 50px;">Cancelar</button>
       <button id="btnConfirmarAcao" class="waves-effect waves-light btn"
         style="background:#c62828; border-radius:50px; font-weight:700;">
-        Confirmar
-      </button>
-    </div>
-  </div>
-
-  <!-- ==================================================================
-       MODAL: PINCEL MÁGICO PARA ADICIONAR PROCESSOS EM MASSA À PAUTA
-  ================================================================== -->
-  <div id="modalPincelMagico" class="modal modal-sessao-cad">
-    <div class="modal-content">
-      <h5><i class="material-icons left" style="color:#a68945;">auto_fix_high</i>Pincel Mágico</h5>
-      <p class="grey-text" style="font-size: 0.9rem;">Cole abaixo os números dos processos. O sistema identificará automaticamente os números de 9 dígitos (ex: 202412345).</p>
-      
-      <input type="hidden" id="pm_idSessao">
-      <input type="hidden" id="pm_orgaoSessao">
-
-      <div class="row">
-        <div class="input-field col s12">
-          <textarea id="pm_textoBruto" class="materialize-textarea" 
-                    style="min-height: 200px; font-family: monospace; font-size: 0.9rem;" 
-                    placeholder="202400001, 202400002..."></textarea>
-          <label for="pm_textoBruto">Lista de Processos</label>
-        </div>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="modal-close waves-effect waves-grey btn-flat">Cancelar</button>
-      <button class="btn btn-oab-gold waves-effect waves-light" onclick="formSessoes_executarPincelMagico()">
-        <i class="material-icons left">flash_on</i>Processar e Adicionar
+        Excluir definitivamente
       </button>
     </div>
   </div>
 
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
-  <?!= include('FormSessoes-js'); ?>
+  <?!= include('FormProcessos-js'); ?>
 
 </body>
-
 </html>
