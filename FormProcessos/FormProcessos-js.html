@@ -204,15 +204,15 @@
              data-tooltip="Ver histórico"
              onclick="abrirHistorico('${idSafe}', '${numSafe}')">history</i>
 
+          <i class="material-icons act-btn c-pauta tooltipped"
+             data-tooltip="Incluir na pauta"
+             onclick="incluirPauta('${idSafe}', '${numSafe}')">event_note</i>
+
           <i class="material-icons act-btn ${statusClasse} tooltipped"
              data-tooltip="${statusTooltip}"
              onclick="abrirModalStatus('${idSafe}', '${numSafe}', '${_esc(novoStatusCalc)}', '${_esc(p.status)}')">
              ${statusIcone}
           </i>
-
-          <i class="material-icons act-btn c-pauta tooltipped"
-             data-tooltip="Incluir na pauta"
-             onclick="incluirPauta('${idSafe}', '${numSafe}')">event_note</i>
 
           <i class="material-icons act-btn c-del tooltipped"
              data-tooltip="Excluir"
