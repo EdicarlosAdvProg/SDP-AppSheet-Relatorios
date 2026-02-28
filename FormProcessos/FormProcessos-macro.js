@@ -89,7 +89,7 @@ function formProcessos_buscarDadosCompletos() {
     }
 
     // ── Monta lista final de processos ────────────────────────────────────────
-    const listaFinal = dadosProc.map(linha => {
+    let listaFinal = dadosProc.map(linha => {
       const id = String(linha[mapaProc['id'] - 1] || "");
       let dataFmt = "---", descFmt = "Sem registros";
       if (ultimoEventoMap[id]) {
@@ -110,6 +110,38 @@ function formProcessos_buscarDadosCompletos() {
         ultimaData: dataFmt,
         ultimaDesc: descFmt
       };
+    });
+
+    // --- Ordenação personalizada ---
+    listaFinal.sort((a, b) => {
+      // Função auxiliar para converter string "dd/MM/yyyy" para timestamp
+      function dataParaTimestamp(dataStr) {
+        if (dataStr === "---") return 0; // considera como data muito antiga
+        const partes = dataStr.split('/');
+        if (partes.length !== 3) return 0;
+        // Mês em JS é 0-index, por isso subtrai 1
+        return new Date(partes[2], partes[1] - 1, partes[0]).getTime();
+      }
+
+      const aConcluso = a.ultimaDesc === "Concluso ao órgão deliberativo";
+      const bConcluso = b.ultimaDesc === "Concluso ao órgão deliberativo";
+
+      // Se ambos são do grupo "concluso" ou ambos não são, ordena por data
+      if (aConcluso === bConcluso) {
+        const aTime = dataParaTimestamp(a.ultimaData);
+        const bTime = dataParaTimestamp(b.ultimaData);
+
+        if (aConcluso) {
+          // Grupo "concluso": ordem crescente (mais antigo primeiro)
+          return aTime - bTime;
+        } else {
+          // Demais processos: ordem decrescente (mais recente primeiro)
+          return bTime - aTime;
+        }
+      }
+
+      // Se um é concluso e outro não, o concluso vem primeiro
+      return aConcluso ? -1 : 1;
     });
 
     return { sucesso: true, dados: listaFinal, sessoes: listaSessoes, membros: membrosAuto };

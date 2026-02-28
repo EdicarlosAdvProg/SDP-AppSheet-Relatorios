@@ -121,7 +121,7 @@
   }
 
   .p-col-info {
-    width: 60%;
+    width: 75%;
     border-right: 1px solid #f0f0f0;
     padding-right: 20px;
   }
@@ -134,13 +134,14 @@
   }
 
   .p-col-actions {
-    width: 25%;
-    display: flex;
-    justify-content: space-evenly;
+    width: 10%;
+    display: grid;
+    grid-template-rows: repeat(3, auto);
+    grid-auto-flow: column;
+    gap: 10px 15px; /* ajuste conforme necessidade */
+    justify-items: center;
     align-items: center;
     padding-left: 10px;
-    flex-wrap: wrap;
-    gap: 6px;
   }
 
   .lvl-1 {
