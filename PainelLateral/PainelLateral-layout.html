@@ -65,10 +65,17 @@
       <!-- =====================================================
            SEÇÃO: FICHAS DE VOTAÇÃO
       ====================================================== -->
-      <div class="secao-titulo">
-        <i class="fa-solid fa-list-check"></i> Pauta
-        <span class="badge-count" id="badgeFichas">0</span>
+      <div class="secao-titulo header-pauta">
+        <div class="titulo-label">
+          <i class="fa-solid fa-list-check"></i> Pauta
+          <span class="badge-count" id="badgeFichas">0</span>
+        </div>
+        
+        <button class="btn-atualizar-pauta" onclick="PL_JS_recarregarSessaoAtual()" title="Atualizar Pauta">
+          <i class="fa-solid fa-arrows-rotate"></i>
+        </button>
       </div>
+
       <div class="fichas-lista" id="fichasLista">
         <!-- Gerado pelo JS -->
       </div>
@@ -135,6 +142,11 @@
       </div>
 
     </div><!-- /pautaContainer -->
+
+    <div class="sidebar-footer-logo">
+      <img src="https://www.oabgo.org.br/wp-content/themes/oab/images/logo-rodape.png" alt="OAB-GO Rodapé">
+    </div>
+
   </div><!-- /mainContainer -->
 
   <!-- =====================================================

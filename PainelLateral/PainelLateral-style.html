@@ -156,6 +156,62 @@
     overflow-x: hidden;
   }
 
+  /* Container do título da pauta para permitir alinhamento entre os lados */
+  .header-pauta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .btn-atualizar-pauta {
+    background: transparent;
+    border: none;
+    color: #004480; /* Azul OAB */
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .btn-atualizar-pauta:hover {
+    background-color: rgba(0, 68, 128, 0.1);
+    color: #002d55;
+  }
+
+  .btn-atualizar-pauta:active {
+    transform: rotate(90deg); /* Efeito de giro ao clicar */
+  }
+
+  .btn-atualizar-pauta i {
+    font-size: 14px;
+  }
+
+  /* Estilização do Logo de Rodapé */
+  .sidebar-footer-logo {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 40px 0 30px 0; /* Aumentado o espaçamento superior */
+    width: 100%;
+    clear: both;
+  }
+
+  .sidebar-footer-logo img {
+    max-width: 180px;        /* Tamanho aumentado (era 120px) */
+    height: auto;
+    opacity: 1;              /* Sempre totalmente visível */
+    filter: none;            /* Sem escala de cinza, sempre colorida */
+    transition: transform 0.3s ease;
+  }
+
+  /* Efeito sutil de escala ao passar o mouse, opcional */
+  .sidebar-footer-logo img:hover {
+    transform: scale(1.05);
+  }
+
   /* =====================================================
      4. ESTADOS DE CARREGAMENTO E ERRO
   ===================================================== */

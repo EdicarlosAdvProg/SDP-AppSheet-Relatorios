@@ -15,56 +15,55 @@
 
   // ================================================================
   // PONTO DE ENTRADA ÚNICO
-  // Chamado pelo DOMContentLoaded no layout, utilizando os dados
-  // pré-injetados pelo servidor (DADOS_INICIAIS) para evitar
-  // round-trip de rede desnecessário na abertura.
+  // Chamado no final do layout.
   // ================================================================
   function PL_JS_inicializarComDadosIniciais() {
     var inicial = window.DADOS_INICIAIS;
     if (!inicial) {
-      PL_JS_mostrarErro('Falha ao receber dados iniciais do servidor.');
+      PL_JS_mostrarErro('Falha ao receber dados iniciais.');
       return;
     }
 
-    // 1. Popula caches de autocomplete
+    // 1. Popula caches de autocomplete (Dados Estáticos)
     PL_estado.cacheMembros      = inicial.cadastros.membros      || [];
     PL_estado.cacheProcuradores = inicial.cadastros.procuradores || [];
+    
+    // Configura o motor de busca do Materialize
+    PL_JS_configurarAutocompletes();
 
     // 2. Monta o dropdown de sessões
-    PL_JS_onSessoesCarregadas(inicial.sessoes);
+    PL_JS_popularDropdown(inicial.sessoes);
 
-    // 3. Renderiza a pauta da sessão mais recente (já veio pronta)
-    if (inicial.pautaAtiva && inicial.config.sessaoAtivaId) {
-      PL_estado.pautasCarregadas[inicial.config.sessaoAtivaId] = inicial.pautaAtiva;
-      PL_JS_onPautaCarregada(inicial.pautaAtiva);
+    // 3. GATILHO DE CARREGAMENTO DINÂMICO
+    // Em vez de usar dados injetados, pedimos ao servidor a versão mais nova da 1ª sessão
+    if (inicial.sessoes && inicial.sessoes.length > 0) {
+      PL_JS_selecionarSessao(inicial.sessoes[0].id);
     } else {
       PL_JS_mostrarLoading(false);
+      PL_JS_mostrarErro('Nenhuma sessão disponível.');
     }
-
-    // 4. Configura autocompletes do Materialize APÓS renderização
-    PL_JS_configurarAutocompletes();
   }
 
-  // Fallback: Re-inicializar buscando sessões do servidor
-  function PL_JS_inicializar() {
-    PL_JS_mostrarLoading(true);
-    google.script.run
-      .withSuccessHandler(PL_JS_onSessoesCarregadas)
-      .withFailureHandler(PL_JS_onErro)
-      .PainelLateral_listarSessoes();
+  /** * Função acionada pelo botão de atualizar ao lado do label PAUTA.
+   * Recarrega os dados da sessão que já está selecionada no estado global.
+   */
+  function PL_JS_recarregarSessaoAtual() {
+    if (PL_estado.sessaoAtualId) {
+      // Exibe um toast para dar feedback ao usuário
+      M.toast({html: 'Atualizando dados...', displayLength: 1000});
+      
+      // Chama a função que já temos que vai ao servidor buscar os dados novos
+      PL_JS_carregarPautaNoServidor(PL_estado.sessaoAtualId);
+    } else {
+      PL_JS_toast('Nenhuma sessão selecionada para atualizar.', 'erro');
+    }
   }
 
   // ================================================================
   // DROPDOWN DE SESSÕES
   // ================================================================
 
-  /** Popula o dropdown com a lista de sessões e seleciona a primeira */
-  function PL_JS_onSessoesCarregadas(sessoes) {
-    if (!sessoes || sessoes.length === 0) {
-      PL_JS_mostrarErro('Nenhuma sessão encontrada na planilha.');
-      return;
-    }
-
+  function PL_JS_popularDropdown(sessoes) {
     var listContainer = document.getElementById('listaSessoesDropdown');
     listContainer.innerHTML = '';
 
@@ -74,55 +73,57 @@
       card.setAttribute('data-id', s.id);
       card.onclick = function () { PL_JS_selecionarSessao(s.id); };
       card.innerHTML =
-        card.innerHTML =
           '<span class="item-data">'  + PL_JS_esc(s.data)  + '</span>' +
           '<span class="item-orgao">' + PL_JS_esc(s.orgao) + '</span>';
       listContainer.appendChild(card);
     });
-
-    // Seleciona a sessão mais recente por padrão
-    if (sessoes.length > 0) {
-      PL_JS_selecionarSessao(sessoes[0].id);
-    }
   }
 
-  function PL_JS_toggleDropdown() {
-    document.getElementById('listaSessoesDropdown').classList.toggle('hidden');
-  }
-
+  /** * Função centralizada de seleção. 
+   * Usada pelo clique no dropdown, pelo inicializador e pelo botão atualizar.
+   */
   function PL_JS_selecionarSessao(id) {
+    PL_estado.sessaoAtualId = id;
+    
+    // Fecha dropdown
     document.getElementById('listaSessoesDropdown').classList.add('hidden');
 
-    // Atualiza destaque visual
+    // Destaque visual no dropdown
     document.querySelectorAll('.dropdown-item-card').forEach(function (el) {
       el.classList.toggle('active', el.getAttribute('data-id') == id);
     });
 
-    PL_JS_carregarPauta(id);
+    // Dispara busca no servidor (Sempre busca o dado mais recente)
+    PL_JS_carregarPautaNoServidor(id);
   }
 
-  /** Carrega a pauta: usa cache local se disponível, senão vai ao servidor */
-  function PL_JS_carregarPauta(sessaoId) {
-    if (PL_estado.pautasCarregadas[sessaoId]) {
-      PL_JS_onPautaCarregada(PL_estado.pautasCarregadas[sessaoId]);
-      return;
-    }
-
+  /** Busca real no servidor */
+  function PL_JS_carregarPautaNoServidor(sessaoId) {
     PL_JS_mostrarLoading(true);
+    
     google.script.run
       .withSuccessHandler(function (dados) {
-        PL_estado.pautasCarregadas[sessaoId] = dados;
+        // Atualiza o estado e a tela
         PL_JS_onPautaCarregada(dados);
       })
       .withFailureHandler(PL_JS_onErro)
       .PainelLateral_carregarPauta(sessaoId);
   }
 
-  // Fecha dropdown ao clicar fora
+  /** Abre ou fecha a lista de sessões ao clicar no cabeçalho */
+  function PL_JS_toggleDropdown() {
+    var lista = document.getElementById('listaSessoesDropdown');
+    if (lista) {
+      lista.classList.toggle('hidden');
+    }
+  }
+
+  // Fecha o dropdown se o usuário clicar em qualquer outro lugar da tela
   window.addEventListener('click', function (e) {
     var drop = document.getElementById('dropdownSessao');
-    if (drop && !drop.contains(e.target)) {
-      document.getElementById('listaSessoesDropdown').classList.add('hidden');
+    var lista = document.getElementById('listaSessoesDropdown');
+    if (drop && !drop.contains(e.target) && lista) {
+      lista.classList.add('hidden');
     }
   });
 
@@ -208,7 +209,8 @@
       return [
         '<div class="chip oab-chip">',
           '<span class="chip-nome">' + PL_JS_esc(nome) + '</span>',
-          '<i class="material-icons close" onclick="...">close</i>',
+          // Aqui o i é o índice do array, e callbackRemover é o nome da função (string)
+          '<i class="material-icons close" onclick="' + callbackRemover + '(' + i + ')">close</i>',
         '</div>'
       ].join('');
     }).join('');

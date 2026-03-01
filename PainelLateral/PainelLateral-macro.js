@@ -12,7 +12,7 @@ function PainelLateral_exibirSidebar() {
     html.dadosIniciaisJSON = JSON.stringify(dadosIniciais);
     
     const display = html.evaluate()
-        .setTitle('SDP-OAB')
+        .setTitle('Ferramentas da Sessão')
         .setSandboxMode(HtmlService.SandboxMode.IFRAME);
     
     DocumentApp.getUi().showSidebar(display);
@@ -268,24 +268,26 @@ function PainelLateral_salvarCampoSessao(sessaoId, nomeCampo, novoValor) {
   }
 }
 
+/**
+ * Agrega apenas os dados estáticos/cadastros para o carregamento inicial.
+ */
 function PainelLateral_obterPacoteInicial() {
-  const sessoes = PainelLateral_listarSessoes();
-  const idRecente = sessoes.length > 0 ? sessoes[0].id : null;
-  
-  // Busca pauta (fichas) e votos apenas da sessão recente
-  const pautaAtiva = idRecente ? PainelLateral_carregarPauta(idRecente) : null;
-  const votosSessao = idRecente ? PainelLateral_obterVotosDaSessao(idRecente) : [];
-
-  return {
-    config: { sessaoAtivaId: idRecente },
-    sessoes: sessoes,
-    pautaAtiva: pautaAtiva, 
-    votosSessao: votosSessao,
-    cadastros: {
-      membros: PainelLateral_listarMembrosCompleto(), 
-      procuradores: PainelLateral_listarProcuradoresCadastrados()
-    }
-  };
+  try {
+    // 1. Lista de sessões para o Dropdown (sempre necessária no início)
+    const sessoes = PainelLateral_listarSessoes();
+    
+    // 2. Cadastros para Autocomplete (Dados que não mudam a cada segundo)
+    return {
+      sessoes: sessoes,
+      cadastros: {
+        membros: PainelLateral_listarMembrosCompleto(), 
+        procuradores: PainelLateral_listarProcuradoresCadastrados()
+      }
+    };
+  } catch (err) {
+    Logger.log('Erro em obterPacoteInicial: ' + err.message);
+    return { sessoes: [], cadastros: { membros: [], procuradores: [] } };
+  }
 }
 
 function PainelLateral_obterVotosDaSessao(sessaoId) {

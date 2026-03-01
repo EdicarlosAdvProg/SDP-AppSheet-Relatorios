@@ -3,6 +3,11 @@
 # PainelLateral-style.html
 # PainelLateral-js.html
 
+# FormProcessos-macro.gs
+# FormProcessos-layout.html
+# FormProcessos-style.html
+# FormProcessos-js.html
+
 # FormSessoes-macro.gs
 # FormSessoes-layout.html
 # FormSessoes-style.html
