@@ -189,6 +189,44 @@
     font-size: 14px;
   }
 
+  /* Container simplificado para os campos da mesa */
+  /* Container de espaçamento */
+  .mesa-container-clean {
+    padding: 10px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 15px; /* Espaço para o label subir sem bater no campo de cima */
+  }
+
+  /* Garante que o input sem ícone use 100% da largura */
+  .mesa-container-clean .input-field input[type=text] {
+    margin-left: 0 !important;
+    width: 100% !important;
+    font-size: 11px !important;
+  }
+
+  /* Estilo do Label em repouso (dentro da caixa) */
+  .mesa-container-clean .input-field label {
+    left: 10px !important; /* Alinhado ao padding que você já usa nos inputs */
+    font-size: 12px !important;
+    color: var(--oab-cinza-txt) !important;
+  }
+
+  /* Estilo do Label quando SOBE (Foco ou preenchido) */
+  .mesa-container-clean .input-field input[type=text]:focus + label,
+  .mesa-container-clean .input-field label.active {
+    color: var(--oab-azul) !important;
+    font-size: 11px !important;
+    font-weight: 700;
+    /* O transform é nativo do Materialize, aqui apenas garantimos a cor */
+  }
+
+  /* Cor da linha inferior no foco */
+  .mesa-container-clean .input-field input[type=text]:focus {
+    border-bottom: 1px solid var(--oab-azul) !important;
+    box-shadow: 0 1px 0 0 var(--oab-azul) !important;
+  }
+
   /* Estilização do Logo de Rodapé */
   .sidebar-footer-logo {
     display: flex;
@@ -504,15 +542,18 @@
 
   .textarea-expediente {
     font-family: 'Inter', sans-serif !important;
-    font-size: 12px !important;
+    font-size: 11px !important;
     color: #263238 !important;
     background-color: var(--oab-branco) !important;
     border: 1px solid var(--oab-cinza-md) !important;
     border-radius: 10px !important;
     padding: 10px 12px !important;
-    min-height: 90px;
+    
+    min-height: 60px; /* Area mínima de escrita */
+    
     box-shadow: none !important;
-    resize: vertical;
+    overflow-y: hidden; /* Evita a barra de rolagem dupla enquanto redimensiona */
+    transition: border-color 0.2s;
   }
 
   .textarea-expediente:focus {

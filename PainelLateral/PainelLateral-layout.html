@@ -81,6 +81,27 @@
       </div>
 
       <!-- =====================================================
+           SEÇÃO: MESA DIRETORA
+      ====================================================== -->
+      <div id="secaoMesaDiretora">
+        <div class="secao-titulo">
+          <i class="fa-solid fa-chair"></i> Mesa Diretora
+        </div>
+        
+        <div class="mesa-container-clean">
+          <div class="input-field input-compact">
+            <input type="text" id="inputPresidente" class="autocomplete" onblur="PL_JS_salvarMesa()">
+            <label for="inputPresidente">Presidente da sessão</label>
+          </div>
+
+          <div class="input-field input-compact">
+            <input type="text" id="inputSecretario" class="autocomplete" onblur="PL_JS_salvarMesa()">
+            <label for="inputSecretario">Secretário da mesa</label>
+          </div>
+        </div>
+      </div>
+      
+      <!-- =====================================================
            SEÇÃO: MEMBROS PARTICIPANTES
       ====================================================== -->
       <div class="secao-titulo">
@@ -107,24 +128,25 @@
       <!-- =====================================================
            SEÇÃO: PROCURADORES
       ====================================================== -->
-      <div class="secao-titulo">
-        <i class="fa-solid fa-briefcase"></i> Procuradores
-        <span class="badge-count" id="badgeProcuradores">0</span>
-      </div>
-
-      <div class="chips-container" id="listaProcuradores">
-        <!-- Chips gerados pelo JS -->
-      </div>
-
-      <div class="adicionar-bloco">
-        <div class="input-field input-compact">
-          <input type="text" id="inputNovoProcurador" class="autocomplete" autocomplete="off"
-                 placeholder="Nome do procurador...">
+      <div id="secaoProcuradores">
+        <div class="secao-titulo">
+          <i class="fa-solid fa-briefcase"></i> Procuradores
+          <span class="badge-count" id="badgeProcuradores">0</span>
         </div>
-        <div class="adicionar-acao">
-          <button class="btn-adicionar-inline" onclick="PL_JS_adicionarProcurador()">
-            <i class="material-icons">add_circle_outline</i> Adicionar
-          </button>
+
+        <div class="chips-container" id="listaProcuradores">
+          </div>
+
+        <div class="adicionar-bloco">
+          <div class="input-field input-compact">
+            <input type="text" id="inputNovoProcurador" class="autocomplete" autocomplete="off"
+                  placeholder="Nome do procurador...">
+          </div>
+          <div class="adicionar-acao">
+            <button class="btn-adicionar-inline" onclick="PL_JS_adicionarProcurador()">
+              <i class="material-icons">add_circle_outline</i> Adicionar
+            </button>
+          </div>
         </div>
       </div>
 

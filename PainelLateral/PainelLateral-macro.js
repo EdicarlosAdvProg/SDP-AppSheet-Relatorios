@@ -119,8 +119,10 @@ function PainelLateral_carregarPauta(sessaoId) {
     const sessao = {
       id:    linhaSessao[iSId],
       data:  linhaSessao[(mapaSessoes['datasessao'] || 2) - 1] ? Utilities.formatDate(new Date(linhaSessao[(mapaSessoes['datasessao'] || 2) - 1]), Session.getScriptTimeZone(), 'dd/MM/yyyy') : '',
-      orgao: linhaSessao[(mapaSessoes['órgão'] || 3) - 1] || ''
-    };
+      orgao: linhaSessao[(mapaSessoes['órgão'] || 3) - 1] || '',
+      presidente: linhaSessao[(mapaSessoes['presidente'] || 5) - 1] || '', // Verifique o índice no seu mapa
+      secretario: linhaSessao[(mapaSessoes['secretário'] || 6) - 1] || ''
+    };  
 
     // 2. BUSCA DE PROCESSOS (Cache para lookup rápido)
     const sheetProcs = ss.getSheetByName('tabProcessos');
@@ -167,6 +169,12 @@ function PainelLateral_carregarPauta(sessaoId) {
   } catch (err) {
     throw new Error('PainelLateral_carregarPauta: ' + err.message);
   }
+}
+
+/** Função para persistir a mesa diretora */
+function PainelLateral_salvarMesa(sessaoId, presidente, secretario) {
+  PainelLateral_salvarCampoSessao(sessaoId, 'presidente', presidente);
+  PainelLateral_salvarCampoSessao(sessaoId, 'secretário', secretario);
 }
 
 /**

@@ -10,7 +10,9 @@
     membros:             [],
     procuradores:        [],
     cacheMembros:        [],   // Lista completa para autocomplete
-    cacheProcuradores:   []    // Lista completa para autocomplete
+    cacheProcuradores:   [],   // Lista completa para autocomplete
+    presidente: "",
+    secretario: ""
   };
 
   // ================================================================
@@ -132,27 +134,65 @@
   // Recebe o objeto completo { sessao, fichas, membros,
   // procuradores, expediente } e atualiza toda a UI.
   // ================================================================
+
+  /** Atualiza a renderização da pauta com lógica condicional */
   function PL_JS_onPautaCarregada(dados) {
     PL_estado.sessaoAtualId  = dados.sessao.id;
     PL_estado.membros        = dados.membros       || [];
     PL_estado.procuradores   = dados.procuradores  || [];
+    
+    // 1. Lógica do Pleno do SDP (Ocultar Procuradores)
+    var ePleno = (dados.sessao.orgao && dados.sessao.orgao.indexOf("Pleno") !== -1);
+    document.getElementById('secaoProcuradores').classList.toggle('hidden', ePleno);
 
-    // Atualiza header
+    // 2. Preencher Mesa Diretora
+    document.getElementById('inputPresidente').value = dados.sessao.presidente || '';
+    document.getElementById('inputSecretario').value = dados.sessao.secretario || '';
+
+    // 3. Preencher Expediente (Movido para cima para poder redimensionar)
+    var campoExpediente = document.getElementById('expedienteTexto'); // Definindo a variável
+    campoExpediente.value = dados.expediente || '';
+
+    // 4. Renderização padrão de cabeçalho
     document.getElementById('displayOrgao').textContent = dados.sessao.orgao || '—';
     document.getElementById('displayData').textContent  = dados.sessao.data  || '—';
 
-    // Renderiza seções
+    // 5. Atualizações visuais do Materialize
+    M.updateTextFields(); // Resolve sobreposição da Mesa
+    M.textareaAutoResize(campoExpediente); // Agora a variável existe e o valor já está lá!
+
+    // 6. Renderizar listas
     PL_JS_renderizarFichas(dados.fichas || []);
-    PL_JS_renderizarChips('listaMembros',     'badgeMembros',     PL_estado.membros,      'PL_JS_removerMembro');
-    PL_JS_renderizarChips('listaProcuradores','badgeProcuradores',PL_estado.procuradores, 'PL_JS_removerProcurador');
-
-    document.getElementById('expedienteTexto').value = dados.expediente || '';
-    // Dispara resize do Materialize textarea
-    M.textareaAutoResize(document.getElementById('expedienteTexto'));
-
+    PL_JS_renderizarChips('listaMembros', 'badgeMembros', PL_estado.membros, 'PL_JS_removerMembro');
+    
+    if (!ePleno) {
+      PL_JS_renderizarChips('listaProcuradores', 'badgeProcuradores', PL_estado.procuradores, 'PL_JS_removerProcurador');
+    }
+    
+    // Re-inicializa autocompletes
+    PL_JS_configurarAutocompletesMesa();
+    
     PL_JS_mostrarLoading(false);
-    document.getElementById('estadoErro').classList.add('hidden');
     document.getElementById('pautaContainer').classList.remove('hidden');
+  }
+
+  /** Salva Presidente e Secretário no servidor */
+  function PL_JS_salvarMesa() {
+    var pres = document.getElementById('inputPresidente').value;
+    var sec = document.getElementById('inputSecretario').value;
+    
+    google.script.run
+      .withSuccessHandler(function() { PL_JS_toast('Mesa atualizada.', 'ok'); })
+      .PainelLateral_salvarMesa(PL_estado.sessaoAtualId, pres, sec);
+  }
+
+  /** Configura autocompletes específicos para a mesa */
+  function PL_JS_configurarAutocompletesMesa() {
+    var data = {};
+    PL_estado.cacheMembros.forEach(function(n) { data[n] = null; });
+    
+    M.Autocomplete.init(document.getElementById('inputPresidente'), { data: data, limit: 5 });
+    M.Autocomplete.init(document.getElementById('inputSecretario'), { data: data, limit: 5 });
   }
 
   // ================================================================
@@ -167,8 +207,12 @@
       return;
     }
 
+    // Verifica se é Pleno buscando o texto que foi inserido no cabeçalho do painel
+    var orgaoTexto = document.getElementById('displayOrgao').textContent || "";
+    var ePleno = (orgaoTexto.indexOf("Pleno") !== -1);
+
     container.innerHTML = fichas.map(function (f) {
-      return [
+      var html = [
         '<div class="ficha-card">',
           '<div class="ficha-nivel1">',
             '<span class="ficha-ordem">' + PL_JS_esc(f.ordem) + 'º</span>',
@@ -177,17 +221,28 @@
           '<div class="ficha-nivel2">',
             '<span class="ficha-label">REQ.</span>',
             '<span class="ficha-valor"><strong>' + PL_JS_esc(f.requerente) + '</strong></span>',
-          '</div>',
+          '</div>'
+      ];
+
+      // SÓ ADICIONA O NÍVEL 3 (PROCURADOR) SE NÃO FOR PLENO
+      if (!ePleno) {
+        html.push(
           '<div class="ficha-nivel3">',
             '<span class="ficha-label">PROC.</span>',
             '<span class="ficha-valor">' + PL_JS_esc(f.procurador) + '</span>',
-          '</div>',
+          '</div>'
+        );
+      }
+
+      html.push(
           '<div class="ficha-nivel4">',
             '<span class="ficha-label">REL.</span>',
             '<span class="ficha-valor">' + PL_JS_esc(f.relator) + '</span>',
           '</div>',
         '</div>'
-      ].join('');
+      );
+
+      return html.join('');
     }).join('');
   }
 
