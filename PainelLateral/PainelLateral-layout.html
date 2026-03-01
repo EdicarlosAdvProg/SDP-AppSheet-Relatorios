@@ -90,12 +90,16 @@
         
         <div class="mesa-container-clean">
           <div class="input-field input-compact">
-            <input type="text" id="inputPresidente" class="autocomplete" onblur="PL_JS_salvarMesa()">
+            <input type="text" id="inputPresidente" class="input-compact-field" 
+                  onfocus="this.oldValue = this.value" 
+                  onblur="if(this.value !== this.oldValue) PL_JS_salvarMesa()">
             <label for="inputPresidente">Presidente da sessão</label>
           </div>
 
           <div class="input-field input-compact">
-            <input type="text" id="inputSecretario" class="autocomplete" onblur="PL_JS_salvarMesa()">
+            <input type="text" id="inputSecretario" class="input-compact-field" 
+                  onfocus="this.oldValue = this.value" 
+                  onblur="if(this.value !== this.oldValue) PL_JS_salvarMesa()">
             <label for="inputSecretario">Secretário da mesa</label>
           </div>
         </div>
@@ -115,7 +119,7 @@
 
       <div class="adicionar-bloco">
         <div class="input-field input-compact">
-          <input type="text" id="inputNovoMembro" class="autocomplete" autocomplete="off"
+          <input type="text" id="inputNovoMembro" class="input-compact-field" autocomplete="off"
                  placeholder="Nome do membro...">
         </div>
         <div class="adicionar-acao">
@@ -139,7 +143,7 @@
 
         <div class="adicionar-bloco">
           <div class="input-field input-compact">
-            <input type="text" id="inputNovoProcurador" class="autocomplete" autocomplete="off"
+            <input type="text" id="inputNovoProcurador" class="input-compact-field" autocomplete="off"
                   placeholder="Nome do procurador...">
           </div>
           <div class="adicionar-acao">
@@ -159,7 +163,8 @@
       <div class="expediente-wrap">
         <div class="input-field">
           <textarea id="expedienteTexto" class="materialize-textarea textarea-expediente"
-                    placeholder="Registre os assuntos do expediente..." onblur="PL_JS_salvarExpediente()"></textarea>
+          onfocus="this.oldValue = this.value" 
+          onblur="if(this.value !== this.oldValue) PL_JS_salvarExpediente()"></textarea>
         </div>
       </div>
 
@@ -197,18 +202,30 @@
        FAB (Ação Flutuante)
   ====================================================== -->
   <div class="fab-container">
-    <div class="fab-options" id="fabOptions">
-      <div class="fab-item" onclick="PL_JS_acaoRapida('Novo Processo')">
-        <span class="fab-label">Novo processo</span>
-        <button class="fab-sub"><i class="fa-solid fa-file-medical"></i></button>
+    <div class="fab-options">
+      <div class="fab-item" onclick="PL_JS_apurarResultado()">
+        <span class="fab-label">Apurar resultado</span>
+        <button class="fab-sub"><i class="material-icons">analytics</i></button>
       </div>
-      <div class="fab-item" onclick="PL_JS_acaoRapida('Adicionar Membro')">
-        <span class="fab-label">Adicionar membro</span>
-        <button class="fab-sub"><i class="fa-solid fa-user-plus"></i></button>
+
+      <div class="fab-item" onclick="PL_JS_salvarFicha()">
+        <span class="fab-label">Salvar ficha</span>
+        <button class="fab-sub"><i class="material-icons">save</i></button>
+      </div>
+
+      <div class="fab-item" onclick="PL_JS_inserirExpedientePredefinido()">
+        <span class="fab-label">Inserir expediente predefinido</span>
+        <button class="fab-sub"><i class="material-icons">history_edu</i></button>
+      </div>
+
+      <div class="fab-item" onclick="PL_JS_modificarVotantes()">
+        <span class="fab-label">Modificar votantes</span>
+        <button class="fab-sub"><i class="material-icons">groups_3</i></button>
       </div>
     </div>
-    <button class="fab-main" id="fabMain" onclick="PL_JS_toggleFab()">
-      <i class="fa-solid fa-plus"></i>
+
+    <button class="fab-main">
+      <i class="material-icons">menu_open</i>
     </button>
   </div>
 

@@ -303,8 +303,9 @@
 
   /* =====================================================
      6. CARDS DE FICHA (COLLECTION)
-     Utiliza estrutura de lista com borda lateral dourada.
-  ===================================================== */
+     Cards com borda lateral vermelha e efeito de 
+     elevação com destaque em azul ao passar o mouse.
+   ===================================================== */
   .fichas-lista {
     display: flex;
     flex-direction: column;
@@ -315,14 +316,27 @@
     background: var(--oab-branco);
     border-radius: 10px;
     padding: 10px 12px;
+    /* Borda principal à esquerda */
     border-left: 4px solid var(--oab-vermelho);
+    /* Demais bordas preparadas para o hover */
+    border-right: 1px solid transparent;
+    border-top: 1px solid transparent;
+    border-bottom: 1px solid transparent;
+    
     box-shadow: 0 1px 4px rgba(0,0,0,0.07);
-    transition: box-shadow 0.2s, transform 0.2s;
+    /* Transição suave para o efeito de levante e cor da borda */
+    transition: box-shadow 0.25s ease, transform 0.25s ease, border-color 0.25s ease;
+    position: relative;
   }
 
   .ficha-card:hover {
-    box-shadow: 0 6px 16px rgba(0,0,0,0.14);
-    transform: translateX(-4px);   /* desliza levemente para a esquerda */
+    /* Movimento para cima e sombra mais profunda */
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    /* Aplica a borda azul nas laterais restantes */
+    border-right-color: var(--oab-azul);
+    border-top-color: var(--oab-azul);
+    border-bottom-color: var(--oab-azul);
   }
 
   .ficha-nivel1 {
@@ -365,7 +379,9 @@
     white-space: nowrap;
   }
 
-  .ficha-valor { color: #263238; }
+  .ficha-valor { 
+    color: #263238; 
+  }
 
   /* =====================================================
      7. CHIPS DE PESSOAS (MATERIALIZE - OVERRIDE)
@@ -616,8 +632,8 @@
      O container tem sempre largura total (190px) mas fica
      deslocado para fora da tela (right: -144px), exibindo
      apenas os 46px dos ícones. No hover desliza para right:0.
-     Nenhum overflow:hidden é necessário → fundo sempre sólido.
-  ===================================================== */
+     Ajustado z-index para 3000 para sobrepor o botão FAB.
+   ===================================================== */
   .nav-sidebar {
     position: fixed;
     right: -144px;               /* esconde a parte do label fora da tela */
@@ -630,7 +646,10 @@
     align-items: stretch;
     padding-top: 8px;
     gap: 2px;
-    z-index: 1000;
+    
+    /* Aumentado para 3000 para ficar acima do FAB (que está em 2000) */
+    z-index: 3000; 
+    
     border-left: 3px solid var(--oab-azul-escuro);
     box-shadow: -2px 0 8px rgba(0,0,0,0.22);
     transition: right 0.28s cubic-bezier(0.4, 0, 0.2, 1);
@@ -678,76 +697,112 @@
   }
 
   /* =====================================================
-     13. BOTÃO FLUTUANTE (FAB)
+    13. BOTÃO FLUTUANTE (FAB) - HOVER & ZOOM
   ===================================================== */
   .fab-container {
     position: fixed;
-    bottom: 20px;
-    right: 58px;
+    bottom: 25px;
+    right: 65px; /* Ajustado para não sobrepor a barra lateral */
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    z-index: 999;
+    z-index: 2000;
   }
 
+  /* Botão Principal com Zoom */
   .fab-main {
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     border-radius: 50%;
     background-color: var(--oab-vermelho);
     color: var(--oab-branco);
     border: none;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     cursor: pointer;
-    font-size: 16px;
-    transition: transform 0.25s, background 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), background 0.2s;
+    z-index: 2; /* Fica acima das opções */
   }
 
-  .fab-main:hover { background-color: #cc0000; }
+  /* Efeito de Zoom no Container (afeta o botão principal) */
+  .fab-container:hover .fab-main {
+    transform: scale(1.15) rotate(90deg);
+    background-color: #cc0000;
+  }
 
+  /* Lógica de Exibição das Opções no Hover */
   .fab-options {
-    display: none;
+    display: flex;
     flex-direction: column;
     align-items: flex-end;
-    margin-bottom: 10px;
-    gap: 8px;
+    gap: 12px;
+    margin-bottom: 15px;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(20px);
+    transition: all 0.3s ease;
+    pointer-events: none; /* Bloqueia interação quando invisível */
   }
 
-  .fab-options.show { display: flex; }
+  .fab-container:hover .fab-options {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+    pointer-events: auto; /* Libera o clique quando visível */
+  }
+
+  /* Refinamento: Se o mouse estiver apenas na área vazia do container, 
+   nada acontece até ele tocar no círculo do botão */
+  .fab-container {
+    pointer-events: none; 
+  }
+  .fab-main, .fab-options {
+    pointer-events: auto;
+  }
 
   .fab-item {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 12px;
     cursor: pointer;
   }
 
   .fab-label {
     background: var(--oab-azul-escuro);
     color: var(--oab-branco);
-    padding: 4px 10px;
-    border-radius: 4px;
+    padding: 5px 12px;
+    border-radius: 6px;
     font-family: 'Inter', sans-serif;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    white-space: nowrap;
+    pointer-events: none; /* Evita que o label bloqueie o mouse */
   }
 
   .fab-sub {
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
     background-color: var(--oab-branco);
     color: var(--oab-azul);
     border: 1px solid var(--oab-azul);
     cursor: pointer;
-    font-size: 13px;
-    transition: background 0.2s, color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
   }
 
   .fab-sub:hover {
     background-color: var(--oab-azul);
     color: var(--oab-branco);
+    transform: scale(1.1);
   }
+
+  .fab-sub i { font-size: 18px; }
 
   /* =====================================================
      14. ESTADO VAZIO (Empty State)

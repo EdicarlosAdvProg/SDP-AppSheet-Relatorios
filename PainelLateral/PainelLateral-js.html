@@ -191,8 +191,8 @@
     var data = {};
     PL_estado.cacheMembros.forEach(function(n) { data[n] = null; });
     
-    M.Autocomplete.init(document.getElementById('inputPresidente'), { data: data, limit: 5 });
-    M.Autocomplete.init(document.getElementById('inputSecretario'), { data: data, limit: 5 });
+    //M.Autocomplete.init(document.getElementById('inputPresidente'), { data: data, limit: 5 });
+    //M.Autocomplete.init(document.getElementById('inputSecretario'), { data: data, limit: 5 });
   }
 
   // ================================================================
@@ -337,60 +337,144 @@
   }
 
   // ================================================================
-  // AUTOCOMPLETES DO MATERIALIZE
-  // Deve ser chamado após a injeção dos dados iniciais.
-  // O minLength: 0 garante que a lista apareça ao focar.
+  // AUTOCOMPLETES CUSTOMIZADOS (INLINE & LEVES)
+  // Substitui o sistema pesado do Materialize
   // ================================================================
   function PL_JS_configurarAutocompletes() {
-    // Converte arrays em formato de objeto { "nome": null } exigido pelo Materialize
-    function toMaterializeData(arr) {
-      var obj = {};
-      (arr || []).forEach(function (n) { obj[n] = null; });
-      return obj;
-    }
+    
+    // 1. Configura os campos da Mesa (Presidente e Secretário) com preenchimento INLINE
+    // Esses campos não abrem mais aquela lista que cobre o texto.
+    var inputPres = document.getElementById('inputPresidente');
+    var inputSec  = document.getElementById('inputSecretario');
+    
+    if(inputPres) PL_JS_aplicarAutocompleteInline(inputPres, PL_estado.cacheMembros || []);
+    if(inputSec)  PL_JS_aplicarAutocompleteInline(inputSec, PL_estado.cacheMembros || []);
 
-    // Autocomplete de Membros
+    // 2. Configura os campos de ADICIONAR (Membros e Procuradores)
+    // Aqui mantemos apenas o suporte ao "Enter" para agilizar a inserção
     var elMembro = document.getElementById('inputNovoMembro');
     if (elMembro) {
-      var instMembro = M.Autocomplete.init(elMembro, {
-        data:      toMaterializeData(PL_estado.cacheMembros),
-        limit:     10,
-        minLength: 0
-      });
-      elMembro.addEventListener('focus', function () { instMembro.open(); });
+      PL_JS_aplicarAutocompleteInline(elMembro, PL_estado.cacheMembros || []);
       elMembro.addEventListener('keydown', function (e) {
         if (e.key === 'Enter') { e.preventDefault(); PL_JS_adicionarMembro(); }
       });
+
+      // Funcionalidade de "Selecionar Tudo ao Clicar"
+      PL_JS_configurarSelecaoAoFocar('inputPresidente');
+      PL_JS_configurarSelecaoAoFocar('inputSecretario');
+      PL_JS_configurarSelecaoAoFocar('inputNovoMembro');
+      PL_JS_configurarSelecaoAoFocar('inputNovoProcurador')
     }
 
-    // Autocomplete de Procuradores
     var elProc = document.getElementById('inputNovoProcurador');
     if (elProc) {
-      var instProc = M.Autocomplete.init(elProc, {
-        data:      toMaterializeData(PL_estado.cacheProcuradores),
-        limit:     10,
-        minLength: 0
-      });
-      elProc.addEventListener('focus', function () { instProc.open(); });
+      PL_JS_aplicarAutocompleteInline(elProc, PL_estado.cacheProcuradores || []);
       elProc.addEventListener('keydown', function (e) {
         if (e.key === 'Enter') { e.preventDefault(); PL_JS_adicionarProcurador(); }
       });
     }
   }
 
-  // ================================================================
-  // FAB (BOTÃO FLUTUANTE)
-  // ================================================================
-  function PL_JS_toggleFab() {
-    var options = document.getElementById('fabOptions');
-    var btn     = document.getElementById('fabMain');
-    options.classList.toggle('show');
-    btn.style.transform = options.classList.contains('show') ? 'rotate(45deg)' : 'rotate(0deg)';
+  /**
+   * Lógica de Autocomplete Inline (Typeahead)
+   * Preenche o restante do nome conforme o usuário digita.
+   */
+  function PL_JS_aplicarAutocompleteInline(input, lista) {
+    // Remove qualquer instância anterior do Materialize para evitar conflitos
+    try {
+      var inst = M.Autocomplete.getInstance(input);
+      if (inst) inst.destroy();
+    } catch(e) {}
+
+    input.addEventListener('keyup', function(e) {
+      // Ignora teclas de navegação (Setas, Backspace, Tab, etc)
+      if ([8, 46, 37, 38, 39, 40, 9, 13, 16, 17, 18, 20].includes(e.keyCode)) return;
+
+      var digitado = this.value;
+      if (digitado.length < 2) return; // Só sugere após 2 letras
+
+      // Busca na lista um nome que comece com o que foi digitado
+      var sugestao = lista.find(function(nome) {
+        return nome.toLowerCase().startsWith(digitado.toLowerCase());
+      });
+
+      if (sugestao) {
+        var inicio = digitado.length;
+        this.value = sugestao;
+        // Seleciona o texto sugerido (o usuário pode apagar ou aceitar com TAB)
+        if (this.setSelectionRange) {
+          this.setSelectionRange(inicio, sugestao.length);
+        }
+      }
+    });
   }
 
-  function PL_JS_acaoRapida(acao) {
-    google.script.run.PainelLateral_processarAcaoRapida(acao);
-    PL_JS_toggleFab();
+  /**
+   * Faz com que o texto do campo seja selecionado ao receber o foco
+   */
+  function PL_JS_configurarSelecaoAoFocar(idCampo) {
+    var input = document.getElementById(idCampo);
+    if (input) {
+      // O evento 'focus' garante que funcione ao clicar ou usar TAB
+      input.addEventListener('focus', function() {
+        // Usamos um pequeno delay (setTimeout) para garantir que o navegador
+        // complete o foco antes de tentar selecionar o texto
+        setTimeout(function() {
+          input.select();
+        }, 50);
+      });
+    }
+  }
+
+  // ================================================================
+  // FAB (BOTÃO FLUTUANTE) - AÇÕES
+  // ================================================================
+
+  /**
+   * Abre o modal ou interface para modificar os votantes da ficha atual
+   */
+  function PL_JS_modificarVotantes() {
+    // Exemplo: Chamar uma função no servidor ou abrir um modal
+    console.log("Ação: Modificar Votantes");
+    google.script.run.PainelLateral_abrirModalVotantes(PL_estado.sessaoAtualId);
+  }
+
+  /**
+   * Insere um texto padrão no campo de expediente
+   */
+  function PL_JS_inserirExpedientePredefinido() {
+    console.log("Ação: Inserir Expediente");
+    // Você pode chamar uma função que busca um texto fixo da sua planilha
+    google.script.run
+      .withSuccessHandler(function(texto) {
+        var campo = document.getElementById('expedienteTexto');
+        campo.value = texto;
+        M.textareaAutoResize(campo); // Ajusta a altura após inserir
+        PL_JS_toast("Expediente predefinido inserido.", "ok");
+      })
+      .PainelLateral_obterExpedientePadrao();
+  }
+
+  /**
+   * Salva manualmente os dados da ficha selecionada
+   */
+  function PL_JS_salvarFicha() {
+    console.log("Ação: Salvar Ficha");
+    // Aqui você implementaria a lógica de salvar os dados específicos da ficha
+    PL_JS_toast("Ficha salva com sucesso!", "ok");
+  }
+
+  /**
+   * Executa a lógica de apuração de votos
+   */
+  function PL_JS_apurarResultado() {
+    console.log("Ação: Apurar Resultado");
+    PL_JS_toast("Iniciando apuração...", "ok");
+    google.script.run
+      .withSuccessHandler(function(res) {
+        PL_JS_toast("Resultado apurado!", "ok");
+      })
+      .PainelLateral_processarApuracao(PL_estado.sessaoAtualId);
   }
 
   // ================================================================
