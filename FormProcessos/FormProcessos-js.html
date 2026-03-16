@@ -36,7 +36,7 @@
     M.AutoInit();
     M.FloatingActionButton.init(document.querySelectorAll('.fixed-action-btn'), { hoverEnabled: true });
 
-    // Modais não dismissíveis por clique externo
+    // Modais não dismissíveis
     ['modalConfirmacao', 'modalPauta', 'modalStatus', 'modalImportar'].forEach(id => {
       const el = document.getElementById(id);
       if (el) M.Modal.init(el, { dismissible: false });
@@ -46,6 +46,9 @@
     _initDatepickerStatus();
 
     formProcessos_carregar();
+    
+    inicializarDadosCidades(); 
+
   });
 
   // Datepicker para data de nova sessão no modal de pauta
@@ -251,58 +254,104 @@
     document.getElementById('procForm').reset();
     document.getElementById('proc_f_Id').value = '';
     document.getElementById('procModalTitulo').innerText = 'Novo Processo';
-    _autocompleteInit();
-    M.updateTextFields();
-    M.FormSelect.init(document.querySelectorAll('#modalProcessoCad select'));
-    _abrirModal('modalProcessoCad');
-  }
-
-  function abrirEditar(id) {
-    const p = baseProcessos.find(x => x.id === id);
-    if (!p) return M.toast({ html: 'Processo não encontrado.', classes: 'orange darken-3' });
-
-    document.getElementById('procForm').reset();
-    document.getElementById('procModalTitulo').innerText = 'Visualizar / Editar Processo';
-
-    // 1. População dos campos (Certifique-se que as chaves do objeto 'p' batem com o backend)
-    document.getElementById('proc_f_Id').value          = p.id;
-    document.getElementById('proc_f_Processo').value    = p.processo;
-    document.getElementById('proc_f_Local').value       = p.local || ''; // Campo Local agora em destaque
-    document.getElementById('proc_f_Requerente').value  = p.requerente || '';
-    document.getElementById('proc_f_Requerido').value   = p.requerido || '';
-    document.getElementById('proc_f_Procurador').value  = p.procurador || '';
-    document.getElementById('proc_f_Status').value      = p.status || '';
-    document.getElementById('proc_f_Resumo').value      = p.resumo || '';
-    document.getElementById('proc_f_Ementa').value      = p.ementa || '';
-    document.getElementById('proc_f_Provas').value      = p.provas || '';
-
-    // 2. Inicialização de Componentes
-    _autocompleteInit();
     
-    // Atualiza os labels (sobe o texto das etiquetas para não sobrepor o conteúdo)
+    // Limpar o campo de status visual (etiqueta)
+    document.getElementById('status-display-container').innerHTML = '';
+
     M.updateTextFields();
     
-    // Reinicializa o Select (Essencial para mostrar o status correto no novo layout simplificado)
+    // Reinicializa o select de status se ele ainda existir no seu HTML
     const selStatus = document.getElementById('proc_f_Status');
-    M.FormSelect.init(selStatus);
-
-    // 3. Ajuste de Altura dos Textareas (Incluindo os novos Requerente/Requerido expandíveis)
-    const camposParaRedimensionar = [
-      'proc_f_Requerente',
-      'proc_f_Requerido',
-      'proc_f_Resumo',
-      'proc_f_Ementa',
-      'proc_f_Provas'
-    ];
+    if(selStatus) M.FormSelect.init(selStatus);
     
-    camposParaRedimensionar.forEach(fid => {
-      const el = document.getElementById(fid);
-      if (el) M.textareaAutoResize(el);
-    });
-
-    // 4. Abertura do Modal
     _abrirModal('modalProcessoCad');
   }
+
+  let mapaCidadesProcuradores = {}; // Variável global para armazenar os dados
+
+// Chame esta função quando o sistema carregar
+function inicializarDadosCidades() {
+  google.script.run
+    .withSuccessHandler(function(data) {
+      mapaCidadesProcuradores = data; // Salva o objeto { "CIDADE": "PROCURADOR" }
+      
+      const inputLocal = document.getElementById('proc_f_Local');
+      
+      // Destrói qualquer instância anterior do autocomplete (se houver)
+      const instance = M.Autocomplete.getInstance(inputLocal);
+      if (instance) instance.destroy();
+      
+      // Transforma as chaves do objeto para o formato do Materialize: { "ALEXÂNIA": null, ... }
+      const dadosParaAutocomplete = {};
+      for (let cidade in data) {
+        dadosParaAutocomplete[cidade] = null;
+      }
+
+      // Inicializa o Autocomplete no campo Local
+      M.Autocomplete.init(inputLocal, {
+        data: dadosParaAutocomplete,
+        limit: 5,
+        onAutocomplete: function(cidadeSelecionada) {
+          const procuradorResponsavel = mapaCidadesProcuradores[cidadeSelecionada];
+          const campoProcurador = document.getElementById('proc_f_Procurador');
+          
+          if (procuradorResponsavel) {
+            campoProcurador.value = procuradorResponsavel;
+            M.updateTextFields(); // Atualiza o label do campo procurador
+          }
+        }
+      });
+    })
+    .withFailureHandler(function(error) {
+      console.error('Erro ao carregar cidades:', error);
+      M.toast({ html: 'Erro ao carregar lista de cidades.', classes: 'red darken-2' });
+    })
+    .buscarDadosCidadesEProcuradores();
+}
+
+function abrirEditar(id) {
+  const p = baseProcessos.find(x => x.id === id);
+  if (!p) return M.toast({ html: 'Processo não encontrado.', classes: 'orange darken-3' });
+
+  document.getElementById('procForm').reset();
+  document.getElementById('procModalTitulo').innerText = 'Visualizar / Editar Processo';
+
+  // População dos campos
+  document.getElementById('proc_f_Id').value = p.id;
+  document.getElementById('proc_f_Processo').value = p.processo;
+  document.getElementById('proc_f_Local').value = p.local || '';
+  document.getElementById('proc_f_Requerente').value = p.requerente || '';
+  document.getElementById('proc_f_Requerido').value = p.requerido || '';
+  document.getElementById('proc_f_Procurador').value = p.procurador || '';
+  document.getElementById('proc_f_Status').value = p.status || '';
+  document.getElementById('proc_f_Resumo').value = p.resumo || '';
+  document.getElementById('proc_f_Ementa').value = p.ementa || '';
+  document.getElementById('proc_f_Provas').value = p.provas || '';
+
+  // --- LÓGICA DA ETIQUETA DE STATUS ---
+  const containerStatus = document.getElementById('status-display-container');
+  let classeStatus = 'st-secretaria';
+  const statusAtual = (p.status || '').toLowerCase();
+  
+  if(statusAtual === 'concluso') classeStatus = 'st-concluso';
+  if(statusAtual === 'arquivado') classeStatus = 'st-arquivado';
+  
+  containerStatus.innerHTML = `<span class="status-label ${classeStatus}">${p.status || 'Sem Status'}</span>`;
+  // ------------------------------------
+
+  M.updateTextFields();
+  
+  // Redimensionar textareas
+  const campos = ['proc_f_Requerente', 'proc_f_Requerido', 'proc_f_Resumo', 'proc_f_Ementa', 'proc_f_Provas'];
+  campos.forEach(fid => {
+    const el = document.getElementById(fid);
+    if (el) M.textareaAutoResize(el);
+  });
+
+  _abrirModal('modalProcessoCad');
+}
+
+// Lembre-se de chamar inicializarDadosCidades() no window.onload ou DOMContentLoaded do seu sistema
 
   function _autocompleteInit() {
     M.Autocomplete.init(document.getElementById('proc_f_Procurador'), {

@@ -73,51 +73,57 @@
   <!-- ============================================================
        MODAL: CADASTRO / EDIÇÃO DE PROCESSO
   ============================================================ -->
-  <div id="modalProcessoCad" class="modal">
-    <div class="modal-content">
-      <h5 id="procModalTitulo">Novo Processo</h5>
+  <div id="modalProcessoCad" class="modal modal-fixed-footer">
+    <div class="modal-content" style="padding: 24px;">
+      
+       <!-- HEADER FIXO -->
+      <div class="modal-fixed-header">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+          <h5 id="procModalTitulo" style="color: #004480; font-weight: 700; margin: 0;">Processo</h5>
+          <div id="status-display-container"></div>
+        </div>
+      </div>
+
       <form id="procForm" autocomplete="off">
         <input type="hidden" id="proc_f_Id">
 
         <div class="row" style="margin-bottom: 0;">
-          <div class="input-field col s12 m4">
+          <div class="input-field col s12 m6">
             <input id="proc_f_Processo" type="text" required>
             <label for="proc_f_Processo">Número do Processo *</label>
           </div>
-          <div class="input-field col s12 m8">
-            <input id="proc_f_Local" type="text">
-            <label for="proc_f_Local">Local da Ocorrência (Informe a Cidade onde ocorreu o fato)</label>
+          <div class="input-field col s12 m6" style="display: none;">
+            <input id="proc_f_Status" type="text"> </div>
+        </div>
+
+        <div class="row" style="margin-bottom: 0;">
+          <div class="input-field col s12">
+            <textarea id="proc_f_Requerente" class="materialize-textarea expandivel" required></textarea>
+            <label for="proc_f_Requerente">Requerente *</label>
           </div>
         </div>
 
         <div class="row" style="margin-bottom: 0;">
-          <div class="input-field col s12 m6">
-            <textarea id="proc_f_Requerente" class="materialize-textarea expandivel" required></textarea>
-            <label for="proc_f_Requerente">Requerente *</label>
-          </div>
-          <div class="input-field col s12 m6">
+          <div class="input-field col s12">
             <textarea id="proc_f_Requerido" class="materialize-textarea expandivel"></textarea>
             <label for="proc_f_Requerido">Requerido</label>
           </div>
         </div>
 
         <div class="row" style="margin-bottom: 0;">
-          <div class="input-field col s12 m8">
-            <input id="proc_f_Procurador" type="text" class="autocomplete">
-            <label for="proc_f_Procurador">Procurador(a) Responsável</label>
+          <div class="input-field col s12 m6">
+            <i class="material-icons prefix" style="color: #004480;">location_city</i>
+            <input id="proc_f_Local" type="text" class="autocomplete">
+            <label for="proc_f_Local">Local da Ocorrência (Cidade)</label>
           </div>
-          <div class="input-field col s12 m4">
-            <select id="proc_f_Status">
-              <option value="" disabled selected>Escolha o Status</option>
-              <option value="Concluso">Concluso</option>
-              <option value="Na secretaria">Na secretaria</option>
-              <option value="Arquivado">Arquivado</option>
-            </select>
-            <label>Status</label>
+          <div class="input-field col s12 m6">
+            <i class="material-icons prefix" style="color: #004480;">person</i>
+            <input id="proc_f_Procurador" type="text" readonly style="color: #666; background: #f9f9f9; padding-left: 10px; border-radius: 4px;">
+            <label for="proc_f_Procurador" class="active">Procurador Responsável</label>
           </div>
         </div>
 
-        <div class="modal-secao">Conteúdo Jurídico</div>
+        <div class="modal-secao" style="background: #004480; color: white; padding: 5px 10px; border-radius: 4px; font-size: 0.8rem; margin-top: 20px;">CONTEÚDO PROCESSUAL</div>
 
         <div class="row" style="margin-bottom: 0;">
           <div class="input-field col s12">
@@ -142,10 +148,8 @@
       </form>
     </div>
     <div class="modal-footer">
-      <button class="modal-close waves-effect waves-grey btn-flat grey-text text-darken-1"
-        style="margin-right: 10px;">Cancelar</button>
-      <button id="procBtnSalvar" class="waves-effect waves-light btn btn-salvar-modal"
-        onclick="formProcessos_salvar()">
+      <button class="modal-close waves-effect waves-grey btn btn-oab" style="margin-right: 10px;">Cancelar</button>
+      <button id="procBtnSalvar" class="btn waves-effect waves-light btn-oab" onclick="formProcessos_salvar()">
         <i class="material-icons left">save</i>Salvar
       </button>
     </div>

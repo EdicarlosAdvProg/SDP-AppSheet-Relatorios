@@ -305,6 +305,31 @@
     color: #9e9e9e; /* cinza */
   }
 
+  /* -----------------------------------------------------
+    BOTÃO PADRÃO OAB (PÍLULA)
+  ----------------------------------------------------- */
+  .btn-oab {
+    background-color: #d1d8db !important;
+    color: #004480 !important;
+    border: none !important;
+    border-radius: 50px !important;
+    transition: all 0.3s ease !important;
+    box-shadow: none !important;
+    /* Mantém o flex e padding originais do botão Materialize */
+  }
+
+  .btn-oab:hover {
+    background-color: #002f5d !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2) !important;
+  }
+
+  /* Ajuste fino para o ícone (caso necessário) */
+  .btn-oab i.material-icons.left {
+    vertical-align: middle;
+    margin-right: 5px;
+  }
+
   /* =====================================================
      6. FAB E TOOLTIPS
   ===================================================== */
@@ -400,6 +425,22 @@
     margin: 4px 0 14px 0;
   }
 
+  .modal-fixed-header {
+    position: sticky;
+    top: 0;
+    background-color: #ffffff;
+    z-index: 20;
+    padding: 0 0 12px 0;
+    margin-bottom: 16px;
+    border-bottom: 1px solid #e0e0e0;
+  }
+
+  /* Garante que o formulário role por baixo */
+  #procForm {
+    position: relative;
+    z-index: 1;
+  }
+
   .materialize-textarea.juridico {
     min-height: 80px !important;
     font-size: 0.88rem;
@@ -419,6 +460,26 @@
   .input-field > textarea.materialize-textarea.expandivel + label {
     top: 0;
   }
+
+  /* Etiquetas de Status Profissionais */
+  .status-label {
+    padding: 5px 15px;
+    border-radius: 50px;
+    font-size: 0.75rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: white;
+    display: inline-block;
+  }
+  .st-concluso { background-color: #2e7d32; }     /* Verde */
+  .st-secretaria { background-color: #004480; }   /* Azul OAB */
+  .st-arquivado { background-color: #c62828; }    /* Vermelho */
+  
+  /* Ajuste para inputs somente leitura */
+  input[readonly] {
+    border-bottom: 1px solid #ddd !important;
+  }
+  
 
   /* =====================================================
      9. MODAL DE PAUTA — ABAS E LISTA DE SESSÕES

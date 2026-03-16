@@ -293,6 +293,48 @@ function formProcessos_alterarStatus(idProcesso, novoStatus, dataISO) {
 }
 
 /**
+ * Busca a lista de cidades e seus respectivos procuradores baseados na Região
+ */
+function buscarDadosCidadesEProcuradores() {
+  
+  try {
+    const ss = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
+    const dadosCidades = ss.getSheetByName("tabCidades").getDataRange().getValues();
+    const dadosSubs = ss.getSheetByName("tabSubsecoes").getDataRange().getValues();
+    const dadosProcs = ss.getSheetByName("tabProcuradores").getDataRange().getValues();
+
+    // 1. Criar mapa de Subseção -> Região
+    let mapaSubRegiao = {};
+    for(let i = 1; i < dadosSubs.length; i++){
+      mapaSubRegiao[dadosSubs[i][0]] = dadosSubs[i][5]; // ID Subseção -> Nome da Região
+    }
+
+    // 2. Criar mapa de Região -> Nome do Procurador
+    let mapaRegiaoProc = {};
+    for(let i = 1; i < dadosProcs.length; i++){
+      mapaRegiaoProc[dadosProcs[i][5]] = dadosProcs[i][1]; // Nome Região -> Nome Procurador
+    }
+
+    // 3. Montar objeto final para o Autocomplete: { "CIDADE": "PROCURADOR" }
+    let resultado = {};
+    for(let i = 1; i < dadosCidades.length; i++){
+      let cidadeNome = dadosCidades[i][2];
+      let idSub = dadosCidades[i][1];
+      let regiao = mapaSubRegiao[idSub];
+      let procurador = mapaRegiaoProc[regiao] || "Procurador não encontrado";
+      
+      resultado[cidadeNome] = procurador;
+    }
+    
+    return resultado;
+
+  } catch (e) {
+    console.error("Erro ao buscar dados de cidades:", e);
+    return {}; // Retorna objeto vazio para não quebrar o frontend
+  }
+}
+
+/**
  * Importação em massa de processos a partir de texto estruturado.
  * Formato esperado por linha: Processo | Data | Hora | Requerente
  * 
