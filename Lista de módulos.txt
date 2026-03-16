@@ -1,3 +1,8 @@
+# FormSubsecoes-macro.gs
+# FormSubsecoes-layout.html
+# FormSubsecoes-style.html
+# FormSubsecoes-js.html
+
 # PainelLateral-macro.gs
 # PainelLateral-layout.html
 # PainelLateral-style.html
@@ -12,10 +17,3 @@
 # FormSessoes-layout.html
 # FormSessoes-style.html
 # FormSessoes-js.html
-
-Vamos reestrutura a barra lateral:
-
-<script>
-  // Esta linha pega o JSON que injetamos no Passo 1
-  window.DADOS_INICIAIS = <?!= dadosIniciaisJSON ?>;
-</script>
