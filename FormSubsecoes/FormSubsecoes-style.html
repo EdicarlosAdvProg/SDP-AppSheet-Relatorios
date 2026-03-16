@@ -46,6 +46,10 @@ body {
   padding-top: var(--cabecalho-altura);
 }
 
+/* Trava scroll do fundo quando qualquer modal estiver aberto */
+html.modal-aberto,
+html.modal-aberto body { overflow: hidden !important; }
+
 /* ============================================================
    3. CABEÇALHO FIXO
    ============================================================ */
@@ -67,6 +71,8 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  flex-wrap: nowrap;
+  min-width: 0;
 }
 
 .cabecalho-marca { display: flex; align-items: center; gap: 12px; }
@@ -88,6 +94,28 @@ body {
 .marca-subtitulo {
   font-size: 0.7rem; font-weight: 500;
   color: var(--oab-texto-soft); text-transform: uppercase; letter-spacing: 0.05em;
+}
+
+/* Neutraliza h1/p/a do Materialize no cabeçalho fixo */
+.cabecalho-fixo h1,
+.cabecalho-fixo p {
+  margin: 0 !important;
+  padding: 0 !important;
+  font-family: 'Inter', sans-serif !important;
+}
+
+/* Materialize sobrescreve line-height e font-size do h1 */
+.marca-titulo {
+  font-size: 1.05rem !important;
+  font-weight: 800 !important;
+  line-height: 1.2 !important;
+  color: var(--oab-azul-escuro) !important;
+}
+
+/* Materialize pode sobrescrever botões dentro de nav/header */
+.cabecalho-fixo button {
+  background: none;
+  box-shadow: none;
 }
 
 .cabecalho-acoes { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
@@ -438,7 +466,461 @@ body {
 }
 
 /* ============================================================
-   12. TOAST DE NOTIFICAÇÃO
+   12. MODAL DE PROCURADORES — COLLECTION + INLINE EDIT + FAB
+   ============================================================ */
+
+.modal-proc-container {
+  max-width: 600px;
+  position: relative;
+}
+
+.modal-proc-corpo {
+  padding: 0 0 72px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* ---- Overrides da collection Materialize ---- */
+.proc-lista {
+  border: none !important;
+  border-radius: 0 !important;
+  margin: 0 !important;
+}
+
+.proc-lista .collection-item {
+  font-family: 'Inter', sans-serif;
+  border-bottom-color: var(--oab-cinza-borda) !important;
+  transition: background var(--transicao);
+}
+
+.proc-lista .collection-item:last-child {
+  border-bottom: none !important;
+}
+
+.proc-lista .collection-item .title {
+  font-size: 0.88rem !important;
+  font-weight: 800 !important;
+  color: var(--oab-azul-escuro) !important;
+  line-height: 1.25 !important;
+  display: block;
+}
+
+.proc-lista .collection-item.avatar .circle {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 0.95rem !important;
+  font-weight: 800 !important;
+  color: #fff !important;
+  letter-spacing: -0.5px;
+}
+
+.proc-lista .collection-item .secondary-content {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  top: 18px !important;
+  right: 12px !important;
+}
+
+/* ---- Informações dentro do item ---- */
+.proc-cargo-txt {
+  font-size: 0.72rem;
+  color: var(--oab-texto-soft);
+  font-style: italic;
+  margin: 1px 0 4px;
+  display: block;
+}
+
+.proc-meta-linha {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 2px;
+}
+
+.proc-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.71rem;
+  color: var(--oab-texto);
+}
+
+.proc-meta-item .material-icons {
+  font-size: 12px;
+  color: var(--oab-azul);
+}
+
+.proc-regiao-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: var(--radius-badge);
+  font-size: 0.58rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: #e8eef5;
+  color: var(--oab-azul);
+}
+
+.proc-regiao-badge.badge-sede {
+  background: var(--oab-vermelho);
+  color: var(--oab-branco);
+}
+
+/* ---- Botões de ação (aparecem no hover) ---- */
+.proc-acoes {
+  opacity: 0;
+  transition: opacity var(--transicao);
+}
+
+.collection-item:hover .proc-acoes { opacity: 1; }
+
+.proc-btn-acao {
+  width: 30px; height: 30px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  background: transparent;
+  display: flex; align-items: center; justify-content: center;
+  transition: background var(--transicao), color var(--transicao);
+  outline: none !important;
+}
+.proc-btn-acao .material-icons { font-size: 16px; }
+
+.proc-btn-editar  { color: var(--oab-azul); }
+.proc-btn-editar:hover  { background: #e8eef5; color: var(--oab-azul-escuro); }
+
+.proc-btn-excluir { color: var(--oab-texto-soft); }
+.proc-btn-excluir:hover { background: #ffe5e5; color: var(--oab-vermelho); }
+
+/* ---- Form inline de edição ---- */
+.proc-edit {
+  display: none;
+  margin-left: -72px;
+  margin-right: -20px;
+  margin-bottom: -10px;
+  margin-top: 10px;
+  padding: 14px 20px 16px;
+  background: #f7f9fc;
+  border-top: 2px solid var(--oab-cinza-borda);
+  animation: slideDownEdit 0.18s ease;
+}
+
+.proc-edit.aberto { display: block; }
+
+@keyframes slideDownEdit {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.proc-edit-titulo {
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--oab-azul);
+  margin-bottom: 4px;
+  display: block;
+}
+
+.proc-edit-acoes {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 4px;
+  margin-top: 2px;
+}
+
+/* Overrides Materialize input-field dentro do proc-edit e proc-novo */
+.proc-edit .input-field,
+.proc-novo-painel .input-field {
+  margin-top: 8px;
+  margin-bottom: 4px;
+}
+
+.proc-edit .input-field input,
+.proc-novo-painel .input-field input {
+  font-family: 'Inter', sans-serif !important;
+  font-size: 0.84rem !important;
+  border-bottom-color: var(--oab-cinza-borda) !important;
+}
+
+.proc-edit .input-field input:focus,
+.proc-novo-painel .input-field input:focus {
+  border-bottom-color: var(--oab-azul) !important;
+  box-shadow: 0 1px 0 0 var(--oab-azul) !important;
+}
+
+.proc-edit .input-field label,
+.proc-novo-painel .input-field label {
+  font-family: 'Inter', sans-serif !important;
+  font-size: 0.82rem !important;
+  color: var(--oab-texto-soft) !important;
+}
+
+.proc-edit .input-field label.active,
+.proc-novo-painel .input-field label.active {
+  font-size: 0.68rem !important;
+  color: var(--oab-azul) !important;
+}
+
+/* Grid 2 colunas no form inline */
+.proc-edit-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 16px;
+}
+
+/* Coluna do select de região */
+.proc-sel-col { padding-top: 4px; }
+
+.proc-sel-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--oab-azul);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.proc-row-form { margin-bottom: 0 !important; }
+
+/* ---- Painel novo procurador ---- */
+.proc-novo-painel {
+  margin: 0;
+  padding: 16px 20px 18px;
+  background: #f0f5ff;
+  border-bottom: 2px solid var(--oab-azul);
+  animation: slideDownEdit 0.2s ease;
+}
+
+.proc-novo-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.proc-novo-titulo-text {
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--oab-azul-escuro);
+}
+
+/* ---- FAB ---- */
+.proc-fab {
+  position: absolute !important;
+  bottom: 18px !important;
+  right: 18px !important;
+  z-index: 10;
+  transition: transform 0.22s ease, background-color 0.22s ease !important;
+}
+
+.proc-fab.fab-ativo {
+  transform: rotate(45deg) !important;
+}
+
+/* ============================================================
+   13. MODAL DE CONFIRMAÇÃO DE EXCLUSÃO
+   ============================================================ */
+
+/* Overlay acima de todos os outros modais */
+.modal-overlay-topo { z-index: 300; }
+
+.modal-confirmar-container {
+  max-width: 420px;
+}
+
+/* Cabeçalho com borda de alerta em vez do vermelho padrão */
+.modal-header-perigo {
+  border-left-color: var(--oab-vermelho) !important;
+  background: #fff5f5;
+}
+
+.modal-icone-perigo {
+  font-size: 32px;
+  color: var(--oab-vermelho);
+  flex-shrink: 0;
+}
+
+.modal-confirmar-corpo {
+  padding: 20px 22px;
+}
+
+.confirmar-msg {
+  font-size: 0.88rem;
+  color: var(--oab-texto);
+  line-height: 1.55;
+}
+
+.confirmar-msg strong {
+  color: var(--oab-azul-escuro);
+  font-weight: 800;
+}
+
+/* Botão de perigo */
+.btn-perigo {
+  background: var(--oab-vermelho);
+  color: var(--oab-branco);
+}
+.btn-perigo:hover {
+  background: var(--oab-vermelho-dk);
+  box-shadow: 0 4px 14px rgba(255, 0, 0, 0.3);
+}
+
+/* ============================================================
+   14. MODAL DE EDIÇÃO — FORMULÁRIO
+   ============================================================ */
+
+/* Container ligeiramente mais largo que o de cidades */
+.modal-edicao-container { max-width: 620px; }
+
+/* Corpo com scroll e padding próprio */
+.modal-form-corpo {
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* Linha com dois campos lado a lado */
+.form-linha-dupla {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+/* Grupo campo + label + erro */
+.form-grupo {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.form-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--oab-azul);
+}
+
+.form-obrigatorio {
+  color: var(--oab-vermelho);
+  font-weight: 800;
+}
+
+/* Input de texto */
+.form-input {
+  width: 100%;
+  padding: 9px 12px;
+  border: 2px solid var(--oab-cinza-borda);
+  border-radius: 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.85rem;
+  color: var(--oab-texto);
+  background: var(--oab-branco);
+  outline: none !important;
+  transition: border-color var(--transicao), box-shadow var(--transicao);
+}
+
+.form-input::placeholder { color: var(--oab-texto-soft); }
+
+.form-input:focus {
+  border-color: var(--oab-azul);
+  box-shadow: 0 0 0 3px rgba(0, 68, 128, 0.1);
+}
+
+/* Estado de erro no input */
+.form-input.input-erro {
+  border-color: var(--oab-vermelho);
+  box-shadow: 0 0 0 3px rgba(255, 0, 0, 0.1);
+}
+
+/* Mensagem de erro inline */
+.form-erro {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--oab-vermelho);
+  min-height: 1em;
+  display: none;
+}
+.form-erro.visivel { display: block; }
+
+/* Select customizado */
+.form-select-wrap {
+  position: relative;
+}
+
+.form-select {
+  width: 100%;
+  padding: 9px 36px 9px 12px;
+  border: 2px solid var(--oab-cinza-borda);
+  border-radius: 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.85rem;
+  color: var(--oab-texto);
+  background: var(--oab-branco);
+  outline: none !important;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  transition: border-color var(--transicao), box-shadow var(--transicao);
+}
+
+.form-select:focus {
+  border-color: var(--oab-azul);
+  box-shadow: 0 0 0 3px rgba(0, 68, 128, 0.1);
+}
+
+/* Ícone chevron sobreposto ao select */
+.form-select-icone {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 20px;
+  color: var(--oab-texto-soft);
+  pointer-events: none;
+}
+
+/* Alerta de erro geral no modal */
+.form-alerta {
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: #fff0f0;
+  border: 1px solid #ffcccc;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--oab-vermelho);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Rodapé com ações */
+.modal-footer {
+  padding: 14px 22px 18px;
+  border-top: 1px solid var(--oab-cinza-borda);
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   15. TOAST DE NOTIFICAÇÃO
    ============================================================ */
 .toast-oab {
   position: fixed; bottom: 28px; left: 50%;

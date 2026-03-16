@@ -96,6 +96,207 @@ function subsecoes_buscarTodas() {
 }
 
 // ---------------------------------------------------------------------------
+// EDIÇÃO DE SUBSEÇÃO
+// ---------------------------------------------------------------------------
+
+/**
+ * Atualiza os campos editáveis de uma subseção na tabSubsecoes.
+ * Apenas colunas 2–6 (Subseção, Presidente, Email, Telefone, Região)
+ * são gravadas. A coluna 1 (Id) nunca é alterada.
+ *
+ * @param {{ id, nome, presidente, email, telefone, regiao }} dados
+ * @returns {{ sucesso: boolean, msg: string }}
+ */
+function subsecoes_salvarEdicao(dados) {
+  try {
+    if (!dados || !dados.id) throw new Error('ID da subseção não informado.');
+
+    const ss  = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
+    const sh  = ss.getSheetByName('tabSubsecoes');
+    const all = sh.getDataRange().getValues();
+
+    // Localiza a linha pelo Id (coluna 1, índice 0)
+    let linhaAlvo = -1;
+    for (let i = 1; i < all.length; i++) {
+      if (String(all[i][0]).trim() === String(dados.id).trim()) {
+        linhaAlvo = i + 1; // +1 porque getValues é 0-indexed mas Sheets é 1-indexed
+        break;
+      }
+    }
+
+    if (linhaAlvo === -1) throw new Error('Subseção não encontrada: ' + dados.id);
+
+    // Grava colunas 2–6 (B até F) em uma única operação
+    sh.getRange(linhaAlvo, 2, 1, 5).setValues([[
+      String(dados.nome       || '').trim(),
+      String(dados.presidente || '').trim(),
+      String(dados.email      || '').trim(),
+      String(dados.telefone   || '').trim(),
+      String(dados.regiao     || '').trim()
+    ]]);
+
+    SpreadsheetApp.flush();
+    return { sucesso: true, msg: 'Subseção "' + dados.nome + '" atualizada com sucesso.' };
+
+  } catch (e) {
+    return { sucesso: false, msg: 'Erro ao salvar: ' + e.message };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// CRUD DE PROCURADORES
+// ---------------------------------------------------------------------------
+
+/**
+ * Retorna todos os procuradores da tabProcuradores.
+ * Shape: { id, nome, email, telefone, cargo, regiao }
+ * @returns {Array<Object>}
+ */
+function procuradores_buscarTodos() {
+  const ss    = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
+  const dados = ss.getSheetByName('tabProcuradores').getDataRange().getValues();
+  dados.shift(); // remove cabeçalho
+  return dados.map(function (r) {
+    return {
+      id:       String(r[0] || '').trim(),
+      nome:     String(r[1] || '').trim(),
+      email:    String(r[2] || '').trim(),
+      telefone: String(r[3] || '').trim(),
+      cargo:    String(r[4] || '').trim(),
+      regiao:   String(r[5] || '').trim()
+    };
+  });
+}
+
+/**
+ * Atualiza os campos de um procurador na tabProcuradores.
+ * Apenas colunas 2–6 (Nome, Email, Telefone, Cargo, Região) são alteradas.
+ * @param {{ id, nome, email, telefone, cargo, regiao }} dados
+ * @returns {{ sucesso: boolean, msg: string }}
+ */
+function procuradores_salvarEdicao(dados) {
+  try {
+    if (!dados || !dados.id) throw new Error('ID do procurador não informado.');
+
+    const ss  = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
+    const sh  = ss.getSheetByName('tabProcuradores');
+    const all = sh.getDataRange().getValues();
+
+    let linhaAlvo = -1;
+    for (let i = 1; i < all.length; i++) {
+      if (String(all[i][0]).trim() === String(dados.id).trim()) {
+        linhaAlvo = i + 1;
+        break;
+      }
+    }
+
+    if (linhaAlvo === -1) throw new Error('Procurador não encontrado: ' + dados.id);
+
+    sh.getRange(linhaAlvo, 2, 1, 5).setValues([[
+      String(dados.nome     || '').trim(),
+      String(dados.email    || '').trim(),
+      String(dados.telefone || '').trim(),
+      String(dados.cargo    || '').trim(),
+      String(dados.regiao   || '').trim()
+    ]]);
+
+    SpreadsheetApp.flush();
+    return { sucesso: true, msg: 'Procurador "' + dados.nome + '" atualizado com sucesso.' };
+  } catch (e) {
+    return { sucesso: false, msg: 'Erro ao salvar: ' + e.message };
+  }
+}
+
+/**
+ * Remove um procurador da tabProcuradores pelo Id.
+ * @param {string} id
+ * @returns {{ sucesso: boolean, msg: string }}
+ */
+function procuradores_excluir(id) {
+  try {
+    if (!id) throw new Error('ID não informado.');
+
+    const ss  = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
+    const sh  = ss.getSheetByName('tabProcuradores');
+    const all = sh.getDataRange().getValues();
+
+    let linhaAlvo = -1;
+    let nomeProc  = '';
+    for (let i = 1; i < all.length; i++) {
+      if (String(all[i][0]).trim() === String(id).trim()) {
+        linhaAlvo = i + 1;
+        nomeProc  = String(all[i][1]).trim();
+        break;
+      }
+    }
+
+    if (linhaAlvo === -1) throw new Error('Procurador não encontrado: ' + id);
+
+    sh.deleteRow(linhaAlvo);
+    SpreadsheetApp.flush();
+    return { sucesso: true, msg: 'Procurador "' + nomeProc + '" removido com sucesso.' };
+  } catch (e) {
+    return { sucesso: false, msg: 'Erro ao excluir: ' + e.message };
+  }
+}
+
+/**
+ * Cria um novo procurador na tabProcuradores.
+ * O Id é gerado incrementalmente a partir do maior Id existente.
+ * @param {{ nome, email, telefone, cargo, regiao }} dados
+ * @returns {{ sucesso: boolean, msg: string, id: string }}
+ */
+function procuradores_criar(dados) {
+  try {
+    if (!dados || !dados.nome || !dados.nome.trim()) throw new Error('Nome obrigatório.');
+
+    const ss  = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
+    const sh  = ss.getSheetByName('tabProcuradores');
+    const all = sh.getDataRange().getValues();
+
+    // Encontra o maior número sequencial existente nos IDs "PROC-XX"
+    let maxNum = 0;
+    for (let i = 1; i < all.length; i++) {
+      const m = /^PROC-(\d+)$/i.exec(String(all[i][0]).trim());
+      if (m) maxNum = Math.max(maxNum, parseInt(m[1], 10));
+    }
+    const novoId = 'PROC-' + String(maxNum + 1).padStart(2, '0');
+
+    sh.appendRow([
+      novoId,
+      String(dados.nome     || '').trim(),
+      String(dados.email    || '').trim(),
+      String(dados.telefone || '').trim(),
+      String(dados.cargo    || '').trim(),
+      String(dados.regiao   || '').trim()
+    ]);
+
+    SpreadsheetApp.flush();
+    return { sucesso: true, msg: 'Procurador "' + dados.nome.trim() + '" cadastrado.', id: novoId };
+  } catch (e) {
+    return { sucesso: false, msg: 'Erro ao cadastrar: ' + e.message, id: '' };
+  }
+}
+
+
+ /* Fonte: valores distintos de tabProcuradores.Região + 'Todas (Sede)'.
+ * @returns {string[]}
+ */
+function subsecoes_listarRegioes() {
+  const ss      = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
+  const dados   = ss.getSheetByName('tabProcuradores').getDataRange().getValues();
+  dados.shift();
+  const regioes = dados
+    .map(function (r) { return String(r[5] || '').trim(); })
+    .filter(function (v) { return v !== ''; });
+  // Garante que "Todas (Sede)" apareça primeiro e sem duplicatas
+  const unicas  = ['Todas (Sede)'].concat(
+    regioes.filter(function (v) { return v.toUpperCase() !== 'TODAS (SEDE)'; })
+  );
+  return unicas;
+}
+
+// ---------------------------------------------------------------------------
 // AÇÕES DO MENU
 // ---------------------------------------------------------------------------
 

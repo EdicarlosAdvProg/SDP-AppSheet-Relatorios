@@ -13,9 +13,25 @@ const subsecoes_estado = {
 };
 
 // ---------------------------------------------------------------------------
+// SCROLL LOCK — trava html + body para evitar scroll do fundo ao abrir modais
+// ---------------------------------------------------------------------------
+let _modalCount = 0;
+
+function modalLockScroll() {
+  _modalCount++;
+  document.documentElement.classList.add('modal-aberto');
+}
+
+function modalUnlockScroll() {
+  _modalCount = Math.max(0, _modalCount - 1);
+  if (_modalCount === 0) document.documentElement.classList.remove('modal-aberto');
+}
+
+// ---------------------------------------------------------------------------
 // INICIALIZAÇÃO
 // ---------------------------------------------------------------------------
 document.addEventListener('DOMContentLoaded', function () {
+  M.AutoInit();
   subsecoes_carregarTodas();
 });
 
@@ -248,12 +264,12 @@ function subsecoes_abrirModalCidades(idSubsecao) {
   // Exibe o modal
   const modal = document.getElementById('modal-cidades');
   modal.style.display = 'flex';
-  document.body.style.overflow = 'hidden';
+  modalLockScroll();
 }
 
 function subsecoes_fecharModalCidades() {
   document.getElementById('modal-cidades').style.display = 'none';
-  document.body.style.overflow = '';
+  modalUnlockScroll();
 }
 
 /**
@@ -266,9 +282,13 @@ function subsecoes_fecharModalCidadesOverlay(event) {
   }
 }
 
-// Fecha modal com tecla Escape
+// Fecha modais com tecla Escape
 document.addEventListener('keydown', function (e) {
-  if (e.key === 'Escape') subsecoes_fecharModalCidades();
+  if (e.key !== 'Escape') return;
+  proc_fecharConfirmacao();
+  proc_fecharModal();
+  subsecoes_fecharModalCidades();
+  subsecoes_fecharModalEdicao();
 });
 
 // ---------------------------------------------------------------------------
@@ -296,15 +316,633 @@ function subsecoes_dispararSincronismo() {
 }
 
 // ---------------------------------------------------------------------------
-// AÇÕES DOS CARDS (stubs)
+// MODAL DE EDIÇÃO
 // ---------------------------------------------------------------------------
 
-function subsecoes_editarSubsecao(id) {
-  subsecoes_toast('Abrir formulário de edição: ' + id, '');
+// Cache de regiões para o select — carregado uma única vez
+let subsecoes_regioes = [];
+
+/**
+ * Abre o modal de edição preenchido com os dados da subseção.
+ * Carrega as regiões do backend se ainda não foram buscadas.
+ * @param {string} idSubsecao
+ */
+function subsecoes_editarSubsecao(idSubsecao) {
+  const sub = subsecoes_estado.cache.find(function (s) { return s.id === idSubsecao; });
+  if (!sub) return;
+
+  // Subtítulo do cabeçalho do modal
+  document.getElementById('modal-edicao-subtitulo').textContent = 'ID: ' + sub.id;
+
+  // Preenche os campos
+  document.getElementById('edit-id').value          = sub.id;
+  document.getElementById('edit-nome').value        = sub.nome;
+  document.getElementById('edit-presidente').value  = sub.presidente || '';
+  document.getElementById('edit-email').value       = sub.email      || '';
+  document.getElementById('edit-telefone').value    = sub.telefone   || '';
+
+  // Limpa erros e alertas anteriores
+  subsecoes_limparErrosForm();
+
+  const abrirModal = function () {
+    // Preenche o select de regiões
+    const select = document.getElementById('edit-regiao');
+    select.innerHTML = '';
+    subsecoes_regioes.forEach(function (r) {
+      const opt = document.createElement('option');
+      opt.value       = r;
+      opt.textContent = r;
+      opt.selected    = (r === sub.regiao);
+      select.appendChild(opt);
+    });
+
+    document.getElementById('modal-edicao').style.display = 'flex';
+    modalLockScroll();
+    // Foca no primeiro campo editável
+    setTimeout(function () { document.getElementById('edit-nome').focus(); }, 80);
+  };
+
+  // Carrega regiões na primeira vez
+  if (subsecoes_regioes.length > 0) {
+    abrirModal();
+  } else {
+    google.script.run
+      .withSuccessHandler(function (lista) {
+        subsecoes_regioes = lista;
+        abrirModal();
+      })
+      .withFailureHandler(function () {
+        // Fallback com regiões fixas se o backend falhar
+        subsecoes_regioes = ['Todas (Sede)', 'REGIÃO 2', 'REGIÃO 3', 'REGIÃO 4', 'REGIÃO 5'];
+        abrirModal();
+      })
+      .subsecoes_listarRegioes();
+  }
 }
 
+/**
+ * Valida o formulário e envia os dados ao backend para gravação.
+ * Atualiza o cache local e re-renderiza o card sem recarregar tudo.
+ */
+function subsecoes_salvarEdicaoForm() {
+  if (!subsecoes_validarForm()) return;
+
+  const btn = document.getElementById('btn-salvar-edicao');
+  btn.classList.add('carregando');
+  btn.querySelector('.material-icons').textContent = 'sync';
+
+  const dados = {
+    id:          document.getElementById('edit-id').value.trim(),
+    nome:        document.getElementById('edit-nome').value.trim().toUpperCase(),
+    presidente:  document.getElementById('edit-presidente').value.trim(),
+    email:       document.getElementById('edit-email').value.trim(),
+    telefone:    document.getElementById('edit-telefone').value.trim(),
+    regiao:      document.getElementById('edit-regiao').value
+  };
+
+  google.script.run
+    .withSuccessHandler(function (res) {
+      btn.classList.remove('carregando');
+      btn.querySelector('.material-icons').textContent = 'save';
+
+      if (!res.sucesso) {
+        subsecoes_exibirAlertaForm(res.msg);
+        return;
+      }
+
+      // Atualiza o cache local para refletir imediatamente sem nova chamada
+      const idx = subsecoes_estado.cache.findIndex(function (s) { return s.id === dados.id; });
+      if (idx !== -1) {
+        subsecoes_estado.cache[idx].nome       = dados.nome;
+        subsecoes_estado.cache[idx].presidente = dados.presidente;
+        subsecoes_estado.cache[idx].email      = dados.email;
+        subsecoes_estado.cache[idx].telefone   = dados.telefone;
+        subsecoes_estado.cache[idx].regiao     = dados.regiao;
+      }
+
+      subsecoes_fecharModalEdicao();
+      subsecoes_toast(res.msg, 'ok');
+
+      // Re-renderiza mantendo o filtro ativo
+      const termoBusca = document.getElementById('buscaSubsecao').value.toUpperCase().trim();
+      if (termoBusca) {
+        subsecoes_filtrar();
+      } else {
+        subsecoes_renderizarGrade(subsecoes_estado.cache);
+      }
+    })
+    .withFailureHandler(function (err) {
+      btn.classList.remove('carregando');
+      btn.querySelector('.material-icons').textContent = 'save';
+      subsecoes_exibirAlertaForm('Erro de comunicação: ' + err.message);
+    })
+    .subsecoes_salvarEdicao(dados);
+}
+
+/**
+ * Valida os campos obrigatórios e formatos.
+ * @returns {boolean} true se válido
+ */
+function subsecoes_validarForm() {
+  subsecoes_limparErrosForm();
+  let valido = true;
+
+  const nome = document.getElementById('edit-nome').value.trim();
+  if (!nome) {
+    subsecoes_marcarErro('edit-nome', 'erro-nome', 'O nome da subseção é obrigatório.');
+    valido = false;
+  }
+
+  const email = document.getElementById('edit-email').value.trim();
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    subsecoes_marcarErro('edit-email', 'erro-email', 'Formato de e-mail inválido.');
+    valido = false;
+  }
+
+  return valido;
+}
+
+function subsecoes_marcarErro(idInput, idErro, mensagem) {
+  document.getElementById(idInput).classList.add('input-erro');
+  const el = document.getElementById(idErro);
+  if (el) { el.textContent = mensagem; el.classList.add('visivel'); }
+}
+
+function subsecoes_limparErrosForm() {
+  ['edit-nome', 'edit-email'].forEach(function (id) {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('input-erro');
+  });
+  ['erro-nome', 'erro-email'].forEach(function (id) {
+    const el = document.getElementById(id);
+    if (el) { el.textContent = ''; el.classList.remove('visivel'); }
+  });
+  const alerta = document.getElementById('modal-edicao-alerta');
+  if (alerta) alerta.style.display = 'none';
+}
+
+function subsecoes_exibirAlertaForm(mensagem) {
+  const alerta = document.getElementById('modal-edicao-alerta');
+  if (!alerta) return;
+  alerta.innerHTML = '<span class="material-icons" style="font-size:16px">error_outline</span> ' +
+    subsecoes_escaparHtml(mensagem);
+  alerta.style.display = 'flex';
+}
+
+function subsecoes_fecharModalEdicao() {
+  document.getElementById('modal-edicao').style.display = 'none';
+  modalUnlockScroll();
+  subsecoes_limparErrosForm();
+}
+
+function subsecoes_fecharModalEdicaoOverlay(event) {
+  if (event.target === document.getElementById('modal-edicao')) {
+    subsecoes_fecharModalEdicao();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// MODAL DE PROCURADORES
+// ---------------------------------------------------------------------------
+
+// Cache local de procuradores para evitar round-trips
+const proc_estado = {
+  cache: [],
+  idParaExcluir: null
+};
+
+/**
+ * Cores de destaque por região — mesma lógica dos cards de subseção.
+ */
+function proc_corRegiao(regiao) {
+  const r = (regiao || '').toLowerCase();
+  if (r.includes('sede'))    return '#ff0000';
+  if (r.includes('região 2') || r.includes('regiao 2')) return '#005f8e';
+  if (r.includes('região 3') || r.includes('regiao 3')) return '#004480';
+  if (r.includes('região 4') || r.includes('regiao 4')) return '#003d6b';
+  if (r.includes('região 5') || r.includes('regiao 5')) return '#002f5d';
+  return '#004480';
+}
+
+/**
+ * Extrai a inicial do primeiro e do último nome para o avatar.
+ * "Frederico Manoel Sousa Álvares" → "FA"
+ */
+function proc_iniciais(nome) {
+  if (!nome) return '?';
+  const partes = nome.trim().split(/\s+/);
+  if (partes.length === 1) return partes[0][0].toUpperCase();
+  return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
+}
+
+/**
+ * Abre o modal de procuradores. Carrega do backend na primeira vez;
+ * nas chamadas seguintes usa o cache.
+ */
 function subsecoes_abrirModalProcuradores() {
-  subsecoes_toast('Módulo de Procuradores em desenvolvimento.', '');
+  document.getElementById('modal-procuradores').style.display = 'flex';
+  modalLockScroll();
+  M.AutoInit();
+
+  if (proc_estado.cache.length > 0) {
+    proc_renderizarCards(proc_estado.cache);
+    return;
+  }
+
+  document.getElementById('proc-lista').innerHTML = '';
+  document.getElementById('modal-proc-corpo').insertAdjacentHTML('afterbegin',
+    '<div id="proc-carregando" style="display:flex;flex-direction:column;align-items:center;gap:12px;padding:40px 0">' +
+    '<div class="loading-spinner loading-grande"><div class="spinner-anel"></div></div>' +
+    '<p class="estado-texto">Carregando procuradores...</p></div>');
+
+  google.script.run
+    .withSuccessHandler(function (lista) {
+      const el = document.getElementById('proc-carregando');
+      if (el) el.remove();
+      proc_estado.cache = lista;
+      proc_renderizarCards(lista);
+    })
+    .withFailureHandler(function (err) {
+      const el = document.getElementById('proc-carregando');
+      if (el) el.innerHTML = '<p style="color:var(--oab-vermelho);font-size:.85rem;padding:32px">Erro: ' + err.message + '</p>';
+    })
+    .procuradores_buscarTodos();
+}
+
+function proc_opcoesRegiao(regiaoSelecionada) {
+  const lista = subsecoes_regioes.length > 0
+    ? subsecoes_regioes
+    : ['Todas (Sede)', 'REGIÃO 2', 'REGIÃO 3', 'REGIÃO 4', 'REGIÃO 5'];
+  return lista.map(function (r) {
+    return '<option value="' + subsecoes_escaparHtml(r) + '"' +
+      (r === regiaoSelecionada ? ' selected' : '') + '>' + subsecoes_escaparHtml(r) + '</option>';
+  }).join('');
+}
+
+/**
+ * Renderiza a lista de cards de procuradores no corpo do modal.
+ * @param {Array<Object>} lista
+ */
+function proc_renderizarCards(lista) {
+  const ul = document.getElementById('proc-lista');
+  ul.innerHTML = '';
+
+  if (lista.length === 0) {
+    ul.innerHTML = '<li class="collection-item" style="text-align:center;padding:32px;color:var(--oab-texto-soft);font-style:italic">Nenhum procurador cadastrado.</li>';
+    return;
+  }
+
+  const frag = document.createDocumentFragment();
+
+  lista.forEach(function (p) {
+    const cor      = proc_corRegiao(p.regiao);
+    const iniciais = proc_iniciais(p.nome);
+    const isSede   = (p.regiao || '').toLowerCase().includes('sede');
+    const ativo    = ' class="active"';
+
+    const li = document.createElement('li');
+    li.className = 'collection-item avatar proc-item';
+    li.id        = 'proc-card-' + p.id;
+
+    li.innerHTML = [
+      '<div class="circle" style="background:' + cor + ';color:#fff;font-size:.9rem;font-weight:800;',
+      'display:flex;align-items:center;justify-content:center;letter-spacing:-.5px">' + iniciais + '</div>',
+
+      '<span class="title">' + subsecoes_escaparHtml(p.nome) + '</span>',
+      '<span class="proc-cargo-txt">' + subsecoes_escaparHtml(p.cargo || '—') + '</span>',
+      '<div class="proc-meta-linha">',
+      (p.email    ? '<span class="proc-meta-item"><i class="material-icons">email</i>' + subsecoes_escaparHtml(p.email) + '</span>' : ''),
+      (p.telefone ? '<span class="proc-meta-item"><i class="material-icons">phone</i>' + subsecoes_escaparHtml(p.telefone) + '</span>' : ''),
+      '</div>',
+      '<span class="proc-regiao-badge' + (isSede ? ' badge-sede' : '') + '" style="' + (isSede ? '' : 'color:' + cor) + '">',
+      '<i class="material-icons" style="font-size:10px">place</i>' + subsecoes_escaparHtml(p.regiao),
+      '</span>',
+
+      '<div class="secondary-content proc-acoes">',
+      '  <button class="proc-btn-acao proc-btn-editar" title="Editar" onclick="proc_iniciarEdicao(\'' + p.id + '\')">',
+      '    <i class="material-icons">edit</i>',
+      '  </button>',
+      '  <button class="proc-btn-acao proc-btn-excluir" title="Excluir" onclick="proc_confirmarExclusao(\'' + p.id + '\')">',
+      '    <i class="material-icons">delete_outline</i>',
+      '  </button>',
+      '</div>',
+
+      '<div class="proc-edit" id="proc-edit-' + p.id + '">',
+      '  <span class="proc-edit-titulo">Editando procurador</span>',
+      '  <div class="input-field">',
+      '    <input id="proc-inp-nome-' + p.id + '" type="text" value="' + subsecoes_escaparHtml(p.nome) + '" maxlength="160" autocomplete="one-time-code">',
+      '    <label for="proc-inp-nome-' + p.id + '"' + (p.nome ? ativo : '') + '>Nome *</label>',
+      '  </div>',
+      '  <div class="proc-edit-grid">',
+      '    <div class="input-field">',
+      '      <input id="proc-inp-email-' + p.id + '" type="email" value="' + subsecoes_escaparHtml(p.email) + '" maxlength="120" autocomplete="one-time-code">',
+      '      <label for="proc-inp-email-' + p.id + '"' + (p.email ? ativo : '') + '>E-mail</label>',
+      '    </div>',
+      '    <div class="input-field">',
+      '      <input id="proc-inp-tel-' + p.id + '" type="text" value="' + subsecoes_escaparHtml(p.telefone) + '" maxlength="20" autocomplete="one-time-code">',
+      '      <label for="proc-inp-tel-' + p.id + '"' + (p.telefone ? ativo : '') + '>Telefone</label>',
+      '    </div>',
+      '    <div class="input-field">',
+      '      <input id="proc-inp-cargo-' + p.id + '" type="text" value="' + subsecoes_escaparHtml(p.cargo) + '" maxlength="120" autocomplete="one-time-code">',
+      '      <label for="proc-inp-cargo-' + p.id + '"' + (p.cargo ? ativo : '') + '>Cargo</label>',
+      '    </div>',
+      '    <div class="proc-sel-col">',
+      '      <label class="proc-sel-label">Região</label>',
+      '      <div class="form-select-wrap">',
+      '        <select id="proc-inp-regiao-' + p.id + '" class="form-select">' + proc_opcoesRegiao(p.regiao) + '</select>',
+      '        <span class="material-icons form-select-icone">expand_more</span>',
+      '      </div>',
+      '    </div>',
+      '  </div>',
+      '  <span id="proc-edit-erro-' + p.id + '" class="form-erro"></span>',
+      '  <div class="proc-edit-acoes">',
+      '    <button class="btn-pilula btn-secundario" onclick="proc_cancelarEdicao(\'' + p.id + '\')">Cancelar</button>',
+      '    <button class="btn-pilula btn-primario" id="proc-btn-salvar-' + p.id + '" onclick="proc_salvarEdicao(\'' + p.id + '\')">',
+      '      <span class="material-icons">save</span> Salvar',
+      '    </button>',
+      '  </div>',
+      '</div>'
+    ].join('');
+
+    frag.appendChild(li);
+  });
+
+  ul.appendChild(frag);
+}
+
+/**
+ * Gera as opções <option> para o select de região do form inline.
+ * Prioriza as regiões do cache global; usa fallback se ainda não carregado.
+ */
+function proc_opcoesRegiao(regiaoAtual) {
+  const lista = subsecoes_regioes.length > 0
+    ? subsecoes_regioes
+    : ['Todas (Sede)', 'REGIÃO 2', 'REGIÃO 3', 'REGIÃO 4', 'REGIÃO 5'];
+  return lista.map(function (r) {
+    return '<option value="' + subsecoes_escaparHtml(r) + '"' +
+      (r === regiaoAtual ? ' selected' : '') + '>' +
+      subsecoes_escaparHtml(r) + '</option>';
+  }).join('');
+}
+
+// ---- Ações do card ----
+
+function proc_iniciarEdicao(id) {
+  document.querySelectorAll('.proc-edit.aberto').forEach(function (el) {
+    if (el.id !== 'proc-edit-' + id) el.classList.remove('aberto');
+  });
+  const edit = document.getElementById('proc-edit-' + id);
+  if (!edit) return;
+  edit.classList.add('aberto');
+  setTimeout(function () {
+    const inp = document.getElementById('proc-inp-nome-' + id);
+    if (inp) { inp.focus(); M.updateTextFields(); }
+  }, 60);
+}
+
+function proc_cancelarEdicao(id) {
+  const edit = document.getElementById('proc-edit-' + id);
+  if (edit) edit.classList.remove('aberto');
+  // Restaura o valor original a partir do cache
+  const p = proc_estado.cache.find(function (x) { return x.id === id; });
+  if (p) {
+    document.getElementById('proc-inp-nome-' + id).value  = p.nome;
+    document.getElementById('proc-inp-email-' + id).value = p.email;
+    document.getElementById('proc-inp-tel-' + id).value   = p.telefone;
+    document.getElementById('proc-inp-cargo-' + id).value = p.cargo;
+    const sel = document.getElementById('proc-inp-regiao-' + id);
+    if (sel) sel.value = p.regiao;
+  }
+  const erroEl = document.getElementById('proc-edit-erro-' + id);
+  if (erroEl) { erroEl.textContent = ''; erroEl.classList.remove('visivel'); }
+}
+
+// ---- Novo procurador (FAB + painel) ----
+
+function proc_toggleNovoForm() {
+  const painel = document.getElementById('proc-novo-painel');
+  const isAberto = painel.style.display !== 'none';
+  isAberto ? proc_fecharNovoForm() : proc_abrirNovoForm();
+}
+
+function proc_abrirNovoForm() {
+  if (subsecoes_regioes.length === 0) {
+    subsecoes_regioes = ['Todas (Sede)', 'REGIÃO 2', 'REGIÃO 3', 'REGIÃO 4', 'REGIÃO 5'];
+  }
+
+  const sel = document.getElementById('proc-novo-regiao');
+  sel.innerHTML = proc_opcoesRegiao('Todas (Sede)');
+
+  ['proc-novo-nome','proc-novo-email','proc-novo-tel','proc-novo-cargo'].forEach(function (id) {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  const erroEl = document.getElementById('proc-novo-erro');
+  if (erroEl) { erroEl.textContent = ''; erroEl.style.display = 'none'; }
+
+  document.getElementById('proc-novo-painel').style.display = 'block';
+  document.getElementById('proc-fab').classList.add('fab-ativo');
+
+  document.querySelectorAll('.proc-edit.aberto').forEach(function (el) { el.classList.remove('aberto'); });
+
+  const corpo = document.getElementById('modal-proc-corpo');
+  corpo.scrollTop = 0;
+
+  setTimeout(function () {
+    document.getElementById('proc-novo-nome').focus();
+    M.updateTextFields();
+  }, 60);
+}
+
+function proc_fecharNovoForm() {
+  document.getElementById('proc-novo-painel').style.display = 'none';
+  document.getElementById('proc-fab').classList.remove('fab-ativo');
+  const erroEl = document.getElementById('proc-novo-erro');
+  if (erroEl) { erroEl.textContent = ''; erroEl.style.display = 'none'; }
+}
+
+function proc_criarProcurador() {
+  const nome   = document.getElementById('proc-novo-nome').value.trim();
+  const erroEl = document.getElementById('proc-novo-erro');
+
+  if (!nome) {
+    erroEl.textContent = 'O nome é obrigatório.';
+    erroEl.style.display = 'block';
+    document.getElementById('proc-novo-nome').focus();
+    return;
+  }
+  erroEl.textContent = ''; erroEl.style.display = 'none';
+
+  const btn = document.getElementById('btn-criar-proc');
+  btn.classList.add('carregando');
+  btn.querySelector('.material-icons').textContent = 'sync';
+
+  const dados = {
+    nome:     nome,
+    email:    document.getElementById('proc-novo-email').value.trim(),
+    telefone: document.getElementById('proc-novo-tel').value.trim(),
+    cargo:    document.getElementById('proc-novo-cargo').value.trim(),
+    regiao:   document.getElementById('proc-novo-regiao').value
+  };
+
+  google.script.run
+    .withSuccessHandler(function (res) {
+      btn.classList.remove('carregando');
+      btn.querySelector('.material-icons').textContent = 'person_add';
+
+      if (!res.sucesso) {
+        erroEl.textContent = res.msg; erroEl.style.display = 'block'; return;
+      }
+
+      proc_estado.cache.push(Object.assign({ id: res.id }, dados));
+      proc_fecharNovoForm();
+      proc_renderizarCards(proc_estado.cache);
+      subsecoes_regioes = [];
+      subsecoes_toast(res.msg, 'ok');
+    })
+    .withFailureHandler(function (err) {
+      btn.classList.remove('carregando');
+      btn.querySelector('.material-icons').textContent = 'person_add';
+      erroEl.textContent = 'Erro: ' + err.message; erroEl.style.display = 'block';
+    })
+    .procuradores_criar(dados);
+}
+
+function proc_salvarEdicao(id) {
+  const nome = document.getElementById('proc-inp-nome-' + id).value.trim();
+  const erroEl = document.getElementById('proc-edit-erro-' + id);
+
+  // Validação inline
+  if (!nome) {
+    erroEl.textContent = 'O nome é obrigatório.';
+    erroEl.classList.add('visivel');
+    document.getElementById('proc-inp-nome-' + id).focus();
+    return;
+  }
+  erroEl.textContent = '';
+  erroEl.classList.remove('visivel');
+
+  const btnSalvar = document.getElementById('proc-btn-salvar-' + id);
+  btnSalvar.classList.add('carregando');
+  btnSalvar.querySelector('.material-icons').textContent = 'sync';
+
+  const dados = {
+    id:       id,
+    nome:     nome,
+    email:    document.getElementById('proc-inp-email-' + id).value.trim(),
+    telefone: document.getElementById('proc-inp-tel-' + id).value.trim(),
+    cargo:    document.getElementById('proc-inp-cargo-' + id).value.trim(),
+    regiao:   document.getElementById('proc-inp-regiao-' + id).value
+  };
+
+  google.script.run
+    .withSuccessHandler(function (res) {
+      btnSalvar.classList.remove('carregando');
+      btnSalvar.querySelector('.material-icons').textContent = 'save';
+
+      if (!res.sucesso) {
+        erroEl.textContent = res.msg;
+        erroEl.classList.add('visivel');
+        return;
+      }
+
+      // Atualiza o cache local de procuradores
+      const idx = proc_estado.cache.findIndex(function (x) { return x.id === id; });
+      if (idx !== -1) {
+        Object.assign(proc_estado.cache[idx], dados);
+      }
+
+      // Fecha o form inline e re-renderiza o card atualizado
+      proc_cancelarEdicao(id);
+      proc_renderizarCards(proc_estado.cache);
+
+      // Atualiza também o bloco de procurador nos cards de subseção (cache principal)
+      subsecoes_estado.cache.forEach(function (sub) {
+        if (sub.procurador && sub.procurador.id === id) {
+          sub.procurador.nome  = dados.nome;
+          sub.procurador.cargo = dados.cargo;
+        }
+      });
+
+      subsecoes_toast(res.msg, 'ok');
+    })
+    .withFailureHandler(function (err) {
+      btnSalvar.classList.remove('carregando');
+      btnSalvar.querySelector('.material-icons').textContent = 'save';
+      erroEl.textContent = 'Erro de comunicação: ' + err.message;
+      erroEl.classList.add('visivel');
+    })
+    .procuradores_salvarEdicao(dados);
+}
+
+// ---- Exclusão ----
+
+function proc_confirmarExclusao(id) {
+  const p = proc_estado.cache.find(function (x) { return x.id === id; });
+  if (!p) return;
+
+  proc_estado.idParaExcluir = id;
+
+  document.getElementById('modal-excluir-msg').innerHTML =
+    'Você está prestes a remover o procurador <strong>' +
+    subsecoes_escaparHtml(p.nome) +
+    '</strong> responsável pela ' +
+    subsecoes_escaparHtml(p.regiao) +
+    '. Esta ação <strong>não pode ser desfeita</strong>.';
+
+  document.getElementById('modal-confirmar-exclusao').style.display = 'flex';
+}
+
+function proc_fecharConfirmacao() {
+  document.getElementById('modal-confirmar-exclusao').style.display = 'none';
+  proc_estado.idParaExcluir = null;
+}
+
+function proc_executarExclusao() {
+  const id = proc_estado.idParaExcluir;
+  if (!id) return;
+
+  const btn = document.getElementById('btn-confirmar-exclusao');
+  btn.classList.add('carregando');
+  btn.querySelector('.material-icons').textContent = 'sync';
+
+  google.script.run
+    .withSuccessHandler(function (res) {
+      btn.classList.remove('carregando');
+      btn.querySelector('.material-icons').textContent = 'delete_forever';
+      proc_fecharConfirmacao();
+
+      if (!res.sucesso) {
+        subsecoes_toast(res.msg, 'erro');
+        return;
+      }
+
+      // Remove do cache local
+      proc_estado.cache = proc_estado.cache.filter(function (x) { return x.id !== id; });
+      proc_renderizarCards(proc_estado.cache);
+      subsecoes_toast(res.msg, 'ok');
+    })
+    .withFailureHandler(function (err) {
+      btn.classList.remove('carregando');
+      btn.querySelector('.material-icons').textContent = 'delete_forever';
+      proc_fecharConfirmacao();
+      subsecoes_toast('Erro ao excluir: ' + err.message, 'erro');
+    })
+    .procuradores_excluir(id);
+}
+
+// ---- Abrir/fechar modal ----
+
+function proc_fecharModal() {
+  document.getElementById('modal-procuradores').style.display = 'none';
+  modalUnlockScroll();
+  proc_fecharNovoForm();
+  document.querySelectorAll('.proc-edit.aberto').forEach(function (el) { el.classList.remove('aberto'); });
+}
+
+function proc_fecharOverlay(event) {
+  if (event.target === document.getElementById('modal-procuradores')) {
+    proc_fecharModal();
+  }
 }
 
 function subsecoes_abrirModalRegioes() {
