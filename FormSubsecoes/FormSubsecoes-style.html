@@ -1,0 +1,456 @@
+<style>
+/* ============================================================
+   1. TOKENS DE DESIGN — OAB-GO
+   ============================================================ */
+:root {
+  --oab-vermelho:    #ff0000;
+  --oab-vermelho-dk: #cc0000;
+  --oab-azul:        #004480;
+  --oab-azul-escuro: #002f5d;
+  --oab-fundo:       #d1d8db;
+  --oab-branco:      #ffffff;
+  --oab-cinza-leve:  #f4f6f8;
+  --oab-cinza-borda: #e0e5ea;
+  --oab-texto:       #1a2332;
+  --oab-texto-soft:  #5a6a7e;
+
+  --radius-card:   12px;
+  --radius-pilula: 50px;
+  --radius-badge:  6px;
+  --sombra-card:   0 2px 8px rgba(0, 47, 93, 0.08);
+  --sombra-hover:  0 10px 28px rgba(0, 47, 93, 0.18);
+  --transicao:     0.22s ease;
+
+  /* Altura do cabeçalho fixo — atualize se alterar padding */
+  --cabecalho-altura: 116px;
+}
+
+/* ============================================================
+   2. RESET E BASE
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { height: 100%; overflow-y: auto; }
+
+body {
+  min-height: 100%;
+  font-family: 'Inter', sans-serif;
+  background-color: var(--oab-fundo);
+  color: var(--oab-texto);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  /*
+   * position:sticky não funciona no iframe do GAS modal.
+   * Solução: position:fixed no header + padding-top no body.
+   */
+  padding-top: var(--cabecalho-altura);
+}
+
+/* ============================================================
+   3. CABEÇALHO FIXO
+   ============================================================ */
+.cabecalho-fixo {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  background: rgba(209, 216, 219, 0.97);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 3px solid var(--oab-vermelho);
+  padding: 14px 24px 12px;
+}
+
+.cabecalho-interno { display: flex; flex-direction: column; gap: 10px; }
+
+.cabecalho-topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.cabecalho-marca { display: flex; align-items: center; gap: 12px; }
+
+.marca-icone {
+  width: 40px; height: 40px;
+  background: var(--oab-vermelho);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 3px 10px rgba(255, 0, 0, 0.28);
+}
+.marca-icone .material-icons { color: var(--oab-branco); font-size: 21px; }
+
+.marca-titulo {
+  font-size: 1.05rem; font-weight: 800;
+  color: var(--oab-azul-escuro); line-height: 1.2;
+}
+.marca-subtitulo {
+  font-size: 0.7rem; font-weight: 500;
+  color: var(--oab-texto-soft); text-transform: uppercase; letter-spacing: 0.05em;
+}
+
+.cabecalho-acoes { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+/* ============================================================
+   4. BOTÕES PÍLULA
+   ============================================================ */
+.btn-pilula {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 16px; border-radius: var(--radius-pilula);
+  font-family: 'Inter', sans-serif; font-size: 0.75rem;
+  font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+  cursor: pointer; border: 2px solid transparent;
+  transition: background var(--transicao), color var(--transicao),
+              border-color var(--transicao), transform var(--transicao),
+              box-shadow var(--transicao);
+  white-space: nowrap; outline: none !important;
+}
+.btn-pilula .material-icons { font-size: 15px; }
+.btn-pilula:active { transform: scale(0.97); }
+
+.btn-primario { background: var(--oab-vermelho); color: var(--oab-branco); }
+.btn-primario:hover {
+  background: var(--oab-vermelho-dk);
+  box-shadow: 0 4px 14px rgba(255, 0, 0, 0.3);
+}
+
+.btn-secundario {
+  background: var(--oab-branco); color: var(--oab-azul);
+  border-color: var(--oab-cinza-borda);
+}
+.btn-secundario:hover {
+  background: var(--oab-azul-escuro); color: var(--oab-branco);
+  border-color: var(--oab-azul-escuro);
+}
+
+.btn-pilula.carregando { opacity: 0.7; pointer-events: none; }
+.btn-pilula.carregando .material-icons { animation: girar 1s linear infinite; }
+
+/* ============================================================
+   5. BARRA DE BUSCA
+   ============================================================ */
+.barra-busca-wrap { display: flex; align-items: center; gap: 12px; }
+
+.barra-busca-card {
+  flex: 1; display: flex; align-items: center;
+  background: var(--oab-branco);
+  border-radius: var(--radius-pilula); border: 2px solid var(--oab-cinza-borda);
+  padding: 0 16px; gap: 10px;
+  transition: border-color var(--transicao), box-shadow var(--transicao);
+}
+.barra-busca-card:focus-within {
+  border-color: var(--oab-vermelho);
+  box-shadow: 0 0 0 3px rgba(255, 0, 0, 0.1);
+}
+
+.busca-icone { color: var(--oab-texto-soft); font-size: 19px; flex-shrink: 0; }
+
+.busca-input {
+  flex: 1; border: none; outline: none !important;
+  font-family: 'Inter', sans-serif; font-size: 0.86rem;
+  color: var(--oab-texto); background: transparent; padding: 9px 0;
+}
+.busca-input::placeholder { color: var(--oab-texto-soft); }
+
+.busca-limpar {
+  background: none; border: none; cursor: pointer;
+  color: var(--oab-texto-soft); display: flex; align-items: center;
+  padding: 0; transition: color var(--transicao); outline: none !important;
+}
+.busca-limpar:hover { color: var(--oab-vermelho); }
+.busca-limpar .material-icons { font-size: 17px; }
+
+.cabecalho-meta { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+
+.contador-chip {
+  display: inline-flex; align-items: center;
+  background: var(--oab-vermelho); color: var(--oab-branco);
+  padding: 5px 14px; border-radius: var(--radius-pilula);
+  font-size: 0.7rem; font-weight: 700; letter-spacing: 0.03em; white-space: nowrap;
+}
+
+/* ============================================================
+   6. SPINNERS
+   ============================================================ */
+.loading-spinner { width: 22px; height: 22px; flex-shrink: 0; }
+.loading-grande  { width: 48px; height: 48px; }
+
+.spinner-anel {
+  width: 100%; height: 100%; border-radius: 50%;
+  border: 3px solid rgba(255, 0, 0, 0.15);
+  border-top-color: var(--oab-vermelho);
+  animation: girar 0.8s linear infinite;
+}
+
+@keyframes girar { to { transform: rotate(360deg); } }
+
+/* ============================================================
+   7. ÁREA PRINCIPAL
+   ============================================================ */
+.area-principal { padding: 24px; }
+
+/* ============================================================
+   8. ESTADOS VAZIOS / CARREGANDO
+   ============================================================ */
+.estado-vazio {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; padding: 64px 24px; gap: 12px; text-align: center;
+}
+.estado-icone  { font-size: 56px; color: var(--oab-cinza-borda); }
+.estado-titulo { font-size: 1rem; font-weight: 700; color: var(--oab-azul); }
+.estado-texto  { font-size: 0.83rem; color: var(--oab-texto-soft); }
+
+/* ============================================================
+   9. GRADE DE CARDS — FIXA EM 3 COLUNAS
+   ============================================================ */
+.grade-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  align-items: stretch;
+}
+
+/* ============================================================
+   10. CARD DE SUBSEÇÃO
+   ============================================================ */
+.card-subsecao {
+  background: var(--oab-branco); border-radius: var(--radius-card);
+  border: 2px solid transparent; box-shadow: var(--sombra-card);
+  display: flex; flex-direction: column;
+  transition: transform var(--transicao), border-color var(--transicao),
+              box-shadow var(--transicao);
+  overflow: hidden;
+}
+.card-subsecao:hover {
+  transform: translateY(-4px);
+  border-color: var(--oab-azul-escuro);
+  box-shadow: var(--sombra-hover);
+}
+
+/* Faixa colorida no topo (cor injetada via CSS custom property) */
+.card-subsecao::before {
+  content: ''; display: block; height: 4px;
+  background: var(--cor-destaque, var(--oab-azul)); flex-shrink: 0;
+}
+
+.card-corpo {
+  padding: 14px 18px 10px;
+  display: flex; flex-direction: column; gap: 8px; flex: 1;
+}
+
+/* Badge de região */
+.regiao-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 10px; border-radius: var(--radius-badge);
+  font-size: 0.64rem; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 0.05em; width: fit-content;
+}
+.regiao-badge .material-icons { font-size: 11px; }
+.badge-sede   { background: var(--oab-vermelho); color: var(--oab-branco); }
+.badge-regiao { background: #e8eef5; color: var(--oab-azul); }
+
+/* Nome da subseção */
+.card-nome {
+  font-size: 0.95rem; font-weight: 800;
+  color: var(--oab-azul-escuro); text-transform: uppercase; line-height: 1.25;
+  min-height: 2.5em;
+  display: -webkit-box; -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical; overflow: hidden;
+}
+
+/* Bloco de informações da subseção */
+.card-info-lista { display: flex; flex-direction: column; gap: 5px; }
+
+.card-info-item {
+  display: flex; align-items: flex-start; gap: 7px;
+  font-size: 0.76rem; color: var(--oab-texto); line-height: 1.35;
+}
+.card-info-item .material-icons {
+  font-size: 14px; color: var(--oab-azul); flex-shrink: 0; margin-top: 1px;
+}
+.card-info-item span { word-break: break-word; }
+.info-vazio { color: var(--oab-texto-soft); font-style: italic; }
+
+/* ---- Seção do Procurador (separada visualmente) ---- */
+.card-procurador-wrap {
+  background: #f0f5ff;
+  border-radius: 8px;
+  padding: 8px 10px;
+  border-left: 3px solid var(--oab-azul);
+  display: flex; flex-direction: column; gap: 3px;
+  flex-shrink: 0;
+}
+
+.card-proc-label {
+  font-size: 0.6rem; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--oab-azul); margin-bottom: 1px;
+}
+
+.card-proc-nome {
+  font-size: 0.78rem; font-weight: 700;
+  color: var(--oab-azul-escuro); line-height: 1.2;
+}
+
+.card-proc-cargo {
+  font-size: 0.68rem; color: var(--oab-texto-soft);
+  font-style: italic;
+}
+
+/* Rodapé do card */
+.card-rodape {
+  padding: 9px 18px 13px;
+  border-top: 1px solid var(--oab-cinza-leve);
+  display: flex; align-items: center; gap: 6px; flex-shrink: 0;
+}
+
+.btn-card {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 5px 14px; border-radius: var(--radius-pilula);
+  font-family: 'Inter', sans-serif; font-size: 0.68rem;
+  font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+  cursor: pointer; border: 2px solid transparent;
+  outline: none !important;
+  transition: background var(--transicao), color var(--transicao),
+              border-color var(--transicao);
+}
+.btn-card .material-icons { font-size: 13px; }
+
+.btn-card-editar {
+  background: transparent; color: var(--oab-azul);
+  border-color: var(--oab-cinza-borda);
+}
+.btn-card-editar:hover {
+  background: var(--oab-azul-escuro); color: var(--oab-branco);
+  border-color: var(--oab-azul-escuro);
+}
+
+.btn-card-cidades {
+  background: transparent; color: var(--oab-vermelho); border-color: #ffcccc;
+}
+.btn-card-cidades:hover {
+  background: var(--oab-vermelho); color: var(--oab-branco);
+  border-color: var(--oab-vermelho);
+}
+
+/* ============================================================
+   11. MODAL DE CIDADES
+   ============================================================ */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0, 20, 50, 0.55);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+  animation: fadeInOverlay 0.2s ease;
+}
+
+@keyframes fadeInOverlay { from { opacity: 0; } to { opacity: 1; } }
+
+.modal-container {
+  background: var(--oab-branco);
+  border-radius: 14px;
+  width: 100%; max-width: 560px;
+  max-height: 80vh;
+  display: flex; flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 20, 50, 0.3);
+  animation: slideUpModal 0.25s ease;
+  overflow: hidden;
+}
+
+@keyframes slideUpModal {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Cabeçalho do modal — borda esquerda vermelha conforme padrão OAB */
+.modal-header {
+  padding: 18px 20px 16px;
+  border-left: 6px solid var(--oab-vermelho);
+  border-bottom: 1px solid var(--oab-cinza-borda);
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  flex-shrink: 0;
+}
+
+.modal-header-info { display: flex; flex-direction: column; gap: 3px; }
+
+.modal-titulo {
+  font-size: 1rem; font-weight: 800;
+  color: var(--oab-azul-escuro); line-height: 1.2;
+}
+
+.modal-subtitulo {
+  font-size: 0.72rem; color: var(--oab-texto-soft); font-weight: 500;
+}
+
+.modal-btn-fechar {
+  background: none; border: none; cursor: pointer;
+  color: var(--oab-texto-soft); flex-shrink: 0;
+  width: 32px; height: 32px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background var(--transicao), color var(--transicao);
+  outline: none !important;
+  margin-top: -2px;
+}
+.modal-btn-fechar:hover { background: #ffe5e5; color: var(--oab-vermelho); }
+.modal-btn-fechar .material-icons { font-size: 20px; }
+
+/* Corpo com scroll */
+.modal-corpo {
+  overflow-y: auto;
+  padding: 18px 20px 20px;
+  flex: 1;
+}
+
+/* Contador de cidades no modal */
+.modal-contador {
+  font-size: 0.7rem; font-weight: 700;
+  color: var(--oab-texto-soft); text-transform: uppercase;
+  letter-spacing: 0.05em; margin-bottom: 14px;
+}
+
+/* Grade de chips de cidades */
+.cidades-grid {
+  display: flex; flex-wrap: wrap; gap: 7px;
+}
+
+.cidade-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: var(--oab-cinza-leve);
+  border: 1px solid var(--oab-cinza-borda);
+  border-radius: var(--radius-pilula);
+  padding: 5px 12px;
+  font-size: 0.75rem; font-weight: 600;
+  color: var(--oab-azul-escuro); text-transform: uppercase;
+  letter-spacing: 0.03em;
+  transition: background var(--transicao), border-color var(--transicao),
+              color var(--transicao);
+}
+.cidade-chip:hover {
+  background: #e8eef5; border-color: var(--oab-azul); color: var(--oab-azul);
+}
+.cidade-chip .material-icons { font-size: 12px; color: var(--oab-azul); }
+
+/* Estado vazio no modal */
+.modal-vazio {
+  text-align: center; padding: 32px 0;
+  color: var(--oab-texto-soft); font-size: 0.85rem;
+}
+
+/* ============================================================
+   12. TOAST DE NOTIFICAÇÃO
+   ============================================================ */
+.toast-oab {
+  position: fixed; bottom: 28px; left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: var(--oab-azul-escuro); color: var(--oab-branco);
+  padding: 12px 24px; border-radius: var(--radius-pilula);
+  font-size: 0.82rem; font-weight: 600;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.25); z-index: 9999;
+  opacity: 0; transition: opacity 0.3s ease, transform 0.3s ease;
+  pointer-events: none; white-space: nowrap;
+}
+.toast-oab.toast-visivel { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast-oab.toast-erro    { background: var(--oab-vermelho); }
+.toast-oab.toast-ok      { background: #1a6e2e; }
+</style>

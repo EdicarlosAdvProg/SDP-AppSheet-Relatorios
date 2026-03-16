@@ -1,0 +1,354 @@
+<script>
+/**
+ * @fileoverview JavaScript de Front-end — Módulo de Subseções
+ * Bloco: FormSubsecoes-js.html
+ */
+
+// ---------------------------------------------------------------------------
+// ESTADO DO MÓDULO
+// ---------------------------------------------------------------------------
+const subsecoes_estado = {
+  cache: [],          // lista completa retornada pelo backend
+  carregando: false
+};
+
+// ---------------------------------------------------------------------------
+// INICIALIZAÇÃO
+// ---------------------------------------------------------------------------
+document.addEventListener('DOMContentLoaded', function () {
+  subsecoes_carregarTodas();
+});
+
+// ---------------------------------------------------------------------------
+// CARREGAMENTO DE DADOS
+// ---------------------------------------------------------------------------
+
+function subsecoes_carregarTodas() {
+  subsecoes_setCarregando(true);
+  google.script.run
+    .withSuccessHandler(subsecoes_onDadosCarregados)
+    .withFailureHandler(function (err) {
+      subsecoes_setCarregando(false);
+      subsecoes_toast('Erro ao carregar dados: ' + err.message, 'erro');
+    })
+    .subsecoes_buscarTodas();
+}
+
+function subsecoes_onDadosCarregados(lista) {
+  subsecoes_estado.cache = lista;
+  subsecoes_setCarregando(false);
+  subsecoes_renderizarGrade(lista);
+}
+
+// ---------------------------------------------------------------------------
+// RENDERIZAÇÃO DA GRADE
+// ---------------------------------------------------------------------------
+
+/**
+ * Resolve a classe do badge e a cor da faixa superior com base na região.
+ * Mantém apenas vermelho (Sede) e tons de azul (regiões) — sem dourado.
+ */
+function subsecoes_resolverRegiao(regiao) {
+  const r = (regiao || '').toLowerCase();
+  if (r.includes('sede'))   return { classe: 'badge-sede',   cor: '#ff0000' };
+  if (r.includes('região 2') || r.includes('regiao 2')) return { classe: 'badge-regiao', cor: '#005f8e' };
+  if (r.includes('região 3') || r.includes('regiao 3')) return { classe: 'badge-regiao', cor: '#004480' };
+  if (r.includes('região 4') || r.includes('regiao 4')) return { classe: 'badge-regiao', cor: '#003d6b' };
+  if (r.includes('região 5') || r.includes('regiao 5')) return { classe: 'badge-regiao', cor: '#002f5d' };
+  return { classe: 'badge-regiao', cor: '#004480' };
+}
+
+/**
+ * Renderiza os cards na grade a partir de uma lista filtrada/completa.
+ * @param {Array<Object>} lista
+ */
+function subsecoes_renderizarGrade(lista) {
+  const grade   = document.getElementById('grade-subsecoes');
+  const vazio   = document.getElementById('estado-vazio');
+  const totalEl = document.getElementById('contador-subsecoes');
+
+  grade.innerHTML = '';
+
+  if (lista.length === 0) {
+    grade.style.display = 'none';
+    vazio.style.display = 'flex';
+    totalEl.textContent = '0 Subseções';
+    return;
+  }
+
+  vazio.style.display = 'none';
+  grade.style.display = 'grid';
+  totalEl.textContent = lista.length + (lista.length === 1 ? ' Subseção' : ' Subseções');
+
+  const fragmento = document.createDocumentFragment();
+
+  lista.forEach(function (sub) {
+    const regiao     = subsecoes_resolverRegiao(sub.regiao);
+    const presidente = sub.presidente || '<span class="info-vazio">Não informado</span>';
+    const email      = sub.email      || '<span class="info-vazio">Não informado</span>';
+    const telefone   = sub.telefone   || '<span class="info-vazio">Não informado</span>';
+
+    // --- Bloco do procurador ---
+    let procHtml = '';
+    if (sub.procurador) {
+      procHtml = [
+        '<div class="card-procurador-wrap">',
+        '  <span class="card-proc-label">Procurador responsável</span>',
+        '  <span class="card-proc-nome">' + subsecoes_escaparHtml(sub.procurador.nome) + '</span>',
+        '  <span class="card-proc-cargo">' + subsecoes_escaparHtml(sub.procurador.cargo) + '</span>',
+        '</div>'
+      ].join('');
+    }
+
+    // --- Contagem de cidades ---
+    const qtdCidades  = (sub.cidades || []).length;
+    const labelCid    = qtdCidades + (qtdCidades === 1 ? ' cidade' : ' cidades');
+
+    const card = document.createElement('div');
+    card.className = 'card-subsecao';
+    card.style.setProperty('--cor-destaque', regiao.cor);
+
+    card.innerHTML = [
+      '<div class="card-corpo">',
+
+      // Região
+      '  <span class="regiao-badge ' + regiao.classe + '">',
+      '    <span class="material-icons">place</span>',
+      '    ' + subsecoes_escaparHtml(sub.regiao),
+      '  </span>',
+
+      // Nome
+      '  <p class="card-nome">' + subsecoes_escaparHtml(sub.nome) + '</p>',
+
+      // Infos principais
+      '  <div class="card-info-lista">',
+      '    <div class="card-info-item">',
+      '      <span class="material-icons">person</span>',
+      '      <span>' + presidente + '</span>',
+      '    </div>',
+      '    <div class="card-info-item">',
+      '      <span class="material-icons">email</span>',
+      '      <span>' + email + '</span>',
+      '    </div>',
+      '    <div class="card-info-item">',
+      '      <span class="material-icons">phone</span>',
+      '      <span>' + telefone + '</span>',
+      '    </div>',
+      '  </div>',
+
+      // Procurador
+      procHtml,
+
+      '</div>',
+
+      // Rodapé
+      '<div class="card-rodape">',
+      '  <button class="btn-card btn-card-editar" onclick="subsecoes_editarSubsecao(\'' + sub.id + '\')">',
+      '    <span class="material-icons">edit</span> Editar',
+      '  </button>',
+      '  <button class="btn-card btn-card-cidades" onclick="subsecoes_abrirModalCidades(\'' + sub.id + '\')">',
+      '    <span class="material-icons">location_city</span> ' + labelCid,
+      '  </button>',
+      '</div>'
+    ].join('');
+
+    fragmento.appendChild(card);
+  });
+
+  grade.appendChild(fragmento);
+}
+
+// ---------------------------------------------------------------------------
+// BUSCA / FILTRO
+// ---------------------------------------------------------------------------
+
+/**
+ * Filtra o cache em todos os campos relevantes, incluindo cidades.
+ * Campos pesquisados: nome, região, presidente, email,
+ *                     nome do procurador, e qualquer cidade.
+ */
+function subsecoes_filtrar() {
+  const input     = document.getElementById('buscaSubsecao');
+  const termo     = input.value.toUpperCase().trim();
+  const btnLimpar = document.getElementById('btn-limpar-busca');
+
+  btnLimpar.style.display = termo.length > 0 ? 'flex' : 'none';
+
+  if (termo === '') {
+    subsecoes_renderizarGrade(subsecoes_estado.cache);
+    return;
+  }
+
+  const filtrados = subsecoes_estado.cache.filter(function (sub) {
+    // Campos diretos
+    if (sub.nome.toUpperCase().includes(termo))               return true;
+    if (sub.regiao.toUpperCase().includes(termo))             return true;
+    if ((sub.presidente || '').toUpperCase().includes(termo)) return true;
+    if ((sub.email      || '').toUpperCase().includes(termo)) return true;
+
+    // Procurador
+    if (sub.procurador && sub.procurador.nome.toUpperCase().includes(termo)) return true;
+
+    // Cidades — retorna a subseção se qualquer cidade contiver o termo
+    if (sub.cidades && sub.cidades.some(function (c) {
+      return c.toUpperCase().includes(termo);
+    })) return true;
+
+    return false;
+  });
+
+  subsecoes_renderizarGrade(filtrados);
+}
+
+function subsecoes_limparBusca() {
+  document.getElementById('buscaSubsecao').value = '';
+  document.getElementById('btn-limpar-busca').style.display = 'none';
+  subsecoes_renderizarGrade(subsecoes_estado.cache);
+}
+
+// ---------------------------------------------------------------------------
+// MODAL DE CIDADES
+// ---------------------------------------------------------------------------
+
+/**
+ * Abre o modal com a lista de cidades da subseção informada.
+ * Os dados vêm do cache local — sem nova chamada ao backend.
+ * @param {string} idSubsecao
+ */
+function subsecoes_abrirModalCidades(idSubsecao) {
+  const sub = subsecoes_estado.cache.find(function (s) { return s.id === idSubsecao; });
+  if (!sub) return;
+
+  // Preenche cabeçalho
+  document.getElementById('modal-cidades-titulo').textContent   = sub.nome;
+  document.getElementById('modal-cidades-subtitulo').textContent = sub.regiao;
+
+  // Renderiza lista de chips
+  const corpo    = document.getElementById('modal-cidades-corpo');
+  const cidades  = sub.cidades || [];
+
+  if (cidades.length === 0) {
+    corpo.innerHTML = '<p class="modal-vazio">Nenhuma cidade mapeada para esta subseção.</p>';
+  } else {
+    const chips = cidades.map(function (c) {
+      return [
+        '<span class="cidade-chip">',
+        '  <span class="material-icons">location_on</span>',
+        '  ' + subsecoes_escaparHtml(c),
+        '</span>'
+      ].join('');
+    }).join('');
+
+    corpo.innerHTML = [
+      '<p class="modal-contador">' + cidades.length + (cidades.length === 1 ? ' cidade mapeada' : ' cidades mapeadas') + '</p>',
+      '<div class="cidades-grid">' + chips + '</div>'
+    ].join('');
+  }
+
+  // Exibe o modal
+  const modal = document.getElementById('modal-cidades');
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function subsecoes_fecharModalCidades() {
+  document.getElementById('modal-cidades').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+/**
+ * Fecha o modal ao clicar no overlay (fora do container).
+ * @param {MouseEvent} event
+ */
+function subsecoes_fecharModalCidadesOverlay(event) {
+  if (event.target === document.getElementById('modal-cidades')) {
+    subsecoes_fecharModalCidades();
+  }
+}
+
+// Fecha modal com tecla Escape
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape') subsecoes_fecharModalCidades();
+});
+
+// ---------------------------------------------------------------------------
+// SINCRONIZAÇÃO
+// ---------------------------------------------------------------------------
+
+function subsecoes_dispararSincronismo() {
+  if (!confirm('Iniciar sincronização com o site da OAB? O processo pode levar alguns minutos.')) return;
+
+  const btn = document.getElementById('btn-sincronizar');
+  btn.classList.add('carregando');
+  subsecoes_toast('Sincronizando com o site da OAB... Não feche esta janela.', '');
+
+  google.script.run
+    .withSuccessHandler(function (res) {
+      btn.classList.remove('carregando');
+      subsecoes_toast(res.msg, res.sucesso ? 'ok' : 'erro');
+      if (res.sucesso) subsecoes_carregarTodas();
+    })
+    .withFailureHandler(function (err) {
+      btn.classList.remove('carregando');
+      subsecoes_toast('Falha na sincronização: ' + err.message, 'erro');
+    })
+    .subsecoes_executarSincronizacao();
+}
+
+// ---------------------------------------------------------------------------
+// AÇÕES DOS CARDS (stubs)
+// ---------------------------------------------------------------------------
+
+function subsecoes_editarSubsecao(id) {
+  subsecoes_toast('Abrir formulário de edição: ' + id, '');
+}
+
+function subsecoes_abrirModalProcuradores() {
+  subsecoes_toast('Módulo de Procuradores em desenvolvimento.', '');
+}
+
+function subsecoes_abrirModalRegioes() {
+  subsecoes_toast('Módulo de Regiões em desenvolvimento.', '');
+}
+
+// ---------------------------------------------------------------------------
+// UTILITÁRIOS
+// ---------------------------------------------------------------------------
+
+function subsecoes_setCarregando(ativo) {
+  subsecoes_estado.carregando = ativo;
+  const elCarregando = document.getElementById('estado-carregando');
+  const elGrade      = document.getElementById('grade-subsecoes');
+  const elSpinner    = document.getElementById('indicador-loading');
+
+  elSpinner.style.display    = ativo ? 'block' : 'none';
+  elCarregando.style.display = ativo ? 'flex'  : 'none';
+  if (ativo) elGrade.style.display = 'none';
+}
+
+function subsecoes_toast(mensagem, tipo) {
+  let el = document.getElementById('toast-oab');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'toast-oab';
+    el.className = 'toast-oab';
+    document.body.appendChild(el);
+  }
+  el.textContent = mensagem;
+  el.className   = 'toast-oab' +
+    (tipo === 'erro' ? ' toast-erro' : tipo === 'ok' ? ' toast-ok' : '');
+  void el.offsetWidth;
+  el.classList.add('toast-visivel');
+  clearTimeout(el._timer);
+  el._timer = setTimeout(function () { el.classList.remove('toast-visivel'); }, 4000);
+}
+
+function subsecoes_escaparHtml(texto) {
+  if (!texto) return '';
+  return String(texto)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+</script>

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <?!= include('FormSubsecoes-style'); ?>
+</head>
+<body>
+
+  <!-- ====================================================
+       CABEÇALHO FIXO
+  ==================================================== -->
+  <header class="cabecalho-fixo">
+    <div class="cabecalho-interno">
+
+      <div class="cabecalho-topo">
+        <div class="cabecalho-marca">
+          <div class="marca-icone">
+            <span class="material-icons">account_balance</span>
+          </div>
+          <div>
+            <h1 class="marca-titulo">Subseções</h1>
+            <p class="marca-subtitulo">OAB Goiás — Gestão de Subseções</p>
+          </div>
+        </div>
+
+        <div class="cabecalho-acoes">
+          <button class="btn-pilula btn-secundario" onclick="subsecoes_abrirModalRegioes()">
+            <span class="material-icons">map</span>
+            Regiões
+          </button>
+          <button class="btn-pilula btn-secundario" onclick="subsecoes_abrirModalProcuradores()">
+            <span class="material-icons">assignment_ind</span>
+            Procuradores
+          </button>
+          <button class="btn-pilula btn-primario" id="btn-sincronizar" onclick="subsecoes_dispararSincronismo()">
+            <span class="material-icons">sync</span>
+            Sincronizar
+          </button>
+        </div>
+      </div>
+
+      <div class="barra-busca-wrap">
+        <div class="barra-busca-card">
+          <span class="material-icons busca-icone">search</span>
+          <input
+            id="buscaSubsecao"
+            type="text"
+            class="busca-input"
+            placeholder="Pesquisar por subseção, região, procurador ou cidade..."
+            oninput="subsecoes_filtrar()"
+            autocomplete="off"
+          >
+          <button class="busca-limpar" id="btn-limpar-busca" onclick="subsecoes_limparBusca()" style="display:none">
+            <span class="material-icons">close</span>
+          </button>
+        </div>
+
+        <div class="cabecalho-meta">
+          <span id="contador-subsecoes" class="contador-chip">Carregando...</span>
+          <div id="indicador-loading" class="loading-spinner" style="display:none">
+            <div class="spinner-anel"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ====================================================
+       ÁREA PRINCIPAL: GRADE DE CARDS
+  ==================================================== -->
+  <main class="area-principal">
+
+    <div id="estado-carregando" class="estado-vazio">
+      <div class="loading-spinner loading-grande">
+        <div class="spinner-anel"></div>
+      </div>
+      <p class="estado-texto">Carregando subseções...</p>
+    </div>
+
+    <div id="estado-vazio" class="estado-vazio" style="display:none">
+      <span class="material-icons estado-icone">search_off</span>
+      <p class="estado-titulo">Nenhuma subseção encontrada</p>
+      <p class="estado-texto">Tente ajustar os termos da busca.</p>
+    </div>
+
+    <div id="grade-subsecoes" class="grade-cards" style="display:none"></div>
+
+  </main>
+
+  <!-- ====================================================
+       MODAL DE CIDADES
+  ==================================================== -->
+  <div id="modal-cidades" class="modal-overlay" style="display:none" onclick="subsecoes_fecharModalCidadesOverlay(event)">
+    <div class="modal-container" role="dialog" aria-modal="true" aria-labelledby="modal-cidades-titulo">
+
+      <div class="modal-header">
+        <div class="modal-header-info">
+          <h2 id="modal-cidades-titulo" class="modal-titulo">Cidades</h2>
+          <span id="modal-cidades-subtitulo" class="modal-subtitulo"></span>
+        </div>
+        <button class="modal-btn-fechar" onclick="subsecoes_fecharModalCidades()" aria-label="Fechar">
+          <span class="material-icons">close</span>
+        </button>
+      </div>
+
+      <div id="modal-cidades-corpo" class="modal-corpo">
+        <!-- Preenchido via JS -->
+      </div>
+
+    </div>
+  </div>
+
+  <?!= include('FormSubsecoes-js'); ?>
+</body>
+</html>
