@@ -935,4 +935,113 @@ html.modal-aberto body { overflow: hidden !important; }
 .toast-oab.toast-visivel { opacity: 1; transform: translateX(-50%) translateY(0); }
 .toast-oab.toast-erro    { background: var(--oab-vermelho); }
 .toast-oab.toast-ok      { background: #1a6e2e; }
+
+/* ---- Modal de sincronização ---- */
+.sync-lista {
+  list-style: none;
+  margin: 12px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.sync-lista li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: var(--oab-texto);
+}
+
+.sync-lista li .material-icons {
+  font-size: 16px;
+  color: #1a6e2e;
+  flex-shrink: 0;
+}
+
+.sync-aviso {
+  margin-top: 14px !important;
+  padding: 10px 12px;
+  background: #fff8e5;
+  border: 1px solid #f0d060;
+  border-radius: 8px;
+  font-size: 0.78rem !important;
+  color: #7a5800 !important;
+  line-height: 1.5;
+}
+
+/* ---- Painel adicionar cidade ---- */
+.cidade-add-wrap {
+  margin-top: 16px;
+  border-top: 1px solid var(--oab-cinza-borda);
+  padding-top: 12px;
+}
+
+.btn-cidade-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: 2px dashed var(--oab-cinza-borda);
+  border-radius: var(--radius-pilula);
+  padding: 6px 16px;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--oab-texto-soft);
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  transition: border-color var(--transicao), color var(--transicao),
+              background var(--transicao);
+  outline: none !important;
+}
+.btn-cidade-add .material-icons { font-size: 16px; }
+.btn-cidade-add:hover {
+  border-color: var(--oab-azul);
+  color: var(--oab-azul);
+  background: #f0f5ff;
+}
+
+.cidade-add-painel {
+  display: none;
+  margin-top: 10px;
+  gap: 8px;
+  align-items: center;
+  animation: slideDownEdit 0.18s ease;
+}
+.cidade-add-painel.aberto { display: flex; }
+
+.cidade-add-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 2px solid var(--oab-cinza-borda);
+  border-radius: 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--oab-texto);
+  text-transform: uppercase;
+  outline: none !important;
+  transition: border-color var(--transicao), box-shadow var(--transicao);
+}
+.cidade-add-input::placeholder {
+  text-transform: none;
+  font-weight: 400;
+  color: var(--oab-texto-soft);
+}
+.cidade-add-input:focus {
+  border-color: var(--oab-azul);
+  box-shadow: 0 0 0 3px rgba(0, 68, 128, 0.1);
+}
+
+.cidade-add-erro {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--oab-vermelho);
+  margin-top: 4px;
+  display: none;
+}
+.cidade-add-erro.visivel { display: block; }
 </style>

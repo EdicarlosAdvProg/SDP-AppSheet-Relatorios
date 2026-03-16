@@ -129,6 +129,50 @@
   </div>
 
   <!-- ====================================================
+      MODAL — CONFIRMAÇÃO DE SINCRONIZAÇÃO
+  ==================================================== -->
+  <div id="modal-confirmar-sync" class="modal-overlay modal-overlay-topo" style="display:none">
+    <div class="modal-container modal-confirmar-container" role="alertdialog" aria-modal="true">
+
+      <div class="modal-header" style="border-left-color: var(--oab-azul);">
+        <div class="modal-header-info">
+          <h2 class="modal-titulo">Sincronizar com o site da OAB</h2>
+          <span class="modal-subtitulo">Esta operação pode levar alguns minutos</span>
+        </div>
+        <span class="material-icons" style="font-size:32px;color:var(--oab-azul);flex-shrink:0">sync</span>
+      </div>
+
+      <div class="modal-corpo modal-confirmar-corpo">
+        <p class="confirmar-msg">
+          O robô irá acessar o site oficial da <strong>OAB Goiás</strong> e atualizar automaticamente:
+        </p>
+        <ul class="sync-lista">
+          <li><span class="material-icons">check_circle</span> Todas as subseções e seus dados de contato</li>
+          <li><span class="material-icons">check_circle</span> Presidentes de cada subseção</li>
+          <li><span class="material-icons">check_circle</span> Cidades vinculadas a cada subseção</li>
+          <li><span class="material-icons">check_circle</span> Regiões conforme o arquivo de referência</li>
+        </ul>
+        <p class="confirmar-msg sync-aviso">
+          <span class="material-icons" style="font-size:15px;vertical-align:middle">warning_amber</span>
+          Os dados atuais das tabelas <strong>tabSubsecoes</strong> e <strong>tabCidades</strong> serão
+          substituídos. Não feche esta janela durante o processo.
+        </p>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-pilula btn-secundario" onclick="sync_fecharModal()">
+          Cancelar
+        </button>
+        <button class="btn-pilula btn-primario" id="btn-confirmar-sync" onclick="sync_executar()">
+          <span class="material-icons">sync</span>
+          Iniciar sincronização
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ====================================================
        MODAL — PROCURADORES
   ==================================================== -->
   <div id="modal-procuradores" class="modal-overlay" style="display:none" onclick="proc_fecharOverlay(event)">

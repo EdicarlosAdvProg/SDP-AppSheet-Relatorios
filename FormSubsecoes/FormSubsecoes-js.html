@@ -235,36 +235,155 @@ function subsecoes_abrirModalCidades(idSubsecao) {
   const sub = subsecoes_estado.cache.find(function (s) { return s.id === idSubsecao; });
   if (!sub) return;
 
-  // Preenche cabeçalho
-  document.getElementById('modal-cidades-titulo').textContent   = sub.nome;
+  document.getElementById('modal-cidades-titulo').textContent    = sub.nome;
   document.getElementById('modal-cidades-subtitulo').textContent = sub.regiao;
 
-  // Renderiza lista de chips
-  const corpo    = document.getElementById('modal-cidades-corpo');
-  const cidades  = sub.cidades || [];
+  const corpo   = document.getElementById('modal-cidades-corpo');
+  const cidades = sub.cidades || [];
 
-  if (cidades.length === 0) {
-    corpo.innerHTML = '<p class="modal-vazio">Nenhuma cidade mapeada para esta subseção.</p>';
+  const chips = cidades.length === 0
+    ? '<p class="modal-vazio">Nenhuma cidade mapeada para esta subseção.</p>'
+    : '<p class="modal-contador" id="cidades-contador">' + cidades.length +
+      (cidades.length === 1 ? ' cidade mapeada' : ' cidades mapeadas') + '</p>' +
+      '<div class="cidades-grid" id="cidades-chips">' +
+      cidades.map(function (c) {
+        return '<span class="cidade-chip"><span class="material-icons">location_on</span>' +
+          subsecoes_escaparHtml(c) + '</span>';
+      }).join('') +
+      '</div>';
+
+  corpo.innerHTML = chips +
+    '<div class="cidade-add-wrap">' +
+    '  <button class="btn-cidade-add" id="btn-cidade-add" onclick="cidade_togglePainel(\'' + sub.id + '\')">' +
+    '    <span class="material-icons">add_location_alt</span> Adicionar cidade' +
+    '  </button>' +
+    '  <div class="cidade-add-painel" id="cidade-add-painel">' +
+    '    <input id="cidade-add-input" type="text" class="cidade-add-input"' +
+    '      placeholder="Nome da cidade" maxlength="80" autocomplete="one-time-code"' +
+    '      oninput="this.value = this.value.toUpperCase()"' +
+    '      onkeydown="if(event.key===\'Enter\') cidade_confirmar(\'' + sub.id + '\')">' +
+    '    <button class="btn-pilula btn-primario" id="btn-cidade-confirmar"' +
+    '      onclick="cidade_confirmar(\'' + sub.id + '\')">' +
+    '      <span class="material-icons">check</span> Confirmar' +
+    '    </button>' +
+    '  </div>' +
+    '  <span class="cidade-add-erro" id="cidade-add-erro"></span>' +
+    '</div>';
+
+  document.getElementById('modal-cidades').style.display = 'flex';
+  modalLockScroll();
+}
+
+// NOVAS funções — adicionar logo abaixo
+
+function cidade_togglePainel(idSubsecao) {
+  const painel = document.getElementById('cidade-add-painel');
+  const isAberto = painel.classList.contains('aberto');
+
+  if (isAberto) {
+    painel.classList.remove('aberto');
+    document.getElementById('btn-cidade-add').querySelector('.material-icons').textContent = 'add_location_alt';
   } else {
-    const chips = cidades.map(function (c) {
-      return [
-        '<span class="cidade-chip">',
-        '  <span class="material-icons">location_on</span>',
-        '  ' + subsecoes_escaparHtml(c),
-        '</span>'
-      ].join('');
-    }).join('');
+    painel.classList.add('aberto');
+    document.getElementById('btn-cidade-add').querySelector('.material-icons').textContent = 'close';
+    const input = document.getElementById('cidade-add-input');
+    input.value = '';
+    cidade_limparErro();
+    setTimeout(function () { input.focus(); }, 60);
+  }
+}
 
-    corpo.innerHTML = [
-      '<p class="modal-contador">' + cidades.length + (cidades.length === 1 ? ' cidade mapeada' : ' cidades mapeadas') + '</p>',
-      '<div class="cidades-grid">' + chips + '</div>'
-    ].join('');
+function cidade_limparErro() {
+  const el = document.getElementById('cidade-add-erro');
+  if (el) { el.textContent = ''; el.classList.remove('visivel'); }
+}
+
+function cidade_confirmar(idSubsecao) {
+  const input = document.getElementById('cidade-add-input');
+  const nome  = input.value.trim().toUpperCase();
+  const erro  = document.getElementById('cidade-add-erro');
+
+  if (!nome) {
+    erro.textContent = 'Digite o nome da cidade.';
+    erro.classList.add('visivel');
+    input.focus();
+    return;
   }
 
-  // Exibe o modal
-  const modal = document.getElementById('modal-cidades');
-  modal.style.display = 'flex';
-  modalLockScroll();
+  cidade_limparErro();
+
+  const btn = document.getElementById('btn-cidade-confirmar');
+  btn.classList.add('carregando');
+  btn.querySelector('.material-icons').textContent = 'sync';
+
+  google.script.run
+    .withSuccessHandler(function (res) {
+      btn.classList.remove('carregando');
+      btn.querySelector('.material-icons').textContent = 'check';
+
+      if (!res.sucesso) {
+        erro.textContent = res.msg;
+        erro.classList.add('visivel');
+        return;
+      }
+
+      // Atualiza o cache local da subseção
+      const sub = subsecoes_estado.cache.find(function (s) { return s.id === idSubsecao; });
+      if (sub) {
+        sub.cidades = sub.cidades || [];
+        sub.cidades.push(nome);
+        sub.cidades.sort(function (a, b) { return a.localeCompare(b, 'pt-BR'); });
+      }
+
+      // Atualiza o chip no grid sem fechar o modal
+      const grid = document.getElementById('cidades-chips');
+      if (grid) {
+        const chip = document.createElement('span');
+        chip.className = 'cidade-chip';
+        chip.innerHTML = '<span class="material-icons">location_on</span>' + subsecoes_escaparHtml(nome);
+        grid.appendChild(chip);
+
+        // Reordena os chips de acordo com o cache atualizado
+        grid.innerHTML = (sub ? sub.cidades : []).map(function (c) {
+          return '<span class="cidade-chip"><span class="material-icons">location_on</span>' +
+            subsecoes_escaparHtml(c) + '</span>';
+        }).join('');
+      }
+
+      // Atualiza contador
+      const contador = document.getElementById('cidades-contador');
+      if (contador && sub) {
+        const total = sub.cidades.length;
+        contador.textContent = total + (total === 1 ? ' cidade mapeada' : ' cidades mapeadas');
+      }
+
+      // Atualiza o rótulo do botão no card da subseção
+      subsecoes_renderizarGrade(
+        document.getElementById('buscaSubsecao').value.trim()
+          ? subsecoes_estado.cache.filter(function (s) {
+              const t = document.getElementById('buscaSubsecao').value.toUpperCase().trim();
+              return s.nome.toUpperCase().includes(t) || s.regiao.toUpperCase().includes(t) ||
+                (s.presidente||'').toUpperCase().includes(t) || (s.email||'').toUpperCase().includes(t) ||
+                (s.procurador && s.procurador.nome.toUpperCase().includes(t)) ||
+                (s.cidades && s.cidades.some(function(c){ return c.toUpperCase().includes(t); }));
+            })
+          : subsecoes_estado.cache
+      );
+
+      // Fecha o painel e limpa
+      document.getElementById('cidade-add-painel').classList.remove('aberto');
+      document.getElementById('btn-cidade-add').querySelector('.material-icons').textContent = 'add_location_alt';
+      input.value = '';
+
+      subsecoes_toast(res.msg, 'ok');
+    })
+    .withFailureHandler(function (err) {
+      btn.classList.remove('carregando');
+      btn.querySelector('.material-icons').textContent = 'check';
+      erro.textContent = 'Erro: ' + err.message;
+      erro.classList.add('visivel');
+    })
+    .cidades_adicionar(idSubsecao, nome);
 }
 
 function subsecoes_fecharModalCidades() {
@@ -285,6 +404,7 @@ function subsecoes_fecharModalCidadesOverlay(event) {
 // Fecha modais com tecla Escape
 document.addEventListener('keydown', function (e) {
   if (e.key !== 'Escape') return;
+  sync_fecharModal();
   proc_fecharConfirmacao();
   proc_fecharModal();
   subsecoes_fecharModalCidades();
@@ -296,20 +416,46 @@ document.addEventListener('keydown', function (e) {
 // ---------------------------------------------------------------------------
 
 function subsecoes_dispararSincronismo() {
-  if (!confirm('Iniciar sincronização com o site da OAB? O processo pode levar alguns minutos.')) return;
+  document.getElementById('modal-confirmar-sync').style.display = 'flex';
+  modalLockScroll();
+}
 
-  const btn = document.getElementById('btn-sincronizar');
-  btn.classList.add('carregando');
+function sync_fecharModal() {
+  document.getElementById('modal-confirmar-sync').style.display = 'none';
+  modalUnlockScroll();
+}
+
+function sync_executar() {
+  const btnConfirmar = document.getElementById('btn-confirmar-sync');
+  btnConfirmar.classList.add('carregando');
+  btnConfirmar.querySelector('.material-icons').textContent = 'sync';
+
+  const btnCabecalho = document.getElementById('btn-sincronizar');
+  btnCabecalho.classList.add('carregando');
+
   subsecoes_toast('Sincronizando com o site da OAB... Não feche esta janela.', '');
 
   google.script.run
     .withSuccessHandler(function (res) {
-      btn.classList.remove('carregando');
+      btnConfirmar.classList.remove('carregando');
+      btnConfirmar.querySelector('.material-icons').textContent = 'sync';
+      btnCabecalho.classList.remove('carregando');
+
+      sync_fecharModal();
       subsecoes_toast(res.msg, res.sucesso ? 'ok' : 'erro');
-      if (res.sucesso) subsecoes_carregarTodas();
+
+      if (res.sucesso) {
+        // Invalida cache de procuradores para forçar recarga
+        proc_estado.cache = [];
+        subsecoes_carregarTodas();
+      }
     })
     .withFailureHandler(function (err) {
-      btn.classList.remove('carregando');
+      btnConfirmar.classList.remove('carregando');
+      btnConfirmar.querySelector('.material-icons').textContent = 'sync';
+      btnCabecalho.classList.remove('carregando');
+
+      sync_fecharModal();
       subsecoes_toast('Falha na sincronização: ' + err.message, 'erro');
     })
     .subsecoes_executarSincronizacao();

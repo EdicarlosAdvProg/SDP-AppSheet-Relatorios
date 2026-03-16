@@ -313,6 +313,46 @@ function subsecoes_executarSincronizacao() {
   }
 }
 
+/**
+ * Adiciona uma cidade à tabCidades vinculada a uma subseção.
+ * @param {string} idSubsecao
+ * @param {string} nomeCidade
+ * @returns {{ sucesso: boolean, msg: string }}
+ */
+function cidades_adicionar(idSubsecao, nomeCidade) {
+  try {
+    if (!idSubsecao) throw new Error('ID da subseção não informado.');
+    const nome = String(nomeCidade || '').trim().toUpperCase();
+    if (!nome) throw new Error('Nome da cidade é obrigatório.');
+
+    const ss  = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
+    const sh  = ss.getSheetByName('tabCidades');
+    const all = sh.getDataRange().getValues();
+
+    // Verifica duplicata na subseção
+    for (let i = 1; i < all.length; i++) {
+      if (String(all[i][1]).trim() === idSubsecao &&
+          String(all[i][2]).trim().toUpperCase() === nome) {
+        throw new Error('"' + nome + '" já está cadastrada nesta subseção.');
+      }
+    }
+
+    // Gera próximo ID incremental
+    let maxNum = 0;
+    for (let i = 1; i < all.length; i++) {
+      const m = /^CID-(.+)$/.exec(String(all[i][0]).trim());
+      if (m) maxNum++;
+    }
+    const novoId = 'CID-' + gerarProximoIdIncremental(String(maxNum));
+
+    sh.appendRow([novoId, idSubsecao, nome]);
+    SpreadsheetApp.flush();
+
+    return { sucesso: true, msg: 'Cidade "' + nome + '" adicionada com sucesso.' };
+  } catch (e) {
+    return { sucesso: false, msg: e.message };
+  }
+}
 // ---------------------------------------------------------------------------
 // ROBÔ DE SINCRONIZAÇÃO COM O SITE DA OAB
 // ---------------------------------------------------------------------------
