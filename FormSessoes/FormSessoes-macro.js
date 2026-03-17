@@ -429,6 +429,167 @@ function formSessoes_atualizarOrdemLote(idSessao, ordemIds) {
   }
 }
 
+/**
+ * Importa processos em massa e, se for Pleno, migra o voto mais recente.
+ */
+function formSessoes_importarProcessosEmMassa(idSessao, listaNumeros, orgao) {
+  try {
+    const ss = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
+    
+    // 1. Mapeia tabProcessos (Número -> ID)
+    const sheetProc = ss.getSheetByName('tabProcessos');
+    const dadosP = sheetProc.getDataRange().getValues();
+    const mapaP = getMapaColunas(sheetProc);
+    const cacheProcessos = {};
+    for (let i = 1; i < dadosP.length; i++) {
+      const num = String(dadosP[i][mapaP['processo'] - 1]).trim();
+      const id = String(dadosP[i][mapaP['id'] - 1]).trim();
+      if (num) cacheProcessos[num] = id;
+    }
+
+    // 2. Prepara tabFichas e tabVotos
+    const sheetFichas = ss.getSheetByName('tabFichas');
+    const sheetVotos  = ss.getSheetByName('tabVotos');
+    const mapaF = getMapaColunas(sheetFichas);
+    const mapaV = getMapaColunas(sheetVotos);
+    
+    const dadosF = sheetFichas.getDataRange().getValues();
+    const dadosV = sheetVotos.getDataRange().getValues();
+
+    // 3. Define a última ordem da sessão
+    let ultimaOrdem = 0;
+    for (let j = 1; j < dadosF.length; j++) {
+      if (String(dadosF[j][mapaF['idsessao'] - 1]) === String(idSessao)) {
+        const o = parseInt(dadosF[j][mapaF['ordem'] - 1]) || 0;
+        if (o > ultimaOrdem) ultimaOrdem = o;
+      }
+    }
+
+    const ehPleno = (orgao === "Pleno do SDP");
+    const relatorPadrao = ehPleno ? "Órgão Deliberativo" : "";
+    let adicionados = 0;
+    let naoEncontrados = [];
+
+    // 4. Processamento
+    listaNumeros.forEach(num => {
+      const idRealDoProcesso = cacheProcessos[num];
+
+      if (idRealDoProcesso) {
+        ultimaOrdem++;
+        const idNovaFicha = novoIdTimeStamp() + "_" + adicionados;
+        
+        // --- CRIAR A FICHA ---
+        const novaFicha = new Array(Object.keys(mapaF).length).fill('');
+        novaFicha[mapaF['id'] - 1] = idNovaFicha;
+        novaFicha[mapaF['idsessao'] - 1] = idSessao;
+        novaFicha[mapaF['idprocesso'] - 1] = idRealDoProcesso;
+        novaFicha[mapaF['ordem'] - 1] = ultimaOrdem;
+        novaFicha[mapaF['relator'] - 1] = relatorPadrao;
+        sheetFichas.appendRow(novaFicha);
+
+        // --- LÓGICA DO PLENO: BUSCAR E REPLICAR VOTO ---
+        if (ehPleno) {
+          let votoMaisRecente = null;
+          let maiorIdVoto = 0; // Usando o timestamp do ID para saber qual é o último
+
+          // Varre a tabVotos em busca do ID do processo
+          for (let k = 1; k < dadosV.length; k++) {
+            const idProcNoVoto = String(dadosV[k][mapaV['idprocesso'] - 1]).trim();
+            if (idProcNoVoto === idRealDoProcesso) {
+              const idVotoAtual = parseInt(dadosV[k][mapaV['id'] - 1]) || 0;
+              if (idVotoAtual >= maiorIdVoto) {
+                maiorIdVoto = idVotoAtual;
+                votoMaisRecente = dadosV[k];
+              }
+            }
+          }
+
+          // Se achou um voto anterior, replica para a nova ficha
+          if (votoMaisRecente) {
+            const novoVoto = new Array(Object.keys(mapaV).length).fill('');
+            
+            novoVoto[mapaV['id'] - 1] = novoIdTimeStamp() + "_V" + adicionados;
+            novoVoto[mapaV['idfichavotacao'] - 1] = idNovaFicha; // Vincula à ficha que acabamos de criar
+            novoVoto[mapaV['idprocesso'] - 1] = idRealDoProcesso;
+            novoVoto[mapaV['tipovoto'] - 1] = "Voto do relator";
+            novoVoto[mapaV['relator'] - 1] = "Órgão Deliberativo"; // Força o relator conforme solicitado
+            novoVoto[mapaV['voto'] - 1] = votoMaisRecente[mapaV['voto'] - 1]; // Copia o conteúdo do voto
+            
+            // Se houver coluna de URL de relatório, podemos copiar também
+            const colUrl = _encontrarChave(mapaV, ['urlvoto', 'url relatório']);
+            if (colUrl) {
+               novoVoto[mapaV[colUrl] - 1] = votoMaisRecente[mapaV[colUrl] - 1];
+            }
+
+            sheetVotos.appendRow(novoVoto);
+          }
+        }
+
+        adicionados++;
+      } else {
+        naoEncontrados.push(num);
+      }
+    });
+
+    return { 
+      sucesso: true, 
+      adicionados: adicionados, 
+      avisos: naoEncontrados.length > 0 ? `Processos ignorados (não cadastrados): ${naoEncontrados.join(', ')}` : null 
+    };
+
+  } catch (e) {
+    return { sucesso: false, erro: e.message };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+  // EXCLUSÃO DE FICHA DE VOTAÇÃO (COM TRAVA DE VOTOS)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Exclui uma ficha de votação, desde que não possua votos vinculados.
+   * @param {string} idFicha - ID da ficha a ser excluída.
+   */
+  function formSessoes_excluirFicha(idFicha) {
+    try {
+      const ss = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
+      const sheetFichas = ss.getSheetByName('tabFichas');
+      const sheetVotos = ss.getSheetByName('tabVotos');
+
+      if (!sheetFichas || !sheetVotos) {
+        throw new Error("Abas necessárias não encontradas.");
+      }
+
+      // 1. VERIFICAR SE EXISTEM VOTOS VINCULADOS A ESTA FICHA
+      const dadosV = sheetVotos.getDataRange().getValues();
+      const mapaV = getMapaColunas(sheetVotos);
+      const colFichaVoto = mapaV['idfichavotacao'] - 1;
+
+      for (let i = 1; i < dadosV.length; i++) {
+        if (String(dadosV[i][colFichaVoto]).trim() === String(idFicha).trim()) {
+          throw new Error("BLOQUEIO: Esta ficha possui votos registrados e não pode ser excluída para preservar o histórico.");
+        }
+      }
+
+      // 2. EXCLUIR A FICHA (se passou na verificação)
+      const dadosF = sheetFichas.getDataRange().getValues();
+      const mapaF = getMapaColunas(sheetFichas);
+      const colIdFicha = mapaF['id'] - 1;
+
+      for (let j = 1; j < dadosF.length; j++) {
+        if (String(dadosF[j][colIdFicha]).trim() === String(idFicha).trim()) {
+          sheetFichas.deleteRow(j + 1);
+          return { sucesso: true };
+        }
+      }
+
+      throw new Error("Ficha não encontrada.");
+
+    } catch (e) {
+      throw new Error(e.message);
+    }
+  }
+
 // ─────────────────────────────────────────────────────────────────────────────
 // VOTOS
 // ─────────────────────────────────────────────────────────────────────────────

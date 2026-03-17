@@ -93,43 +93,48 @@
     const card = document.createElement('div');
     card.className = 'collection-item-sessao';
     card.innerHTML = `
-        <div class="sess-col-data">
-          <span class="sess-data-dia">${dia}</span>
-          <span class="sess-data-mes">${mes}</span>
-          <span class="sess-data-ano">${ano}</span>
-        </div>
-        <div class="sess-col-info">
-          <span class="sess-orgao">${s.orgao || 'Órgão não informado'}</span>
+      <div class="sess-col-data">
+        <span class="sess-data-dia">${dia}</span>
+        <span class="sess-data-mes">${mes}</span>
+        <span class="sess-data-ano">${ano}</span>
+      </div>
+      <div class="sess-col-info">
+        <span class="sess-orgao">${s.orgao || 'Órgão não informado'}</span>
+        <span class="sess-local">
+          <i class="material-icons" style="font-size:13px; vertical-align:middle; margin-right:3px;">location_on</i>
+          ${s.local || 'Local não informado'}
+        </span>
+        <span class="sess-participantes" style="display: block; margin-top: 2px;">
+          <strong>Presidente: </strong>${s.presidente || 'Não informado'}
+        </span>
+        <span class="sess-participantes" style="display: block; margin-top: 2px;">
+          <strong>Secretário: </strong>${s.secretario || 'Não informado'}
+        </span>
+      </div>
+      <div class="sess-col-metricas">
+        <span class="sess-metrica-num">${s.totalFichas}</span>
+        <span class="sess-metrica-label">Processo${s.totalFichas !== 1 ? 's' : ''}<br>pautado${s.totalFichas !== 1 ? 's' : ''}</span>
+      </div>
+      
+      <div class="sess-col-actions">
+        <i class="material-icons act-btn c-magic tooltipped" 
+          data-tooltip="Pincel Mágico" 
+          onclick="formSessoes_abrirPincelMagico('${idSafe}', '${_esc(s.orgao)}')">auto_fix_high</i>
+        
+        <i class="material-icons act-btn c-fichas tooltipped" 
+          data-tooltip="Fichas de Votação" 
+          onclick="formSessoes_abrirFichas('${idSafe}')">ballot</i>
           
-          <span class="sess-local">
-            <i class="material-icons" style="font-size:13px; vertical-align:middle; margin-right:3px;">location_on</i>
-            ${s.local || 'Local não informado'}
-          </span>
-          
-          <span class="sess-participantes" style="display: block; margin-top: 2px;">
-            <strong>Presidente da sessão: </strong>${s.presidente || 'Não informado'}
-          </span>
+        <i class="material-icons act-btn c-edit tooltipped" 
+          data-tooltip="Editar Sessão" 
+          onclick="formSessoes_abrirEditar('${idSafe}')">edit</i>
 
-          <span class="sess-participantes" style="display: block; margin-top: 2px;">
-            <strong>Secretário da mesa: </strong>${s.secretario || 'Não informado'}
-          </span>
+        <i class="material-icons act-btn c-del tooltipped" 
+          data-tooltip="Excluir Sessão" 
+          onclick="formSessoes_confirmarExclusao('${idSafe}', '${_esc(s.datasessao)}')">delete</i>
+          
         </div>
-        <div class="sess-col-metricas">
-          <span class="sess-metrica-num">${s.totalFichas}</span>
-          <span class="sess-metrica-label">Processo${s.totalFichas !== 1 ? 's' : ''}<br>pautado${s.totalFichas !== 1 ? 's' : ''}</span>
-        </div>
-        <div class="sess-col-actions">
-          <i class="material-icons act-btn c-fichas tooltipped"
-             data-tooltip="Fichas de Votação"
-             onclick="formSessoes_abrirFichas('${idSafe}')">ballot</i>
-          <i class="material-icons act-btn c-edit tooltipped"
-             data-tooltip="Editar Sessão"
-             onclick="formSessoes_abrirEditar('${idSafe}')">edit</i>
-          <i class="material-icons act-btn c-del tooltipped"
-             data-tooltip="Excluir Sessão"
-             onclick="formSessoes_confirmarExclusao('${idSafe}', '${_esc(s.datasessao)}')">delete</i>
-        </div>
-      `;
+  `;
     container.appendChild(card);
   });
 
@@ -359,7 +364,6 @@
       return;
     }
 
-    // Ordena pela ordem atual
     fichas.sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
 
     container.innerHTML = '';
@@ -372,6 +376,7 @@
       const reqShort = (f.proc.requerente || '').substring(0, 55);
       const statusCfg = _statusCor(f.proc.status);
 
+      // AQUI ADICIONAMOS O ÍCONE DA LIXEIRA
       item.innerHTML = `
         <span class="ficha-proc-num">
           <span style="color: #a68945; font-weight: bold; margin-right: 4px;">#${f.ordem}</span> 
@@ -379,6 +384,9 @@
         </span>
         <span class="ficha-proc-req-short" title="${_esc(f.proc.requerente)}">${reqShort || 'Requerente não informado'}</span>
         ${f.proc.status ? `<span class="ficha-proc-status-mini ${statusCfg}">${f.proc.status}</span>` : ''}
+        <i class="material-icons delete-ficha-icon" 
+          onclick="event.stopPropagation(); formSessoes_confirmarExclusaoFicha('${f.id}', '${_esc(f.proc.numero)}')"
+          title="Excluir ficha">delete</i>
       `;
 
       item.onclick = function () {
@@ -498,6 +506,52 @@
       })
       .withFailureHandler(err => M.toast({ html: 'Erro: ' + err.message, classes: 'red' }))
       .formSessoes_atualizarOrdemLote(idSessao, novaOrdemIds);
+  }
+
+  // ============================================================
+  // EXCLUSÃO DE FICHA (PAUTA)
+  // ============================================================
+
+  function formSessoes_confirmarExclusaoFicha(idFicha, numeroProcesso) {
+    // Reaproveita o mesmo modal de confirmação
+    document.getElementById('iconConfirmacao').innerHTML = 'delete_forever';
+    document.getElementById('iconConfirmacao').className = 'material-icons large red-text text-darken-2';
+    document.getElementById('tituloConfirmacao').innerText = 'Excluir ficha';
+    document.getElementById('msgConfirmacao').innerText =
+      `Deseja realmente excluir a ficha do processo ${numeroProcesso}?\n\n` +
+      `Se houver votos vinculados, a exclusão será bloqueada para preservar o histórico.`;
+
+    const btnConf = document.getElementById('btnConfirmarAcao');
+    const novoBtn = btnConf.cloneNode(true);
+    novoBtn.innerHTML = 'Excluir Ficha';
+    btnConf.parentNode.replaceChild(novoBtn, btnConf);
+
+    novoBtn.onclick = function () {
+      novoBtn.disabled = true;
+      novoBtn.innerHTML = 'Processando...';
+
+      google.script.run
+        .withSuccessHandler(function (res) {
+          M.toast({ html: 'Ficha excluída com sucesso.', classes: 'green darken-2' });
+          M.Modal.getInstance(document.getElementById('modalConfirmacao')).close();
+
+          // Recarrega a lista de fichas da sessão atual
+          formSessoes_abrirFichas(sessaoAtualId);
+        })
+        .withFailureHandler(function (err) {
+          novoBtn.disabled = false;
+          novoBtn.innerHTML = 'Excluir Ficha';
+          if (err.message.includes('BLOQUEIO')) {
+            M.toast({ html: err.message.replace("Error: ", ""), classes: 'orange darken-4', displayLength: 6000 });
+            M.Modal.getInstance(document.getElementById('modalConfirmacao')).close();
+          } else {
+            M.toast({ html: 'Erro: ' + err.message, classes: 'red darken-2' });
+          }
+        })
+        .formSessoes_excluirFicha(idFicha);
+    };
+
+    _abrirModal('modalConfirmacao');
   }
 
   // ============================================================
@@ -1010,6 +1064,57 @@
   }
 
   // ============================================================
+  // PINCEL MÁGICO PARA ADICIONAR PROCESSOS À PAUTA
+  // ============================================================
+
+  function formSessoes_abrirPincelMagico(idSessao, orgao) {
+    document.getElementById('pm_idSessao').value = idSessao;
+    document.getElementById('pm_orgaoSessao').value = orgao;
+    document.getElementById('pm_textoBruto').value = '';
+    M.textareaAutoResize(document.getElementById('pm_textoBruto'));
+    _abrirModal('modalPincelMagico');
+  }
+
+  function formSessoes_executarPincelMagico() {
+    const idSessao = document.getElementById('pm_idSessao').value;
+    const orgao = document.getElementById('pm_orgaoSessao').value;
+    const texto = document.getElementById('pm_textoBruto').value;
+
+    if (!texto.trim()) return M.toast({html: 'Cole algum texto primeiro.', classes:'orange'});
+
+    // REGEX MÁGICA: Encontra números de 9 dígitos que começam com "20"
+    // Captura globalmente mesmo que estejam colados ou separados por qualquer caractere
+    const regex = /(20\d{7})/g;
+    const encontrados = texto.match(regex) || [];
+    
+    // Remove duplicados mantendo a ordem de aparição
+    const processosUnicos = [...new Set(encontrados)];
+
+    if (processosUnicos.length === 0) {
+      return M.toast({html: 'Nenhum número de processo válido identificado.', classes:'red'});
+    }
+
+    const btn = event.target.closest('button');
+    btn.disabled = true;
+    btn.innerHTML = 'Processando...';
+
+    google.script.run
+      .withSuccessHandler(function(res) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="material-icons left">flash_on</i>Processar e Adicionar';
+        
+        if(res.sucesso) {
+          M.toast({html: `${res.adicionados} fichas criadas com sucesso!`, classes:'green'});
+          M.Modal.getInstance(document.getElementById('modalPincelMagico')).close();
+          formSessoes_carregar(); // Recarrega a lista para atualizar a contagem de fichas
+        } else {
+          M.toast({html: 'Erro: ' + res.erro, classes:'red'});
+        }
+      })
+      .formSessoes_importarProcessosEmMassa(idSessao, processosUnicos, orgao);
+  }
+
+  // ============================================================
   // UTILITÁRIOS
   // ============================================================
 
@@ -1064,4 +1169,5 @@
     if (t.includes('vogal')) return 'voto-tipo-vogal';
     return 'voto-tipo-default';
   }
+
 </script>

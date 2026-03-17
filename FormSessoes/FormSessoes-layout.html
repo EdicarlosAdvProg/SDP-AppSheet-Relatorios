@@ -339,6 +339,34 @@
     </div>
   </div>
 
+  <!-- ==================================================================
+       MODAL: PINCEL MÁGICO PARA ADICIONAR PROCESSOS EM MASSA À PAUTA
+  ================================================================== -->
+  <div id="modalPincelMagico" class="modal modal-sessao-cad">
+    <div class="modal-content">
+      <h5><i class="material-icons left" style="color:#a68945;">auto_fix_high</i>Pincel Mágico</h5>
+      <p class="grey-text" style="font-size: 0.9rem;">Cole abaixo os números dos processos. O sistema identificará automaticamente os números de 9 dígitos (ex: 202412345).</p>
+      
+      <input type="hidden" id="pm_idSessao">
+      <input type="hidden" id="pm_orgaoSessao">
+
+      <div class="row">
+        <div class="input-field col s12">
+          <textarea id="pm_textoBruto" class="materialize-textarea" 
+                    style="min-height: 200px; font-family: monospace; font-size: 0.9rem;" 
+                    placeholder="202400001, 202400002..."></textarea>
+          <label for="pm_textoBruto">Lista de Processos</label>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-close waves-effect waves-grey btn-flat">Cancelar</button>
+      <button class="btn btn-oab-gold waves-effect waves-light" onclick="formSessoes_executarPincelMagico()">
+        <i class="material-icons left">flash_on</i>Processar e Adicionar
+      </button>
+    </div>
+  </div>
+
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
   <?!= include('FormSessoes-js'); ?>
