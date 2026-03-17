@@ -42,8 +42,12 @@
       if (el) M.Modal.init(el, { dismissible: false });
     });
 
-    _initDatepickerPauta();
-    _initDatepickerStatus();
+    _initDatepicker('proc_novaDataPicker', function(d) {
+      dataISOPauta = _dateToISO(d);
+    });
+    _initDatepicker('proc_statusDataPicker', function(d) {
+      dataISOStatus = _dateToISO(d);
+    });
 
     formProcessos_carregar();
     
@@ -51,28 +55,22 @@
 
   });
 
-  // Datepicker para data de nova sessão no modal de pauta
-  function _initDatepickerPauta() {
-    const el = document.getElementById('proc_novaDataPicker');
-    if (!el) return;
-    M.Datepicker.init(el, {
-      format: 'dd/mm/yyyy', autoClose: true,
-      i18n: _i18nPtBR(),
-      onSelect: function (d) {
-        dataISOPauta = _dateToISO(d);
-      }
-    });
-  }
+  // ============================================================
+  // DATA PICKER
+  // ============================================================
 
-  // Datepicker para data de mudança de status
-  function _initDatepickerStatus() {
-    const el = document.getElementById('proc_statusDataPicker');
+  // Função unificada para inicializar datepickers
+  function _initDatepicker(elementId, onSelectCallback) {
+    const el = document.getElementById(elementId);
     if (!el) return;
+    
     M.Datepicker.init(el, {
-      format: 'dd/mm/yyyy', autoClose: true,
+      format: 'dd/mm/yyyy',
+      autoClose: true,
+      container: 'body', // Garante que o calendário não fique preso ao modal
       i18n: _i18nPtBR(),
-      onSelect: function (d) {
-        dataISOStatus = _dateToISO(d);
+      onSelect: function(d) {
+        if (onSelectCallback) onSelectCallback(d);
       }
     });
   }
@@ -371,6 +369,10 @@ function abrirEditar(id) {
     btn.disabled  = true;
     btn.innerHTML = 'Processando...';
 
+    const requerenteFormatado = formatarNomeCompleto(requerente);
+    const requeridoFormatado = formatarNomeCompleto(document.getElementById('proc_f_Requerido').value);
+    const procuradorFormatado = formatarNomeCompleto(document.getElementById('proc_f_Procurador').value);
+
     const obj = {
       id:         document.getElementById('proc_f_Id').value || '',
       processo:   numero,
@@ -466,26 +468,35 @@ function abrirEditar(id) {
   // ============================================================
 
   function abrirModalStatus(id, numero, novoStatus, statusAtual) {
-    statusProcId    = id;
-    statusNovoValor = novoStatus;
-    dataISOStatus   = "";
+  statusProcId    = id;
+  statusNovoValor = novoStatus;
 
-    // Limpa o datepicker
-    const dpEl = document.getElementById('proc_statusDataPicker');
-    if (dpEl) { dpEl.value = ''; M.updateTextFields(); }
+  // Define a data atual como padrão
+  const hoje = new Date();
+  dataISOStatus = _dateToISO(hoje); // formato yyyy-mm-dd
 
-    // Atualiza o display visual dentro do modal
-    const cfgDe  = STATUS_MAP[statusAtual] || { classe: 's-vazio' };
-    const cfgPara = STATUS_MAP[novoStatus]  || { classe: 's-concluso' };
-
-    document.getElementById('statusDeTexto').textContent   = statusAtual  || '(sem status)';
-    document.getElementById('statusParaTexto').textContent = novoStatus;
-    document.getElementById('statusDeChip').className      = 'status-de ' + cfgDe.classe;
-    document.getElementById('statusParaChip').className    = 'status-para ' + cfgPara.classe;
-    document.getElementById('statusProcNumero').textContent = 'Processo nº ' + (numero || id);
-
-    _abrirModal('modalStatus');
+  // Preenche o campo datepicker com a data formatada dd/mm/aaaa
+  const dpEl = document.getElementById('proc_statusDataPicker');
+  if (dpEl) {
+    const dia = String(hoje.getDate()).padStart(2, '0');
+    const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+    const ano = hoje.getFullYear();
+    dpEl.value = `${dia}/${mes}/${ano}`;
+    M.updateTextFields();
   }
+
+  // Atualiza o display visual dentro do modal
+  const cfgDe  = STATUS_MAP[statusAtual] || { classe: 's-vazio' };
+  const cfgPara = STATUS_MAP[novoStatus]  || { classe: 's-concluso' };
+
+  document.getElementById('statusDeTexto').textContent   = statusAtual  || '(sem status)';
+  document.getElementById('statusParaTexto').textContent = novoStatus;
+  document.getElementById('statusDeChip').className      = 'status-de ' + cfgDe.classe;
+  document.getElementById('statusParaChip').className    = 'status-para ' + cfgPara.classe;
+  document.getElementById('statusProcNumero').textContent = 'Processo nº ' + (numero || id);
+
+  _abrirModal('modalStatus');
+}
 
   function confirmarAlteracaoStatus() {
     if (!dataISOStatus) {
@@ -552,17 +563,9 @@ function abrirEditar(id) {
       btnAdd.style.display = 'none';
       btnConfirmar.textContent = 'Criar Sessão e Incluir';
       
-      // REINICIALIZA O DATEPICKER AO ABRIR (Garante o funcionamento)
-      const elData = document.getElementById('proc_novaDataPicker');
-      M.Datepicker.init(elData, {
-        format: 'dd/mm/yyyy',
-        autoClose: true,
-        container: document.body, // Força o calendário a ser renderizado no corpo da página
-        i18n: _i18nPtBR(),
-        onSelect: function (d) {
-          dataISOPauta = _dateToISO(d);
-        }
-      });
+      // Apenas limpa o campo de data (não precisa reinicializar)
+      document.getElementById('proc_novaDataPicker').value = '';
+      M.updateTextFields();
 
       document.querySelectorAll('.sessao-item').forEach(el => el.classList.remove('selecionado'));
       sessaoSelecionId = null;
@@ -683,7 +686,6 @@ function abrirEditar(id) {
     const preview = document.getElementById('importarPreview');
     const tbody = document.getElementById('importarTbody');
 
-    // Limpa estado anterior
     contagem.textContent = '';
     preview.style.display = 'none';
     itensParsedImport = [];
@@ -693,29 +695,93 @@ function abrirEditar(id) {
     const linhas = texto.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
     const itens = [];
 
-    // Regex que captura os campos: processo | data | hora | requerente | requerido (opcional)
-    // Exemplo: 202558246 | 19/11/2025 | 11:33 | CLEITON VIEIRA CONCEICAO |
-    // ou: 202559909 | 05/12/2025 | 14:58 | DIVINO ADRIANO DOS SANTOS | FERNANDO RIBEIRO DE OLIVEIRA
-    const regex = /^\s*(\d+)\s*\|\s*(\d{2}\/\d{2}\/\d{4})\s*\|\s*(\d{2}:\d{2})\s*\|\s*([^|]+?)\s*(?:\|\s*(.*?)\s*)?$/;
-
     linhas.forEach(linha => {
+      // Remove pipes e espaços no início/fim
+      let linhaLimpa = linha.replace(/^[\s|]+|[\s|]+$/g, '');
+
+      // Tenta dividir por pipe
+      let partes = linhaLimpa.split('|').map(p => p.trim()).filter(p => p);
+      if (partes.length >= 4) {
+        // Se a primeira parte não for numérica, ignora (cabeçalho)
+        if (!/^\d+$/.test(partes[0])) return;
+        const processo = partes[0];
+        const data = partes[1];
+        const hora = partes[2];
+        let requerente = partes[3];
+        let requerido = partes.length >= 5 ? partes[4] : '';
+        // Valida formato da data
+        if (!/^\d{2}\/\d{2}\/\d{4}$/.test(data)) return;
+        // Aplica formatação
+        itens.push({
+          processo, data, hora,
+          requerente: formatarNomeCompleto(requerente),
+          requerido: formatarNomeCompleto(requerido)
+        });
+        return;
+      }
+
+      // Tenta por tabulação
+      partes = linhaLimpa.split('\t').map(p => p.trim()).filter(p => p);
+      if (partes.length >= 4 && /^\d+$/.test(partes[0])) {
+        const processo = partes[0];
+        const data = partes[1];
+        const hora = partes[2];
+        let requerente = partes[3];
+        let requerido = partes.length >= 5 ? partes[4] : '';
+        if (!/^\d{2}\/\d{2}\/\d{4}$/.test(data)) return;
+        itens.push({
+          processo, data, hora,
+          requerente: formatarNomeCompleto(requerente),
+          requerido: formatarNomeCompleto(requerido)
+        });
+        return;
+      }
+
+      // Tenta por múltiplos espaços (2 ou mais)
+      partes = linhaLimpa.split(/\s{2,}/).map(p => p.trim()).filter(p => p);
+      if (partes.length >= 4 && /^\d+$/.test(partes[0])) {
+        const processo = partes[0];
+        const data = partes[1];
+        const hora = partes[2];
+        let requerente = partes[3];
+        let requerido = partes.length >= 5 ? partes[4] : '';
+        if (!/^\d{2}\/\d{2}\/\d{4}$/.test(data)) return;
+        itens.push({
+          processo, data, hora,
+          requerente: formatarNomeCompleto(requerente),
+          requerido: formatarNomeCompleto(requerido)
+        });
+        return;
+      }
+
+      // Se tudo falhar, tenta a regex flexível
+      const regex = /^\s*(\d+)\D+(\d{2}\/\d{2}\/\d{4})\D+(\d{2}:\d{2})\D+(.*)$/;
       const match = linha.match(regex);
       if (match) {
-        const processo = match[1];      // número do processo
-        const data = match[2];          // data no formato dd/mm/aaaa
-        const hora = match[3];          // hora no formato hh:mm
-        const requerente = match[4].trim(); // nome do requerente (obrigatório)
-        const requerido = match[5] ? match[5].trim() : ''; // requerido (opcional)
+        const processo = match[1];
+        const data = match[2];
+        const hora = match[3];
+        let resto = match[4].trim();
 
+        // Se o resto contiver pipe, divide
+        let requerente, requerido;
+        if (resto.includes('|')) {
+          const partesResto = resto.split('|').map(p => p.trim());
+          requerente = partesResto[0];
+          requerido = partesResto.length > 1 ? partesResto[1] : '';
+        } else {
+          requerente = resto;
+          requerido = '';
+        }
         itens.push({
-          processo: processo,
-          data: data,
-          hora: hora,
-          requerente: requerente,
-          requerido: requerido
+          processo, data, hora,
+          requerente: formatarNomeCompleto(requerente),
+          requerido: formatarNomeCompleto(requerido)
         });
+        return;
       }
-      // Linhas que não casam (cabeçalho, separadores, etc.) são ignoradas
+
+      // Se chegou aqui, linha não reconhecida, mas não exibimos erro ainda
     });
 
     itensParsedImport = itens;
@@ -812,5 +878,76 @@ function abrirEditar(id) {
       .replace(/\\/g, '\\\\')
       .replace(/'/g, "\\'")
       .replace(/"/g, '&quot;');
+  }
+
+  /**
+   * Formata um nome completo para o padrão:
+   * - Primeira letra de cada palavra em maiúscula, exceto preposições comuns (da, de, do, etc.)
+   * - Siglas conhecidas (UFs, órgãos) são mantidas em CAIXA ALTA
+   * - Palavras com hífen são tratadas individualmente
+   * @param {string} nome - Nome completo a ser formatado
+   * @returns {string} Nome formatado
+   */
+  function formatarNomeCompleto(nome) {
+    if (!nome) return "";
+    
+    // Lista de siglas conhecidas (em maiúsculas)
+    const siglas = new Set([
+      // Unidades da Federação
+      "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS",
+      "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC",
+      "SP", "SE", "TO",
+      // Órgãos e instituições comuns
+      "OAB", "CNJ", "STF", "STJ", "TST", "TSE", "TRF", "TJ", "TRT", "TRE",
+      "MP", "MPT", "DP", "DPE", "DPG", "AGU", "PGE", "PGJ", "PF", "PRF", "PC",
+      "PM", "BM", "CBM", "SESP", "SSP", "SEDS", "SEJUS", "SEGUP", "SEDUC",
+      "SES", "SEFAZ", "SEGOV", "SEGEP", "SEPLAG", "SEPLAN", "SEPOG", "SEPP",
+      "CGE", "TCE", "TCM", "CREA", "CRP", "CRM", "CRO", "CRB", "CRF", "COREN",
+      "CREF", "CREFITO", "CRMV", "CRAS", "CREAS", "SUAS", "SUS", "SUFRAMA",
+      "SUDAM", "SUDENE", "INCRA", "IBAMA", "ICMBio", "FUNAI", "FUNASA",
+      "ANVISA", "ANS", "ANATEL", "ANP", "ANA", "ANAC", "ANTT", "ANTAQ",
+      "ANCINE", "ANEEL", "ANT", "AGER", "AGEP", "AGEM", "AGESC", "AGEPAR",
+      "AGERGS", "ARSESP", "ARPB", "ARPE", "AGR", "ADASA",
+      "DGPP", "CPP", "DGAP", "POG"
+    ]);
+
+    // Preposições que devem permanecer em minúsculas
+    const preposicoes = new Set([
+      "da", "de", "di", "do", "dos", "das", "e", "del", "von", "y"
+    ]);
+
+    // Função auxiliar para processar uma palavra (pode conter hífen)
+    function formatarPalavra(palavra) {
+      // Se a palavra contém hífen, processa cada parte
+      if (palavra.includes('-')) {
+        return palavra.split('-')
+          .map(parte => formatarPalavra(parte))
+          .join('-');
+      }
+
+      const palavraLower = palavra.toLowerCase();
+
+      // Se for preposição, retorna minúscula
+      if (preposicoes.has(palavraLower)) {
+        return palavraLower;
+      }
+
+      // Se for sigla conhecida (case-insensitive), retorna maiúscula
+      if (siglas.has(palavra.toUpperCase())) {
+        return palavra.toUpperCase();
+      }
+
+      // Caso contrário, capitaliza a primeira letra e minúsculas no resto
+      if (palavra.length > 0) {
+        return palavra.charAt(0).toUpperCase() + palavra.slice(1).toLowerCase();
+      }
+      return palavra;
+    }
+
+    // Divide o nome em palavras (espaços)
+    const palavras = nome.trim().split(/\s+/);
+    const nomeFormatado = palavras.map(formatarPalavra).join(' ');
+
+    return nomeFormatado;
   }
 </script>

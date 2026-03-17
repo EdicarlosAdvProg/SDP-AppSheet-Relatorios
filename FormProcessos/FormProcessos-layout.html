@@ -149,7 +149,7 @@
     </div>
     <div class="modal-footer">
       <button class="modal-close waves-effect waves-grey btn btn-oab" style="margin-right: 10px;">Cancelar</button>
-      <button id="procBtnSalvar" class="btn waves-effect waves-light btn-oab" onclick="formProcessos_salvar()">
+      <button id="procBtnSalvar" class="btn waves-effect waves-light btn-oab-confirm" onclick="formProcessos_salvar()">
         <i class="material-icons left">save</i>Salvar
       </button>
     </div>
@@ -167,7 +167,7 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button class="modal-close waves-effect waves-grey btn-flat grey-text text-darken-1">Fechar</button>
+      <button class="modal-close waves-effect waves-grey btn btn-oab">Fechar</button>
     </div>
   </div>
 
@@ -196,11 +196,8 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button class="modal-close waves-effect waves-grey btn-flat grey-text text-darken-1"
-        style="margin-right: 10px;">Cancelar</button>
-      <button id="statusBtnConfirmar" class="waves-effect waves-light btn btn-salvar-modal"
-        onclick="confirmarAlteracaoStatus()">
-        Confirmar
+      <button class="modal-close waves-effect waves-grey btn btn-oab">Cancelar</button>
+      <button id="statusBtnConfirmar" class="btn waves-effect waves-light btn-oab-confirm" onclick="confirmarAlteracaoStatus()">Confirmar
       </button>
     </div>
   </div>
@@ -260,9 +257,9 @@
     </div>
 
     <div class="modal-footer">
-      <button class="modal-close waves-effect waves-grey btn-flat grey-text text-darken-1"
+      <button class="modal-close waves-effect waves-grey btn-oab"
         style="margin-right: 10px;">Cancelar</button>
-      <button id="pautaBtnConfirmar" class="waves-effect waves-light btn btn-salvar-modal"
+      <button id="pautaBtnConfirmar" class="waves-effect waves-light btn btn-oab-confirm"
         onclick="pauta_confirmar()">Confirmar Inclusão</button>
     </div>
   </div>
@@ -307,9 +304,9 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button class="modal-close waves-effect waves-grey btn-flat grey-text text-darken-1"
+      <button class="modal-close waves-effect waves-grey btn btn-oab"
         style="margin-right: 10px;">Cancelar</button>
-      <button id="importarBtnConfirmar" class="waves-effect waves-light btn btn-salvar-modal"
+      <button id="importarBtnConfirmar" class="waves-effect waves-light btn btn-oab-confirm"
         onclick="importar_confirmar()">
         <i class="material-icons left">auto_fix_high</i>Importar
       </button>

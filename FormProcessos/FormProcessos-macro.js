@@ -256,9 +256,9 @@ function formProcessos_buscarHistorico(idProcesso) {
 }
 
 /**
- * Altera o status de um processo e registra o evento no histórico.
+ * Altera o status de um processo e registra o evento no histórico com descrição personalizada.
  * @param {string} idProcesso  Id Base36 do processo.
- * @param {string} novoStatus  "Concluso" ou "Na secretaria".
+ * @param {string} novoStatus  "Concluso", "Na secretaria" ou "Arquivado".
  * @param {string} dataISO     Data da mudança no formato 'yyyy-mm-dd'.
  */
 function formProcessos_alterarStatus(idProcesso, novoStatus, dataISO) {
@@ -280,14 +280,32 @@ function formProcessos_alterarStatus(idProcesso, novoStatus, dataISO) {
     }
     if (linhaAlvo === -1) throw new Error("Processo não encontrado.");
 
-    // Atualiza a coluna Status
+    let descricaoHistorico = "";
+    
+    switch (novoStatus) {
+      case "Concluso":
+        descricaoHistorico = "Concluso ao órgão deliberativo";
+        break;
+      case "Na secretaria":
+        descricaoHistorico = "Devolvido para a secretaria";
+        break;
+      case "Arquivado":
+        descricaoHistorico = "Processo arquivado definitivamente";
+        break;
+      default:
+        descricaoHistorico = "Alteração de status para: " + novoStatus;
+    }
+
+    // Atualiza a coluna Status na planilha de Processos
     sheetProc.getRange(linhaAlvo, colStatus + 1).setValue(novoStatus);
 
-    // Registra no histórico
-    _registrarHistorico(ss, idProcesso, "Andamento", novoStatus, dataISO);
+    // Registra no histórico usando a descrição personalizada definida acima
+    // Note que passamos 'descricaoHistorico' no lugar de 'novoStatus'
+    _registrarHistorico(ss, idProcesso, "Andamento", descricaoHistorico, dataISO);
 
     return { sucesso: true };
   } catch (e) {
+    console.error(e);
     throw new Error("Erro ao alterar status: " + e.message);
   }
 }

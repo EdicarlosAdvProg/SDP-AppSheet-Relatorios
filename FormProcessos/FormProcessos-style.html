@@ -306,8 +306,9 @@
   }
 
   /* -----------------------------------------------------
-    BOTÃO PADRÃO OAB (PÍLULA)
+      BOTÕES PADRÃO OAB (PÍLULA)
   ----------------------------------------------------- */
+  /* Botão Cancelar / ações secundárias */
   .btn-oab {
     background-color: #d1d8db !important;
     color: #004480 !important;
@@ -315,17 +316,43 @@
     border-radius: 50px !important;
     transition: all 0.3s ease !important;
     box-shadow: none !important;
-    /* Mantém o flex e padding originais do botão Materialize */
+    line-height: 36px !important;
+    height: 36px !important;
+    padding: 0 24px !important;
+    font-weight: 700 !important;
+    text-transform: none !important;
   }
 
   .btn-oab:hover {
-    background-color: #002f5d !important;
+    background-color: #ff0000 !important; /* Vermelho OAB */
     color: #ffffff !important;
     box-shadow: 0 4px 8px rgba(0,0,0,0.2) !important;
   }
 
-  /* Ajuste fino para o ícone (caso necessário) */
-  .btn-oab i.material-icons.left {
+  /* Botão Confirmar / ação principal */
+  .btn-oab-confirm {
+    background-color: #004480 !important;
+    color: #ffffff !important;
+    border: none !important;
+    border-radius: 50px !important;
+    transition: all 0.3s ease !important;
+    box-shadow: none !important;
+    line-height: 36px !important;
+    height: 36px !important;
+    padding: 0 24px !important;
+    font-weight: 700 !important;
+    text-transform: none !important;
+  }
+
+  .btn-oab-confirm:hover {
+    background-color: #ff0000 !important; /* Vermelho OAB */
+    color: #ffffff !important;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2) !important;
+  }
+
+  /* Ajuste para ícones dentro dos botões */
+  .btn-oab i.material-icons.left,
+  .btn-oab-confirm i.material-icons.left {
     vertical-align: middle;
     margin-right: 5px;
   }
@@ -825,11 +852,49 @@
     color: #fff;
   }
 
-  /* Datepicker customizado */
+  /* =====================================================
+      DATEPICKER CUSTOMIZADO – TAMANHO AJUSTÁVEL
+  ===================================================== */
   .datepicker-modal {
-    z-index: 9999 !important;
+    max-width: 50vw !important;   /* No máximo 95% da viewport */
+    width: auto !important;        /* Largura automática, baseada no conteúdo */
+    border-radius: 8px !important;
+    overflow: hidden !important;
   }
 
+  .datepicker-modal .datepicker-container {
+    max-height: 80vh !important;  /* Altura máxima 80% da viewport */
+    overflow-y: auto !important;   /* Permite rolagem vertical se necessário */
+  }
+
+  .datepicker-modal .datepicker-calendar {
+    width: 100% !important;
+  }
+
+  .datepicker-modal .datepicker-table {
+    width: 100% !important;
+  }
+
+  .datepicker-modal .datepicker-table td {
+    width: 40px !important;        /* Tamanho padrão das células */
+    height: 40px !important;
+    padding: 0 !important;
+  }
+
+  /* Para telas muito pequenas, reduzir um pouco as células */
+  @media (max-width: 400px) {
+    .datepicker-modal .datepicker-table td {
+      width: 35px !important;
+      height: 35px !important;
+    }
+  }
+
+  /* Ajustes nos botões de navegação */
+  .datepicker-modal .datepicker-controls .select-month input {
+    width: 100px !important;
+  }
+
+  /* Cores OAB mantidas */
   .is-today.is-selected .datepicker-day-button,
   .is-selected .datepicker-day-button {
     background-color: #004480 !important;
@@ -838,17 +903,6 @@
   .datepicker-cancel,
   .datepicker-done {
     color: #004480 !important;
-  }
-
-  /* =====================================================
-      13. MODAL DE DATA PICKER DO MATERIALIZE
-  ===================================================== */
-  .datepicker-modal {
-    z-index: 9999 !important; 
-  }
-
-  #pautaPainel_nova {
-    overflow: visible !important;
   }
 
 </style>
