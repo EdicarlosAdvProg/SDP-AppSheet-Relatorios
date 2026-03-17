@@ -137,6 +137,7 @@
 
   /** Atualiza a renderização da pauta com lógica condicional */
   function PL_JS_onPautaCarregada(dados) {
+    PL_estado.pautasCarregadas[dados.sessao.id] = dados;
     PL_estado.sessaoAtualId  = dados.sessao.id;
     PL_estado.membros        = dados.membros       || [];
     PL_estado.procuradores   = dados.procuradores  || [];
@@ -213,7 +214,7 @@
 
     container.innerHTML = fichas.map(function (f) {
       var html = [
-        '<div class="ficha-card">',
+        '<div class="ficha-card" onclick="PL_JS_gerarDocumentoPeloCard(\'' + f.id + '\')" style="cursor:pointer">',
           '<div class="ficha-nivel1">',
             '<span class="ficha-ordem">' + PL_JS_esc(f.ordem) + 'º</span>',
             '<span class="ficha-processo">' + PL_JS_esc(f.processo) + '</span>',
@@ -244,6 +245,39 @@
 
       return html.join('');
     }).join('');
+  }
+
+  /**
+   * Executa ao clicar no card da ficha no painel lateral.
+   */
+  function PL_JS_gerarDocumentoPeloCard(idFicha) {
+    const sessaoId = PL_estado.sessaoAtualId;
+    const pauta = PL_estado.pautasCarregadas[sessaoId];
+
+    if (!pauta) {
+      PL_JS_toast("Erro: Dados da pauta não carregados.", "erro");
+      return;
+    }
+
+    // Localiza a ficha específica dentro da pauta
+    const ficha = pauta.fichas.find(f => f.id == idFicha);
+    
+    if (!ficha) {
+      PL_JS_toast("Ficha não encontrada.", "erro");
+      return;
+    }
+
+    PL_JS_toast("Montando documento...", "ok");
+
+    // Envia para o servidor os dados da ficha + dados da sessão (presidente, membros, etc)
+    google.script.run
+      .withSuccessHandler(msg => PL_JS_toast(msg, "ok"))
+      .withFailureHandler(err => PL_JS_toast("Erro: " + err, "erro"))
+      .PainelLateral_gerarDocumentoFicha(ficha, {
+        presidente: document.getElementById('inputPresidente').value,
+        membros: PL_estado.membros.join(', '),
+        expediente: document.getElementById('expedienteTexto').value
+      });
   }
 
   // ================================================================

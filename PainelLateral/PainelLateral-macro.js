@@ -373,3 +373,63 @@ function PainelLateral_obterVotosDaSessao(sessaoId) {
     return [];
   }
 }
+
+/**
+ * Reconstrói o documento ativo com os dados da ficha e da sessão.
+ */
+function PainelLateral_gerarDocumentoFicha(dadosFicha, dadosSessao) {
+  try {
+    const doc = DocumentApp.getActiveDocument();
+    const body = doc.getBody();
+    
+    // Limpa o documento
+    body.clear();
+    
+    // 1. Cabeçalho Centralizado
+    const titulo = body.insertParagraph(0, "Ficha de votação");
+    titulo.setHeading(DocumentApp.ParagraphHeading.HEADING1)
+          .setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+    
+    // 2. Referências
+    body.appendParagraph("\nReferências:").setBold(true);
+    
+    // Função auxiliar interna para formatar Linha: Valor
+    const addLinha = (label, valor) => {
+      const p = body.appendParagraph(label);
+      p.setBold(true).appendText(valor || "N/D").setBold(false);
+    };
+
+    addLinha("Processo nº: ", dadosFicha.processo);
+    addLinha("Requerente: ", dadosFicha.requerente);
+    addLinha("Requerido: ", dadosFicha.requerido || "---"); // Campo opcional
+    addLinha("Procurador: ", dadosFicha.procurador);
+
+    // 3. Expediente e Ementa
+    body.appendParagraph("\nExpediente: ").setBold(true)
+        .appendText(dadosSessao.expediente || "").setBold(false);
+        
+    body.appendParagraph("\nEMENTA: ").setBold(true)
+        .appendText(dadosFicha.ementa || "Sem ementa cadastrada.").setBold(false);
+
+    // 4. Data e Rodapé Institucional
+    const dataHoje = Utilities.formatDate(new Date(), "GMT-3", "dd 'de' MMMM 'de' yyyy");
+    body.appendParagraph("\nGoiânia, " + dataHoje)
+        .setAlignment(DocumentApp.HorizontalAlignment.RIGHT);
+    
+    body.appendParagraph("\nÓrgão Deliberativo do SDP da OAB/GO")
+        .setBold(true)
+        .setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+
+    // 5. Composição da Sessão
+    const composicao = body.appendParagraph("\nSessão deliberativa presidida por ");
+    composicao.appendText(dadosSessao.presidente || "N/D").setItalic(true);
+    composicao.appendText(", relator ");
+    composicao.appendText(dadosFicha.relator || "N/D").setItalic(true);
+    composicao.appendText(", com participação dos membros: " + (dadosSessao.membros || ""));
+    
+    return "Documento da ficha " + dadosFicha.processo + " gerado!";
+    
+  } catch (err) {
+    throw new Error("Erro ao gerar documento: " + err.message);
+  }
+}
