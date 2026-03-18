@@ -247,39 +247,6 @@
     }).join('');
   }
 
-  /**
-   * Executa ao clicar no card da ficha no painel lateral.
-   */
-  function PL_JS_gerarDocumentoPeloCard(idFicha) {
-    const sessaoId = PL_estado.sessaoAtualId;
-    const pauta = PL_estado.pautasCarregadas[sessaoId];
-
-    if (!pauta) {
-      PL_JS_toast("Erro: Dados da pauta não carregados.", "erro");
-      return;
-    }
-
-    // Localiza a ficha específica dentro da pauta
-    const ficha = pauta.fichas.find(f => f.id == idFicha);
-    
-    if (!ficha) {
-      PL_JS_toast("Ficha não encontrada.", "erro");
-      return;
-    }
-
-    PL_JS_toast("Montando documento...", "ok");
-
-    // Envia para o servidor os dados da ficha + dados da sessão (presidente, membros, etc)
-    google.script.run
-      .withSuccessHandler(msg => PL_JS_toast(msg, "ok"))
-      .withFailureHandler(err => PL_JS_toast("Erro: " + err, "erro"))
-      .PainelLateral_gerarDocumentoFicha(ficha, {
-        presidente: document.getElementById('inputPresidente').value,
-        membros: PL_estado.membros.join(', '),
-        expediente: document.getElementById('expedienteTexto').value
-      });
-  }
-
   // ================================================================
   // CHIPS — RENDERIZAÇÃO GENÉRICA
   // Utilizada tanto para Membros quanto para Procuradores.
@@ -555,4 +522,90 @@
       .replace(/>/g,  '&gt;')
       .replace(/"/g,  '&quot;');
   }
+
+  // =================================================================================
+  // [BLOCO] DISPARADORES DE GERAÇÃO DE DOCUMENTOS
+  // Gerenciam a coleta de dados da UI e chamada ao servidor.
+  // =================================================================================
+
+  /**
+   * Disparador para Fichas (Individuais)
+   * Chamado ao clicar no card da pauta.
+   */
+  function PL_JS_gerarDocumentoPeloCard(idFicha) {
+    const sessaoId = PL_estado.sessaoAtualId;
+    const pauta    = PL_estado.pautasCarregadas[sessaoId];
+    if (!pauta) return PL_JS_toast('Dados da pauta não carregados.', 'erro');
+
+    const ficha = pauta.fichas.find(function(f) { return f.id == idFicha; });
+    if (!ficha)  return PL_JS_toast('Ficha não encontrada.', 'erro');
+
+    // Determina o template antes de chamar o servidor
+    const orgao     = document.getElementById('displayOrgao').textContent || '';
+    const ePleno    = orgao.indexOf('Pleno') !== -1;
+    const templateId = ePleno ? '1IkcUTLayOYuu4IKbiROgTygLk4y3Xs_ELV-KqvXGIr0'
+                              : '1Viq_bKZstJ4EharqLSn5HQf_HgWZVcITHDD3UJ5DeBI';
+
+    // Data por extenso gerada no cliente (elimina lógica de data do servidor)
+    var meses = ['janeiro','fevereiro','março','abril','maio','junho',
+                'julho','agosto','setembro','outubro','novembro','dezembro'];
+    var hoje  = new Date();
+    var dataExtenso = 'Goiânia, ' + hoje.getDate() + ' de ' +
+                      meses[hoje.getMonth()] + ' de ' + hoje.getFullYear();
+
+    // Mapa de substituição completo — servidor não precisará tocar a planilha
+    var subs = {
+      'tabProcessos.Processo':   ficha.processo    || '',
+      'tabProcessos.Requerente': ficha.requerente  || '',
+      'tabProcessos.Requerido':  ficha.requerido   || '',
+      'tabProcessos.Procurador': ficha.procurador  || '',
+      'tabProcessos.Ementa':     ficha.ementa      || '',
+
+      'tabVotos.Voto':           ficha.voto        || '',
+      'tabVotos.Resultado':      ficha.resultado   || '',
+
+      'tabFichas.Relator':       ficha.relator     || '',
+      'tabFichas.Membros':       PL_estado.membros.join(', '),
+      'tabFichas.Expediente':    document.getElementById('expedienteTexto').value || '',
+
+      'tabSessoes.DataSessao':   dataExtenso,
+      'tabSessoes.Presidente':   document.getElementById('inputPresidente').value  || '',
+      'tabSessoes.Secretário':   document.getElementById('inputSecretario').value  || '',
+      'tabSessoes.Órgão':        orgao,
+
+      'Placar.Relator':          String(ficha.votosRelator  || '0'),
+      'Placar.Divergência1':     '0',
+      'Placar.Divergência2':     '0',
+      'Placar.Total':            String(ficha.totalVotantes || '0')
+    };
+
+    PL_JS_toast('Montando documento...', 'ok');
+
+    google.script.run
+      .withSuccessHandler(function(msg) { PL_JS_toast(msg, 'ok'); })
+      .withFailureHandler(function(err) { PL_JS_toast('Erro: ' + err.message, 'erro'); })
+      .PainelLateral_gerarDocumentoFicha(templateId, subs);
+  }
+
+  /**
+   * Disparador para Pauta Completa
+   * (Para ser vinculado a um novo botão no FAB ou Header)
+   */
+  function PL_JS_gerarPautaCompleta() {
+      PL_JS_toast("Gerando pauta da sessão...", "ok");
+      google.script.run
+        .withSuccessHandler(msg => PL_JS_toast(msg, "ok"))
+        .PainelLateral_gerarDocumentoPauta(PL_estado.sessaoAtualId);
+  }
+
+  /**
+   * Disparador para Ata da Sessão
+   */
+  function PL_JS_gerarAtaSessao() {
+      PL_JS_toast("Gerando ata de sessão...", "ok");
+      google.script.run
+        .withSuccessHandler(msg => PL_JS_toast(msg, "ok"))
+        .PainelLateral_gerarDocumentoAta(PL_estado.sessaoAtualId);
+  }
+  
 </script>

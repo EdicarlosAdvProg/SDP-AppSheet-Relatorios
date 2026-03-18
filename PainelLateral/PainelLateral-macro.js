@@ -97,73 +97,100 @@ function PainelLateral_listarSessoes() {
 }
 
 /**
- * Carrega todos os dados necessários para renderizar a pauta
- * de uma sessão específica.
- * @param {string|number} sessaoId
- * @returns {Object} { sessao, fichas, membros, procuradores, expediente }
+ * Carrega todos os campos necessários para geração do documento,
+ * incluindo Requerido, Ementa (tabProcessos) e votos (tabVotos).
+ * O cliente ficará com tudo em memória — a geração não precisará
+ * tocar a planilha novamente.
  */
 function PainelLateral_carregarPauta(sessaoId) {
   try {
-    const ss = PainelLateral_getPlanilha();
+    const ss       = PainelLateral_getPlanilha();
+    const idBusca  = isNaN(sessaoId) ? String(sessaoId) : Number(sessaoId);
 
-    // 1. DADOS DA SESSÃO
+    // ── 1. SESSÃO ────────────────────────────────────────────────
     const sheetSessoes = ss.getSheetByName('tabSessoes');
     const dadosSessoes = sheetSessoes.getDataRange().getValues();
-    const mapaSessoes  = getMapaColunas(sheetSessoes);
-    
-    const iSId = (mapaSessoes['id'] || 1) - 1;
-    const idBusca = isNaN(sessaoId) ? String(sessaoId) : Number(sessaoId);
-    const linhaSessao = dadosSessoes.slice(1).find(row => row[iSId] == idBusca);
+    const mS           = getMapaColunas(sheetSessoes);
+
+    const linhaSessao = dadosSessoes.slice(1).find(r => r[(mS['id'] || 1) - 1] == idBusca);
     if (!linhaSessao) throw new Error('Sessão não encontrada.');
 
     const sessao = {
-      id:    linhaSessao[iSId],
-      data:  linhaSessao[(mapaSessoes['datasessao'] || 2) - 1] ? Utilities.formatDate(new Date(linhaSessao[(mapaSessoes['datasessao'] || 2) - 1]), Session.getScriptTimeZone(), 'dd/MM/yyyy') : '',
-      orgao: linhaSessao[(mapaSessoes['órgão'] || 3) - 1] || '',
-      presidente: linhaSessao[(mapaSessoes['presidente'] || 5) - 1] || '', // Verifique o índice no seu mapa
-      secretario: linhaSessao[(mapaSessoes['secretário'] || 6) - 1] || ''
-    };  
+      id:         linhaSessao[(mS['id']          || 1) - 1],
+      data:       linhaSessao[(mS['datasessao']  || 2) - 1]
+                    ? Utilities.formatDate(new Date(linhaSessao[(mS['datasessao'] || 2) - 1]),
+                        Session.getScriptTimeZone(), 'dd/MM/yyyy')
+                    : '',
+      orgao:      linhaSessao[(mS['órgão']        || 3) - 1] || '',
+      presidente: linhaSessao[(mS['presidente']  || 5) - 1] || '',
+      secretario: linhaSessao[(mS['secretário']  || 6) - 1] || ''
+    };
 
-    // 2. BUSCA DE PROCESSOS (Cache para lookup rápido)
+    // ── 2. PROCESSOS — mapa id→linha para lookup O(1) ───────────
     const sheetProcs = ss.getSheetByName('tabProcessos');
     const dadosProcs = sheetProcs.getDataRange().getValues();
-    const mapaProcs  = getMapaColunas(sheetProcs);
-    const iPrId      = (mapaProcs['id'] || 1) - 1;
-    const iPrNum     = (mapaProcs['processo'] || 2) - 1;
-    const iPrReq     = (mapaProcs['requerente'] || 3) - 1;
-    const iPrProc    = (mapaProcs['procurador'] || 5) - 1; // Coluna E na sua planilha
+    const mP         = getMapaColunas(sheetProcs);
+    const iPrId      = (mP['id']         || 1) - 1;
 
-    // 3. FICHAS DA SESSÃO
+    const procMap = {};
+    dadosProcs.slice(1).forEach(r => { procMap[r[iPrId]] = r; });
+
+    // ── 3. VOTOS — mapa idFicha→linha para lookup O(1) ──────────
+    const sheetVotos = ss.getSheetByName('tabVotos');
+    const dadosVotos = sheetVotos.getDataRange().getValues();
+    const mV         = getMapaColunas(sheetVotos);
+    const iVFicha    = (mV['idfichavotacao'] || 2) - 1;
+
+    const votosMap = {};
+    dadosVotos.slice(1).forEach(r => { votosMap[r[iVFicha]] = r; });
+
+    // ── 4. FICHAS — enriquecidas com todos os campos do documento ─
     const sheetFichas = ss.getSheetByName('tabFichas');
     const dadosFichas = sheetFichas.getDataRange().getValues();
-    const mapaFichas  = getMapaColunas(sheetFichas);
-    const iFSessaoId  = (mapaFichas['idsessao'] || 2) - 1;
-    const iFProcId    = (mapaFichas['idprocesso'] || 3) - 1;
+    const mF          = getMapaColunas(sheetFichas);
+
+    const iFId       = (mF['id']         || 1) - 1;
+    const iFSessao   = (mF['idsessao']   || 2) - 1;
+    const iFProcId   = (mF['idprocesso'] || 3) - 1;
+    const iFOrdem    = (mF['ordem']      || 4) - 1;
+    const iFRelator  = (mF['relator']    || 5) - 1;
 
     const fichas = dadosFichas.slice(1)
-      .filter(row => row[iFSessaoId] == idBusca)
-      .map(row => {
-        const idProcessoReferencia = row[iFProcId];
-        // Busca na tabProcessos pelo ID único (Ex: 1ks3cbsy)
-        const infoProc = dadosProcs.find(p => p[iPrId] == idProcessoReferencia);
+      .filter(r => r[iFSessao] == idBusca)
+      .map(r => {
+        const idFicha   = r[iFId];
+        const idProc    = r[iFProcId];
+        const linhaProc = procMap[idProc] || null;
+        const linhaVoto = votosMap[idFicha] || null;
 
         return {
-          id:         row[(mapaFichas['id'] || 1) - 1],
-          ordem:      row[(mapaFichas['ordem'] || 4) - 1] || '',
-          processo:   infoProc ? infoProc[iPrNum] : 'N/D',
-          requerente: infoProc ? infoProc[iPrReq] : 'N/D',
-          procurador: infoProc ? infoProc[iPrProc] : 'N/D',
-          relator:    row[(mapaFichas['relator'] || 5) - 1] || ''
+          id:             idFicha,
+          idProcesso:     idProc,
+          ordem:          r[iFOrdem]   || '',
+          relator:        r[iFRelator] || '',
+
+          // tabProcessos — campos completos para o documento
+          processo:       linhaProc ? linhaProc[(mP['processo']   || 2) - 1] : 'N/D',
+          requerente:     linhaProc ? linhaProc[(mP['requerente'] || 3) - 1] : 'N/D',
+          requerido:      linhaProc ? linhaProc[(mP['requerido']  || 4) - 1] : 'N/D',
+          procurador:     linhaProc ? linhaProc[(mP['procurador'] || 5) - 1] : 'N/D',
+          ementa:         linhaProc ? linhaProc[(mP['ementa']     || 6) - 1] : 'N/D',
+
+          // tabVotos — campos completos para o documento
+          voto:           linhaVoto ? linhaVoto[(mV['voto']            || 6) - 1] : '',
+          resultado:      linhaVoto ? linhaVoto[(mV['resultado']        || 7) - 1] : '',
+          votosRelator:   linhaVoto ? linhaVoto[(mV['votosrelator']     || 8) - 1] : '0',
+          totalVotantes:  linhaVoto ? linhaVoto[(mV['totalvotantes']    || 9) - 1] : '0'
         };
       })
       .sort((a, b) => Number(a.ordem) - Number(b.ordem));
 
-    return { 
-      sessao, 
-      fichas, 
-      membros: PainelLateral_parseLista(linhaSessao[(mapaSessoes['membros'] || 7) - 1]), 
-      procuradores: PainelLateral_parseLista(linhaSessao[(mapaSessoes['procuradores'] || 8) - 1]), 
-      expediente: linhaSessao[(mapaSessoes['expediente'] || 9) - 1] || '' 
+    return {
+      sessao,
+      fichas,
+      membros:      PainelLateral_parseLista(linhaSessao[(mS['membros']      || 7) - 1]),
+      procuradores: PainelLateral_parseLista(linhaSessao[(mS['procuradores'] || 8) - 1]),
+      expediente:   linhaSessao[(mS['expediente'] || 9) - 1] || ''
     };
 
   } catch (err) {
@@ -374,62 +401,100 @@ function PainelLateral_obterVotosDaSessao(sessaoId) {
   }
 }
 
+// =================================================================================
+// [BLOCO] CONFIGURAÇÃO DE TEMPLATES E CONSTANTES
+// =================================================================================
+const TEMPLATES_IDS = {
+  DELIBERATIVO: '1Viq_bKZstJ4EharqLSn5HQf_HgWZVcITHDD3UJ5DeBI',
+  PLENO: '1IkcUTLayOYuu4IKbiROgTygLk4y3Xs_ELV-KqvXGIr0'
+};
+
+// =================================================================================
+// [BLOCO] DOCS ENGINE - GERAÇÃO VIA TEMPLATE
+// =================================================================================
+
 /**
- * Reconstrói o documento ativo com os dados da ficha e da sessão.
+ * Função principal: Clona o template e substitui as tags {{Tabela.Campo}}
+ * Responsabilidade única: operações de Drive e Docs.
+ * NÃO acessa a planilha. Recebe o mapa de substituição completo do cliente.
+ *
+ * @param {string} templateId  - ID do Google Doc template
+ * @param {Object} subs        - Objeto { 'chave.campo': 'valor', ... }
  */
-function PainelLateral_gerarDocumentoFicha(dadosFicha, dadosSessao) {
+function PainelLateral_gerarDocumentoFicha(templateId, subs) {
+  let tempFileId = null;
   try {
-    const doc = DocumentApp.getActiveDocument();
-    const body = doc.getBody();
-    
-    // Limpa o documento
-    body.clear();
-    
-    // 1. Cabeçalho Centralizado
-    const titulo = body.insertParagraph(0, "Ficha de votação");
-    titulo.setHeading(DocumentApp.ParagraphHeading.HEADING1)
-          .setAlignment(DocumentApp.HorizontalAlignment.CENTER);
-    
-    // 2. Referências
-    body.appendParagraph("\nReferências:").setBold(true);
-    
-    // Função auxiliar interna para formatar Linha: Valor
-    const addLinha = (label, valor) => {
-      const p = body.appendParagraph(label);
-      p.setBold(true).appendText(valor || "N/D").setBold(false);
-    };
+    // 1. Cópia do template
+    tempFileId = DriveApp.getFileById(templateId)
+                   .makeCopy('__temp_sdp__')
+                   .getId();
 
-    addLinha("Processo nº: ", dadosFicha.processo);
-    addLinha("Requerente: ", dadosFicha.requerente);
-    addLinha("Requerido: ", dadosFicha.requerido || "---"); // Campo opcional
-    addLinha("Procurador: ", dadosFicha.procurador);
+    // 2. Substituições — single open, sem save intermediário
+    const docTemp  = DocumentApp.openById(tempFileId);
+    const bodyTemp = docTemp.getBody();
 
-    // 3. Expediente e Ementa
-    body.appendParagraph("\nExpediente: ").setBold(true)
-        .appendText(dadosSessao.expediente || "").setBold(false);
-        
-    body.appendParagraph("\nEMENTA: ").setBold(true)
-        .appendText(dadosFicha.ementa || "Sem ementa cadastrada.").setBold(false);
+    for (const chave in subs) {
+      // Padrão: chave = "tabProcessos.Processo" → tag = {{tabProcessos.Processo}}
+      const pattern = '\\{\\{' + chave.replace(/\./g, '\\.') + '\\}\\}';
+      bodyTemp.replaceText(pattern, String(subs[chave] ?? '') || ' ');
+    }
 
-    // 4. Data e Rodapé Institucional
-    const dataHoje = Utilities.formatDate(new Date(), "GMT-3", "dd 'de' MMMM 'de' yyyy");
-    body.appendParagraph("\nGoiânia, " + dataHoje)
-        .setAlignment(DocumentApp.HorizontalAlignment.RIGHT);
-    
-    body.appendParagraph("\nÓrgão Deliberativo do SDP da OAB/GO")
-        .setBold(true)
-        .setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+    // Limpa tags não resolvidas
+    bodyTemp.replaceText('\\{\\{[^}]+\\}\\}', ' ');
 
-    // 5. Composição da Sessão
-    const composicao = body.appendParagraph("\nSessão deliberativa presidida por ");
-    composicao.appendText(dadosSessao.presidente || "N/D").setItalic(true);
-    composicao.appendText(", relator ");
-    composicao.appendText(dadosFicha.relator || "N/D").setItalic(true);
-    composicao.appendText(", com participação dos membros: " + (dadosSessao.membros || ""));
-    
-    return "Documento da ficha " + dadosFicha.processo + " gerado!";
-    
+    // 3. Importa para o documento ativo
+    const bodyAtivo = DocumentApp.getActiveDocument().getBody();
+    bodyAtivo.clear();
+
+    for (let i = 0; i < bodyTemp.getNumChildren(); i++) {
+      const el   = bodyTemp.getChild(i).copy();
+      const tipo = el.getType();
+      if      (tipo === DocumentApp.ElementType.PARAGRAPH)  bodyAtivo.appendParagraph(el.asParagraph());
+      else if (tipo === DocumentApp.ElementType.TABLE)       bodyAtivo.appendTable(el.asTable());
+      else if (tipo === DocumentApp.ElementType.LIST_ITEM)   bodyAtivo.appendListItem(el.asListItem());
+    }
+
+    return 'Documento gerado com sucesso.';
+
   } catch (err) {
-    throw new Error("Erro ao gerar documento: " + err.message);
+    throw new Error('PainelLateral_gerarDocumentoFicha: ' + err.message);
+  } finally {
+    if (tempFileId) {
+      try { DriveApp.getFileById(tempFileId).setTrashed(true); } catch (e) {}
+    }
   }
+}
+
+// =================================================================================
+// [BLOCO] AUXILIARES DE BUSCA PARA DOCUMENTOS
+// =================================================================================
+
+/**
+ * Busca o gênero do membro para flexão gramatical no documento.
+ * @param {string} nomeCompleto
+ * @returns {string} 'Masculino' | 'Feminino'
+ */
+function PainelLateral_obterGeneroMembro(nomeCompleto) {
+  if (!nomeCompleto) return "Masculino";
+  try {
+    const ss = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
+    const sheet = ss.getSheetByName("tabMembros");
+    const dados = sheet.getDataRange().getValues();
+    const mapa = getMapaColunas(sheet);
+    const iNome = mapa["nome"] - 1;
+    const iGen = mapa["gênero"] - 1;
+
+    const membro = dados.find(r => r[iNome] === nomeCompleto.trim());
+    return membro ? membro[iGen] : "Masculino";
+  } catch (e) {
+    return "Masculino";
+  }
+}
+
+/**
+ * Utilitário para evitar erro de texto vazio no Google Docs
+ */
+function validarTexto(valor, padrao = " ") {
+  if (valor === null || valor === undefined || valor === "") return padrao;
+  return String(valor);
 }
