@@ -401,424 +401,179 @@ function PainelLateral_obterVotosDaSessao(sessaoId) {
   }
 }
 
-// ═══════════════════════════════════════════════════════
-// GESTÃO DO DOCUMENTO DE SESSÃO
-// ═══════════════════════════════════════════════════════
+// =================================================================================
+// [BLOCO] CONFIGURAÇÃO DE TEMPLATES E CONSTANTES
+// =================================================================================
+const TEMPLATES_IDS = {
+  DELIBERATIVO: '1Viq_bKZstJ4EharqLSn5HQf_HgWZVcITHDD3UJ5DeBI',
+  PLENO: '1IkcUTLayOYuu4IKbiROgTygLk4y3Xs_ELV-KqvXGIr0'
+};
 
-// ═══════════════════════════════════════════════════════════════════
-// CONSTANTES DE FORMATAÇÃO
-// ═══════════════════════════════════════════════════════════════════
-const _F   = 'Lora';
-const _T1  = 12;   // Título 1 — FICHA DE VOTAÇÃO
-const _T2  = 11;   // Título 2 — VOTO / ACÓRDÃO
-const _NRM = 10;   // Texto normal
-const _SM  =  9;   // Quórum e assinaturas
+// =================================================================================
+// [BLOCO] DOCS ENGINE - GERAÇÃO OTIMIZADA COM FORMATAÇÃO PRESERVADA
+// =================================================================================
 
-const _AL  = DocumentApp.HorizontalAlignment.LEFT;
-const _AC  = DocumentApp.HorizontalAlignment.CENTER;
-const _AJ  = DocumentApp.HorizontalAlignment.JUSTIFY;
-
-const _EMENTA_INDENT = 226.8; // 8 cm em pontos (1 cm ≈ 28.35 pt)
-
-
-// ═══════════════════════════════════════════════════════════════════
-// PONTO DE ENTRADA — SEM TEMPLATE, SEM MAKECOPY
-// ═══════════════════════════════════════════════════════════════════
+const PROP_TEMPLATE_PARAGRAFOS = 'templateParagrafos';
+const PROP_TEMPLATE_CACHE_ID   = 'templateCacheId';
+const PROP_TEMPLATE_ID         = 'templateId'; // armazena o ID do template em cache
 
 /**
- * Gera a ficha inteiramente via código no documento ativo.
- * Recebe o objeto de dados completo montado pelo cliente.
- * Zero acesso à planilha. Zero operações de Drive.
- * @param {Object} d - Dados completos para geração
+ * Cria um documento oculto (cópia do template) para ser usado como cache.
+ * @param {string} templateId - ID do template original
+ * @returns {string} ID do documento cache
  */
-function PainelLateral_gerarDocumentoFicha(d) {
-  try {
-    const body = DocumentApp.getActiveDocument().getBody();
-    body.clear();
+function criarTemplateCache(templateId) {
+  const nome = '__template_cache_' + new Date().getTime();
+  const cacheId = DriveApp.getFileById(templateId).makeCopy(nome).getId();
+  return cacheId;
+}
 
-    if (d.isPleno) {
-      _PL_fichaPleno(body, d);
-    } else {
-      _PL_fichaDeliberativo(body, d);
+/**
+ * Copia todo o conteúdo de um documento de origem para o documento ativo.
+ * @param {string} sourceDocId - ID do documento de origem
+ */
+function copiarDocumentoParaAtivo(sourceDocId) {
+  const source = DocumentApp.openById(sourceDocId);
+  const bodySource = source.getBody();
+  const bodyAtivo = DocumentApp.getActiveDocument().getBody();
+
+  bodyAtivo.clear();
+  for (let i = 0; i < bodySource.getNumChildren(); i++) {
+    const el = bodySource.getChild(i).copy();
+    const tipo = el.getType();
+    if (tipo === DocumentApp.ElementType.PARAGRAPH) {
+      bodyAtivo.appendParagraph(el.asParagraph());
+    } else if (tipo === DocumentApp.ElementType.TABLE) {
+      bodyAtivo.appendTable(el.asTable());
+    } else if (tipo === DocumentApp.ElementType.LIST_ITEM) {
+      bodyAtivo.appendListItem(el.asListItem());
+    }
+    // Outros tipos (HEADING, etc.) podem ser adicionados se necessário
+  }
+}
+
+/**
+ * Analisa o documento ativo (que deve conter os placeholders) e armazena
+ * as posições de cada placeholder em cada parágrafo.
+ * @returns {Array} Estrutura com índices e nomes dos placeholders
+ */
+function analisarPlaceholders() {
+  const body = DocumentApp.getActiveDocument().getBody();
+  const paragrafos = [];
+  const numChildren = body.getNumChildren();
+
+  for (let i = 0; i < numChildren; i++) {
+    const child = body.getChild(i);
+    if (child.getType() === DocumentApp.ElementType.PARAGRAPH) {
+      const texto = child.asParagraph().getText();
+      const placeholders = [];
+      // Regex para encontrar {{...}}
+      const regex = /{{([^}]+)}}/g;
+      let match;
+      while ((match = regex.exec(texto)) !== null) {
+        placeholders.push({
+          start: match.index,
+          end: match.index + match[0].length - 1,
+          nome: match[1]
+        });
+      }
+      if (placeholders.length > 0) {
+        paragrafos.push({
+          indice: i,
+          placeholders: placeholders
+        });
+      }
+    }
+  }
+
+  // Armazena nas propriedades do documento
+  PropertiesService.getDocumentProperties()
+    .setProperty(PROP_TEMPLATE_PARAGRAFOS, JSON.stringify(paragrafos));
+
+  return paragrafos;
+}
+
+/**
+ * Inicializa o template no documento ativo e prepara o cache.
+ * @param {string} templateId - ID do template
+ */
+function inicializarTemplateNoAtivo(templateId) {
+  try {
+    const props = PropertiesService.getDocumentProperties();
+
+    // 1. Copia o template para o ativo
+    copiarDocumentoParaAtivo(templateId);
+
+    // 2. Cria um novo cache (sempre que inicializamos, criamos um cache novo)
+    const cacheId = criarTemplateCache(templateId);
+    props.setProperty(PROP_TEMPLATE_CACHE_ID, cacheId);
+    props.setProperty(PROP_TEMPLATE_ID, templateId);
+
+    // 3. Analisa os placeholders no ativo (agora com o template) e armazena
+    analisarPlaceholders();
+
+    return true;
+  } catch (err) {
+    throw new Error('Erro ao inicializar template: ' + err.message);
+  }
+}
+
+/**
+ * Substitui os placeholders no documento ativo usando as posições armazenadas.
+ * @param {Object} subs - Mapa de substituição { 'chave': 'valor' }
+ */
+function preencherDocumentoComSubs(subs) {
+  try {
+    const props = PropertiesService.getDocumentProperties();
+    const paragrafosJSON = props.getProperty(PROP_TEMPLATE_PARAGRAFOS);
+    if (!paragrafosJSON) {
+      throw new Error('Template não inicializado. Execute inicializarTemplateNoAtivo primeiro.');
     }
 
-    return 'Documento gerado.';
+    const paragrafos = JSON.parse(paragrafosJSON);
+    const body = DocumentApp.getActiveDocument().getBody();
+    let modificou = false;
+
+    paragrafos.forEach(item => {
+      const paragraph = body.getChild(item.indice).asParagraph();
+      const textEditor = paragraph.editAsText();
+
+      // Processa os placeholders do último para o primeiro (para não afetar índices)
+      const placeholders = item.placeholders.sort((a, b) => b.start - a.start);
+      placeholders.forEach(ph => {
+        const valor = subs[ph.nome] ?? '';
+        // Deleta o placeholder
+        textEditor.deleteText(ph.start, ph.end);
+        // Insere o valor na mesma posição
+        textEditor.insertText(ph.start, String(valor));
+        modificou = true;
+      });
+    });
+
+    return modificou;
   } catch (err) {
-    throw new Error('PainelLateral_gerarDocumentoFicha: ' + err.message);
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// ESTRUTURA DELIBERATIVO
-// ═══════════════════════════════════════════════════════════════════
-
-function _PL_fichaDeliberativo(body, d) {
-  _PL_T1(body, 'FICHA DE VOTAÇÃO');
-  _PL_refs(body, d, false);
-  _PL_expediente(body, d.expediente);
-  _PL_ementa(body, d.ementa, false);
-  _PL_T2(body, 'VOTO');
-  _PL_normal(body, d.voto);
-  _PL_data(body, d.dataExtenso);
-  _PL_orgao(body, 'Órgão Deliberativo do SDP da OAB-GO', false);
-  _PL_quorumDelib(body, d);
-}
-
-
-// ═══════════════════════════════════════════════════════════════════
-// ESTRUTURA PLENO
-// ═══════════════════════════════════════════════════════════════════
-
-function _PL_fichaPleno(body, d) {
-  _PL_T1(body, 'FICHA DE VOTAÇÃO');
-  _PL_refs(body, d, true);
-  _PL_ementa(body, d.ementa, true);
-  _PL_T2(body, 'ACÓRDÃO');
-  _PL_normal(body, d.voto);
-  _PL_expediente(body, d.expediente);
-  _PL_resultado(body, d);
-  _PL_data(body, d.dataExtenso);
-  _PL_orgao(body, 'Pleno do Sistema de Defesa das Prerrogativas da OAB-GO', true);
-  _PL_assinaturas(body, d);
-  _PL_membrosPleno(body, d.membros);
-}
-
-
-// ═══════════════════════════════════════════════════════════════════
-// BLOCOS DE CONTEÚDO
-// ═══════════════════════════════════════════════════════════════════
-
-// Título 1: upcase, centralizado, bold, antes 0, depois 12
-function _PL_T1(body, texto) {
-  var p = body.appendParagraph(texto.toUpperCase());
-  p.setAlignment(_AC);
-  p.setLineSpacing(1.0);
-  p.setSpacingBefore(0);
-  p.setSpacingAfter(12);
-  _PL_fmt(p.editAsText(), _T1, true);
-}
-
-// Título 2: upcase, centralizado, bold, antes 12, depois 6
-function _PL_T2(body, texto) {
-  var p = body.appendParagraph(texto.toUpperCase());
-  p.setAlignment(_AC);
-  p.setLineSpacing(1.0);
-  p.setSpacingBefore(12);
-  p.setSpacingAfter(6);
-  _PL_fmt(p.editAsText(), _T2, true);
-}
-
-// Bloco de referências completo
-function _PL_refs(body, d, ePleno) {
-  _PL_rl(body, 'Referências:',  '',               'all',   0);
-  _PL_rl(body, 'Processo nº ',  _s(d.processo),   'valor', 0);
-  _PL_rl(body, 'Requerente: ',  _s(d.requerente), 'label', 0);
-  _PL_rl(body, 'Requerido: ',   _s(d.requerido),  'label', 0);
-  if (ePleno) {
-    _PL_rl(body, 'Relator: ',    _s(d.relator),    'label', 12);
-  } else {
-    _PL_rl(body, 'Procurador: ', _s(d.procurador), 'label', 12);
+    throw new Error('Erro ao preencher documento: ' + err.message);
   }
 }
 
 /**
- * Linha de referência com formatação mista.
- * mode: 'all' = tudo bold | 'label' = label bold | 'valor' = valor bold
+ * Função principal chamada pelo front-end para cada ficha.
+ * @param {Object} subs - Mapa de substituição
+ * @param {string} templateId - ID do template (Deliberativo ou Pleno)
  */
-function _PL_rl(body, label, valor, mode, spaceAfter) {
-  var texto = label + valor;
-  var p = body.appendParagraph(texto);
-  p.setAlignment(_AL);
-  p.setLineSpacing(1.0);
-  p.setSpacingBefore(0);
-  p.setSpacingAfter(spaceAfter || 0);
+function gerarDocumentoParaFicha(subs, templateId) {
+  const props = PropertiesService.getDocumentProperties();
+  const cacheId = props.getProperty(PROP_TEMPLATE_CACHE_ID);
+  const cachedTemplateId = props.getProperty(PROP_TEMPLATE_ID);
 
-  var t  = p.editAsText();
-  var ll = label.length;
-  var tl = texto.length;
-
-  _PL_fmt(t, _NRM, false);
-
-  if (mode === 'all'   && tl > 0)           t.setBold(0,  tl - 1, true);
-  if (mode === 'label' && ll > 0)           t.setBold(0,  ll - 1, true);
-  if (mode === 'valor' && tl > ll)          t.setBold(ll, tl - 1, true);
-}
-
-// Ementa: label bold, recuo 8 cm, justificado
-function _PL_ementa(body, texto, ePleno) {
-  var sep   = ePleno ? '. ' : ': ';
-  var label = 'EMENTA' + sep;
-  var full  = label + _s(texto);
-
-  var p = body.appendParagraph(full);
-  p.setAlignment(_AJ);
-  p.setLineSpacing(1.0);
-  p.setSpacingBefore(0);
-  p.setSpacingAfter(6);
-  p.setIndentFirstLine(_EMENTA_INDENT);  // ← primeira linha
-  p.setIndentStart(_EMENTA_INDENT);      // ← demais linhas
-
-  var t = p.editAsText();
-  _PL_fmt(t, _NRM, false);
-  if (label.length > 0) t.setBold(0, label.length - 1, true);
-}
-
-// Expediente: Texto normal, label bold
-function _PL_expediente(body, texto) {
-  var label = 'Expediente: ';
-  var full  = label + _s(texto);
-
-  var p = body.appendParagraph(full);
-  p.setAlignment(_AJ);
-  p.setLineSpacing(1.0);
-  p.setSpacingBefore(0);
-  p.setSpacingAfter(6);
-
-  var t = p.editAsText();
-  _PL_fmt(t, _NRM, false);
-  t.setBold(0, label.length - 1, true);
-}
-
-// Texto normal justificado (voto / acórdão) — suporte a múltiplas linhas
-function _PL_normal(body, texto) {
-  var linhas = _s(texto).split('\n');
-  if (linhas.length === 0) linhas = [''];
-  linhas.forEach(function(linha, i) {
-    var p = body.appendParagraph(linha);
-    p.setAlignment(_AJ);
-    p.setLineSpacing(1.0);
-    p.setSpacingBefore(0);
-    p.setSpacingAfter(i === linhas.length - 1 ? 6 : 0);
-    _PL_fmt(p.editAsText(), _NRM, false);
-  });
-}
-
-// Resultado da votação: linha separadora + título bold + placar normal
-function _PL_resultado(body, d) {
-  // Linha horizontal como "borda superior" da seção
-  var hr = body.appendHorizontalRule();
-  try {
-    var hrPara = hr.getParent().asParagraph();
-    hrPara.setSpacingBefore(6);
-    hrPara.setSpacingAfter(0);
-  } catch (e) {}
-
-  var pTit = body.appendParagraph('Resultado da votação');
-  pTit.setAlignment(_AL);
-  pTit.setLineSpacing(1.0);
-  pTit.setSpacingBefore(0);
-  pTit.setSpacingAfter(0);
-  _PL_fmt(pTit.editAsText(), _NRM, true);
-
-  var placar = 'Voto com o relator: ' + _s(d.votosRelator) +
-               ' | ' + '0' +
-               ' | ' + '0' +
-               ' | Total votantes: '  + _s(d.totalVotantes);
-
-  var pNum = body.appendParagraph(placar);
-  pNum.setAlignment(_AL);
-  pNum.setLineSpacing(1.0);
-  pNum.setSpacingBefore(0);
-  pNum.setSpacingAfter(6);
-  _PL_fmt(pNum.editAsText(), _NRM, false);
-}
-
-// Data por extenso: bold, esquerda, antes 12, depois 0
-function _PL_data(body, dataExtenso) {
-  var p = body.appendParagraph(_s(dataExtenso));
-  p.setAlignment(_AL);
-  p.setLineSpacing(1.0);
-  p.setSpacingBefore(12);
-  p.setSpacingAfter(0);
-  _PL_fmt(p.editAsText(), _NRM, true);
-}
-
-// Nome do órgão: centralizado, bold, espaçamentos conforme tipo
-function _PL_orgao(body, nome, ePleno) {
-  var p = body.appendParagraph(nome);
-  p.setAlignment(_AC);
-  p.setLineSpacing(1.0);
-  p.setSpacingBefore(ePleno ? 12 : 18);
-  p.setSpacingAfter(ePleno  ? 42 :  6);
-  _PL_fmt(p.editAsText(), _NRM, true);
-}
-
-// Quórum do Deliberativo: 4 linhas, 9pt, dados em bold, flex de gênero
-function _PL_quorumDelib(body, d) {
-  var secLabel = d.generoSecretario === 'Feminino'
-    ? 'secretária da mesa: '
-    : 'secretário da mesa: ';
-  var relLabel = d.generoRelator === 'Feminino'
-    ? 'relatora: '
-    : 'relator: ';
-
-  var linhas = [
-    { pre: 'Sessão deliberativa presidida por ',    dado: _s(d.presidente) + ',' },
-    { pre: secLabel,                                dado: _s(d.secretario) + ',' },
-    { pre: relLabel,                                dado: _s(d.relator)    + ',' },
-    { pre: 'com participação dos demais membros: ', dado: _s(d.membros)          }
-  ];
-
-  linhas.forEach(function(l) {
-    var full = l.pre + l.dado;
-    var p = body.appendParagraph(full);
-    p.setAlignment(_AL);
-    p.setLineSpacing(1.0);
-    p.setSpacingBefore(0);
-    p.setSpacingAfter(0);
-
-    var t  = p.editAsText();
-    var pl = l.pre.length;
-    var dl = l.dado.length;
-
-    _PL_fmt(t, _SM, false);
-    if (dl > 0) t.setBold(pl, pl + dl - 1, true);
-  });
-}
-
-// Campos de assinatura do Pleno: tabela 2×2, 9pt
-function _PL_assinaturas(body, d) {
-  var LARGURA_TOTAL  = 453;
-  var LARGURA_ESPACO = 30;
-  var LARGURA_COL    = (LARGURA_TOTAL - LARGURA_ESPACO) / 2;
-
-  // Tabela de UMA linha e 3 colunas
-  var tabela = body.appendTable([['', '', '']]);
-
-  // Remove todas as bordas da tabela
-  var attrs = {};
-  attrs[DocumentApp.Attribute.BORDER_COLOR] = '#ffffff';
-  attrs[DocumentApp.Attribute.BORDER_WIDTH] = 0;
-  tabela.setAttributes(attrs);
-
-  tabela.setColumnWidth(0, LARGURA_COL);
-  tabela.setColumnWidth(1, LARGURA_ESPACO);
-  tabela.setColumnWidth(2, LARGURA_COL);
-
-  var linha = tabela.getRow(0);
-
-  [
-    { col: 0, label: 'Assinatura do presidente da sessão', nome: _s(d.presidente) },
-    { col: 2, label: 'Assinatura do secretário da mesa',   nome: _s(d.secretario) }
-  ].forEach(function(info) {
-    var cel = linha.getCell(info.col);
-    cel.setPaddingTop(0);
-    cel.setPaddingBottom(2);
-    cel.setPaddingLeft(0);
-    cel.setPaddingRight(0);
-
-    // Insere o HR no parágrafo que já existe na célula (índice 0)
-    // Não cria parágrafo extra — elimina o espaço acima da linha
-    var pHr = cel.getChild(0).asParagraph();
-    pHr.appendHorizontalRule();
-    pHr.setSpacingBefore(0);
-    pHr.setSpacingAfter(0);
-    pHr.setLineSpacing(1.0);
-
-    // Label: "Assinatura do ..."
-    var pLabel = cel.appendParagraph(info.label);
-    pLabel.setAlignment(_AC);
-    pLabel.setLineSpacing(1.0);
-    pLabel.setSpacingBefore(3);
-    pLabel.setSpacingAfter(0);
-    _PL_fmt(pLabel.editAsText(), _SM, false);
-
-    // Nome em negrito
-    var pNome = cel.appendParagraph(info.nome);
-    pNome.setAlignment(_AC);
-    pNome.setLineSpacing(1.0);
-    pNome.setSpacingBefore(0);
-    pNome.setSpacingAfter(0);
-    _PL_fmt(pNome.editAsText(), _SM, true);
-  });
-
-  // Célula espaçadora central invisível
-  var celEspaco = linha.getCell(1);
-  celEspaco.setPaddingTop(0);
-  celEspaco.setPaddingBottom(0);
-  celEspaco.setPaddingLeft(0);
-  celEspaco.setPaddingRight(0);
-}
-
-// Membros participantes do Pleno: 9pt, dados bold, antes 6
-function _PL_membrosPleno(body, membros) {
-  var label = 'Membros participantes: ';
-  var valor = _s(membros);
-  var full  = label + valor;
-
-  var p = body.appendParagraph(full);
-  p.setAlignment(_AL);
-  p.setLineSpacing(1.0);
-  p.setSpacingBefore(6);
-  p.setSpacingAfter(0);
-
-  var t  = p.editAsText();
-  var ll = label.length;
-  var vl = valor.length;
-
-  _PL_fmt(t, _SM, false);
-  if (vl > 0) t.setBold(ll, ll + vl - 1, true);
-}
-
-
-// ═══════════════════════════════════════════════════════════════════
-// AUXILIARES
-// ═══════════════════════════════════════════════════════════════════
-
-/** Aplica fonte Lora + tamanho + bold ao objeto Text */
-function _PL_fmt(textObj, size, bold) {
-  textObj.setFontFamily(_F);
-  textObj.setFontSize(size);
-  textObj.setBold(bold);
-}
-
-/** Retorna string segura, nunca null/undefined */
-function _s(val) {
-  return (val != null && String(val).trim() !== '') ? String(val) : '';
-}
-
-/** Converte "dd/MM/yyyy" → "Goiânia, D de mês de YYYY" */
-function _PL_formatDataExtenso(dataStr) {
-  if (!dataStr) return '';
-  var partes = dataStr.split('/');
-  if (partes.length !== 3) return dataStr;
-  var meses = ['janeiro','fevereiro','março','abril','maio','junho',
-               'julho','agosto','setembro','outubro','novembro','dezembro'];
-  return 'Goiânia, ' + parseInt(partes[0], 10) +
-         ' de ' + (meses[parseInt(partes[1], 10) - 1] || '') +
-         ' de ' + partes[2];
-}
-
-/** Lê tabMembros e retorna mapa { nome: gênero } */
-function _PL_buildGeneroMap(ss) {
-  var mapa = {};
-  try {
-    var sheet = ss.getSheetByName('tabMembros');
-    if (!sheet) return mapa;
-    var dados = sheet.getDataRange().getValues();
-    var m     = getMapaColunas(sheet);
-    var iNome = (m['nome']    || 2) - 1;
-    var iGen  = (m['gênero'] || 3) - 1;
-    dados.slice(1).forEach(function(r) {
-      var nome = (r[iNome] || '').toString().trim();
-      if (nome) mapa[nome] = (r[iGen] || 'Masculino').toString();
-    });
-  } catch (e) {
-    Logger.log('_PL_buildGeneroMap: ' + e.message);
+  // Se não há cache ou o template mudou, inicializa do zero
+  if (!cacheId || cachedTemplateId !== templateId) {
+    inicializarTemplateNoAtivo(templateId);
+  } else {
+    // Restaura o documento ativo a partir do cache
+    copiarDocumentoParaAtivo(cacheId);
   }
-  return mapa;
-}
 
-
-
-
-
-// ── Auxiliares privadas ──────────────────────────────────────────
-
-function _rep(body, pattern, replacement) {
-  body.replaceText(pattern, replacement);
-}
-
-function _v(val) {
-  return (val != null && val !== '') ? String(val) : ' ';
+  // Agora aplica as substituições
+  return preencherDocumentoComSubs(subs);
 }
