@@ -5,14 +5,14 @@
   // desnecessárias ao servidor.
   // ================================================================
   var PL_estado = {
-    sessaoAtualId:       null,
-    pautasCarregadas:    {},   // Cache por sessaoId
-    membros:             [],
-    procuradores:        [],
-    cacheMembros:        [],   // Lista completa para autocomplete
-    cacheProcuradores:   [],   // Lista completa para autocomplete
-    presidente: "",
-    secretario: ""
+    sessaoAtualId:     null,
+    pautasCarregadas:  {},
+    membros:           [],
+    procuradores:      [],
+    cacheMembros:      [],
+    cacheProcuradores: [],
+    presidente:        '',
+    secretario:        ''
   };
 
   // ================================================================
@@ -81,24 +81,16 @@
     });
   }
 
-  /** * Função centralizada de seleção. 
-   * Usada pelo clique no dropdown, pelo inicializador e pelo botão atualizar.
-   */
   function PL_JS_selecionarSessao(id) {
     PL_estado.sessaoAtualId = id;
-    
-    // Fecha dropdown
     document.getElementById('listaSessoesDropdown').classList.add('hidden');
-
-    // Destaque visual no dropdown
-    document.querySelectorAll('.dropdown-item-card').forEach(function (el) {
+    document.querySelectorAll('.dropdown-item-card').forEach(function(el) {
       el.classList.toggle('active', el.getAttribute('data-id') == id);
     });
-
-    // Dispara busca no servidor (Sempre busca o dado mais recente)
     PL_JS_carregarPautaNoServidor(id);
   }
 
+  
   /** Busca real no servidor */
   function PL_JS_carregarPautaNoServidor(sessaoId) {
     PL_JS_mostrarLoading(true);
@@ -134,49 +126,7 @@
   // Recebe o objeto completo { sessao, fichas, membros,
   // procuradores, expediente } e atualiza toda a UI.
   // ================================================================
-
-  /** Atualiza a renderização da pauta com lógica condicional */
-  function PL_JS_onPautaCarregada(dados) {
-    PL_estado.pautasCarregadas[dados.sessao.id] = dados;
-    PL_estado.sessaoAtualId  = dados.sessao.id;
-    PL_estado.membros        = dados.membros       || [];
-    PL_estado.procuradores   = dados.procuradores  || [];
     
-    // 1. Lógica do Pleno do SDP (Ocultar Procuradores)
-    var ePleno = (dados.sessao.orgao && dados.sessao.orgao.indexOf("Pleno") !== -1);
-    document.getElementById('secaoProcuradores').classList.toggle('hidden', ePleno);
-
-    // 2. Preencher Mesa Diretora
-    document.getElementById('inputPresidente').value = dados.sessao.presidente || '';
-    document.getElementById('inputSecretario').value = dados.sessao.secretario || '';
-
-    // 3. Preencher Expediente (Movido para cima para poder redimensionar)
-    var campoExpediente = document.getElementById('expedienteTexto'); // Definindo a variável
-    campoExpediente.value = dados.expediente || '';
-
-    // 4. Renderização padrão de cabeçalho
-    document.getElementById('displayOrgao').textContent = dados.sessao.orgao || '—';
-    document.getElementById('displayData').textContent  = dados.sessao.data  || '—';
-
-    // 5. Atualizações visuais do Materialize
-    M.updateTextFields(); // Resolve sobreposição da Mesa
-    M.textareaAutoResize(campoExpediente); // Agora a variável existe e o valor já está lá!
-
-    // 6. Renderizar listas
-    PL_JS_renderizarFichas(dados.fichas || []);
-    PL_JS_renderizarChips('listaMembros', 'badgeMembros', PL_estado.membros, 'PL_JS_removerMembro');
-    
-    if (!ePleno) {
-      PL_JS_renderizarChips('listaProcuradores', 'badgeProcuradores', PL_estado.procuradores, 'PL_JS_removerProcurador');
-    }
-    
-    // Re-inicializa autocompletes
-    PL_JS_configurarAutocompletesMesa();
-    
-    PL_JS_mostrarLoading(false);
-    document.getElementById('pautaContainer').classList.remove('hidden');
-  }
-
   /** Salva Presidente e Secretário no servidor */
   function PL_JS_salvarMesa() {
     var pres = document.getElementById('inputPresidente').value;
@@ -528,63 +478,98 @@
   // Gerenciam a coleta de dados da UI e chamada ao servidor.
   // =================================================================================
 
+  function PL_JS_onPautaCarregada(dados) {
+    PL_estado.pautasCarregadas[dados.sessao.id] = dados;
+    PL_estado.sessaoAtualId  = dados.sessao.id;
+    PL_estado.membros        = dados.membros      || [];
+    PL_estado.procuradores   = dados.procuradores || [];
+
+    // Lógica do Pleno (ocultar seção de procuradores)
+    var ePleno = (dados.sessao.orgao && dados.sessao.orgao.indexOf('Pleno') !== -1);
+    document.getElementById('secaoProcuradores').classList.toggle('hidden', ePleno);
+
+    // Mesa diretora
+    document.getElementById('inputPresidente').value = dados.sessao.presidente || '';
+    document.getElementById('inputSecretario').value = dados.sessao.secretario || '';
+
+    // Expediente
+    var campoExpediente = document.getElementById('expedienteTexto');
+    campoExpediente.value = dados.expediente || '';
+
+    // Cabeçalho do dropdown
+    document.getElementById('displayOrgao').textContent = dados.sessao.orgao || '—';
+    document.getElementById('displayData').textContent  = dados.sessao.data  || '—';
+
+    // Atualizações do Materialize
+    M.updateTextFields();
+    M.textareaAutoResize(campoExpediente);
+
+    // Renderização das listas
+    PL_JS_renderizarFichas(dados.fichas || []);
+    PL_JS_renderizarChips('listaMembros', 'badgeMembros', PL_estado.membros, 'PL_JS_removerMembro');
+
+    if (!ePleno) {
+      PL_JS_renderizarChips('listaProcuradores', 'badgeProcuradores', PL_estado.procuradores, 'PL_JS_removerProcurador');
+    }
+
+    PL_JS_configurarAutocompletesMesa();
+    PL_JS_mostrarLoading(false);
+    document.getElementById('pautaContainer').classList.remove('hidden');
+  }
+
   /**
    * Disparador para Fichas (Individuais)
    * Chamado ao clicar no card da pauta.
    */
   function PL_JS_gerarDocumentoPeloCard(idFicha) {
-    const sessaoId = PL_estado.sessaoAtualId;
-    const pauta    = PL_estado.pautasCarregadas[sessaoId];
+    var sessaoId = PL_estado.sessaoAtualId;
+    var pauta    = PL_estado.pautasCarregadas[sessaoId];
     if (!pauta) return PL_JS_toast('Dados da pauta não carregados.', 'erro');
 
-    const ficha = pauta.fichas.find(function(f) { return f.id == idFicha; });
-    if (!ficha)  return PL_JS_toast('Ficha não encontrada.', 'erro');
+    var ficha = pauta.fichas.find(function(f) { return f.id == idFicha; });
+    if (!ficha) return PL_JS_toast('Ficha não encontrada.', 'erro');
 
-    // Determina o template antes de chamar o servidor
-    const orgao     = document.getElementById('displayOrgao').textContent || '';
-    const ePleno    = orgao.indexOf('Pleno') !== -1;
-    const templateId = ePleno ? '1IkcUTLayOYuu4IKbiROgTygLk4y3Xs_ELV-KqvXGIr0'
-                              : '1Viq_bKZstJ4EharqLSn5HQf_HgWZVcITHDD3UJ5DeBI';
+    var orgao   = document.getElementById('displayOrgao').textContent || '';
+    var isPleno = orgao.indexOf('Pleno') !== -1;
 
-    // Data por extenso gerada no cliente (elimina lógica de data do servidor)
-    var meses = ['janeiro','fevereiro','março','abril','maio','junho',
-                'julho','agosto','setembro','outubro','novembro','dezembro'];
-    var hoje  = new Date();
-    var dataExtenso = 'Goiânia, ' + hoje.getDate() + ' de ' +
-                      meses[hoje.getMonth()] + ' de ' + hoje.getFullYear();
+    var dados = {
+      isPleno:          isPleno,
 
-    // Mapa de substituição completo — servidor não precisará tocar a planilha
-    var subs = {
-      'tabProcessos.Processo':   ficha.processo    || '',
-      'tabProcessos.Requerente': ficha.requerente  || '',
-      'tabProcessos.Requerido':  ficha.requerido   || '',
-      'tabProcessos.Procurador': ficha.procurador  || '',
-      'tabProcessos.Ementa':     ficha.ementa      || '',
+      // tabProcessos
+      processo:         ficha.processo    || '',
+      requerente:       ficha.requerente  || '',
+      requerido:        ficha.requerido   || '',
+      procurador:       ficha.procurador  || '',
+      ementa:           ficha.ementa      || '',
 
-      'tabVotos.Voto':           ficha.voto        || '',
-      'tabVotos.Resultado':      ficha.resultado   || '',
+      // tabVotos
+      voto:             ficha.voto        || '',
+      resultado:        ficha.resultado   || '',
+      votosRelator:     String(ficha.votosRelator  || '0'),
+      totalVotantes:    String(ficha.totalVotantes || '0'),
 
-      'tabFichas.Relator':       ficha.relator     || '',
-      'tabFichas.Membros':       PL_estado.membros.join(', '),
-      'tabFichas.Expediente':    document.getElementById('expedienteTexto').value || '',
+      // tabFichas
+      relator:          ficha.relator          || '',
+      generoRelator:    ficha.generoRelator     || 'Masculino',
 
-      'tabSessoes.DataSessao':   dataExtenso,
-      'tabSessoes.Presidente':   document.getElementById('inputPresidente').value  || '',
-      'tabSessoes.Secretário':   document.getElementById('inputSecretario').value  || '',
-      'tabSessoes.Órgão':        orgao,
+      // tabSessoes
+      presidente:       document.getElementById('inputPresidente').value || pauta.sessao.presidente || '',
+      secretario:       document.getElementById('inputSecretario').value || pauta.sessao.secretario || '',
+      generoSecretario: pauta.sessao.generoSecretario || 'Masculino',
+      dataExtenso:      pauta.sessao.dataExtenso      || '',
+      orgao:            orgao,
 
-      'Placar.Relator':          String(ficha.votosRelator  || '0'),
-      'Placar.Divergência1':     '0',
-      'Placar.Divergência2':     '0',
-      'Placar.Total':            String(ficha.totalVotantes || '0')
+      // Runtime (estado atual da sidebar)
+      membros:          PL_estado.membros.join(', '),
+      expediente:       document.getElementById('expedienteTexto').value || ''
     };
 
-    PL_JS_toast('Montando documento...', 'ok');
+    PL_JS_toast('Gerando documento...', 'ok');
 
     google.script.run
       .withSuccessHandler(function(msg) { PL_JS_toast(msg, 'ok'); })
       .withFailureHandler(function(err) { PL_JS_toast('Erro: ' + err.message, 'erro'); })
-      .PainelLateral_gerarDocumentoFicha(templateId, subs);
+      .PainelLateral_gerarDocumentoFicha(dados);
   }
 
   /**
