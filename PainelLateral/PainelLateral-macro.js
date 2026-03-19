@@ -405,28 +405,13 @@ function PainelLateral_obterVotosDaSessao(sessaoId) {
 // [BLOCO] CONFIGURAÇÃO DE TEMPLATES E CONSTANTES
 // =================================================================================
 const TEMPLATES_IDS = {
-  DELIBERATIVO: '1Viq_bKZstJ4EharqLSn5HQf_HgWZVcITHDD3UJ5DeBI',
+  DELIBERATIVO: '14K8XDmy92dpSOKRRi14G4dNSPl6cPkSNA19RCJg1--U',
   PLENO: '1IkcUTLayOYuu4IKbiROgTygLk4y3Xs_ELV-KqvXGIr0'
 };
 
 // =================================================================================
-// [BLOCO] DOCS ENGINE - GERAÇÃO OTIMIZADA COM FORMATAÇÃO PRESERVADA
+// [BLOCO] DOCS ENGINE - GERAÇÃO DIRETA DO TEMPLATE (SEM CACHE)
 // =================================================================================
-
-const PROP_TEMPLATE_PARAGRAFOS = 'templateParagrafos';
-const PROP_TEMPLATE_CACHE_ID   = 'templateCacheId';
-const PROP_TEMPLATE_ID         = 'templateId'; // armazena o ID do template em cache
-
-/**
- * Cria um documento oculto (cópia do template) para ser usado como cache.
- * @param {string} templateId - ID do template original
- * @returns {string} ID do documento cache
- */
-function criarTemplateCache(templateId) {
-  const nome = '__template_cache_' + new Date().getTime();
-  const cacheId = DriveApp.getFileById(templateId).makeCopy(nome).getId();
-  return cacheId;
-}
 
 /**
  * Copia todo o conteúdo de um documento de origem para o documento ativo.
@@ -450,110 +435,33 @@ function copiarDocumentoParaAtivo(sourceDocId) {
     }
     // Outros tipos (HEADING, etc.) podem ser adicionados se necessário
   }
-}
 
-/**
- * Analisa o documento ativo (que deve conter os placeholders) e armazena
- * as posições de cada placeholder em cada parágrafo.
- * @returns {Array} Estrutura com índices e nomes dos placeholders
- */
-function analisarPlaceholders() {
-  const body = DocumentApp.getActiveDocument().getBody();
-  const paragrafos = [];
-  const numChildren = body.getNumChildren();
-
-  for (let i = 0; i < numChildren; i++) {
-    const child = body.getChild(i);
-    if (child.getType() === DocumentApp.ElementType.PARAGRAPH) {
-      const texto = child.asParagraph().getText();
-      const placeholders = [];
-      // Regex para encontrar {{...}}
-      const regex = /{{([^}]+)}}/g;
-      let match;
-      while ((match = regex.exec(texto)) !== null) {
-        placeholders.push({
-          start: match.index,
-          end: match.index + match[0].length - 1,
-          nome: match[1]
-        });
-      }
-      if (placeholders.length > 0) {
-        paragrafos.push({
-          indice: i,
-          placeholders: placeholders
-        });
+  // Remove possível parágrafo vazio no início (caso exista)
+  if (bodyAtivo.getNumChildren() > 0) {
+    const first = bodyAtivo.getChild(0);
+    if (first.getType() === DocumentApp.ElementType.PARAGRAPH) {
+      const text = first.asParagraph().getText();
+      if (text.trim() === '') {
+        first.removeFromParent();
       }
     }
   }
-
-  // Armazena nas propriedades do documento
-  PropertiesService.getDocumentProperties()
-    .setProperty(PROP_TEMPLATE_PARAGRAFOS, JSON.stringify(paragrafos));
-
-  return paragrafos;
 }
 
 /**
- * Inicializa o template no documento ativo e prepara o cache.
- * @param {string} templateId - ID do template
- */
-function inicializarTemplateNoAtivo(templateId) {
-  try {
-    const props = PropertiesService.getDocumentProperties();
-
-    // 1. Copia o template para o ativo
-    copiarDocumentoParaAtivo(templateId);
-
-    // 2. Cria um novo cache (sempre que inicializamos, criamos um cache novo)
-    const cacheId = criarTemplateCache(templateId);
-    props.setProperty(PROP_TEMPLATE_CACHE_ID, cacheId);
-    props.setProperty(PROP_TEMPLATE_ID, templateId);
-
-    // 3. Analisa os placeholders no ativo (agora com o template) e armazena
-    analisarPlaceholders();
-
-    return true;
-  } catch (err) {
-    throw new Error('Erro ao inicializar template: ' + err.message);
-  }
-}
-
-/**
- * Substitui os placeholders no documento ativo usando as posições armazenadas.
+ * Substitui todos os placeholders no documento ativo usando replaceText.
  * @param {Object} subs - Mapa de substituição { 'chave': 'valor' }
  */
 function preencherDocumentoComSubs(subs) {
-  try {
-    const props = PropertiesService.getDocumentProperties();
-    const paragrafosJSON = props.getProperty(PROP_TEMPLATE_PARAGRAFOS);
-    if (!paragrafosJSON) {
-      throw new Error('Template não inicializado. Execute inicializarTemplateNoAtivo primeiro.');
-    }
-
-    const paragrafos = JSON.parse(paragrafosJSON);
-    const body = DocumentApp.getActiveDocument().getBody();
-    let modificou = false;
-
-    paragrafos.forEach(item => {
-      const paragraph = body.getChild(item.indice).asParagraph();
-      const textEditor = paragraph.editAsText();
-
-      // Processa os placeholders do último para o primeiro (para não afetar índices)
-      const placeholders = item.placeholders.sort((a, b) => b.start - a.start);
-      placeholders.forEach(ph => {
-        const valor = subs[ph.nome] ?? '';
-        // Deleta o placeholder
-        textEditor.deleteText(ph.start, ph.end);
-        // Insere o valor na mesma posição
-        textEditor.insertText(ph.start, String(valor));
-        modificou = true;
-      });
-    });
-
-    return modificou;
-  } catch (err) {
-    throw new Error('Erro ao preencher documento: ' + err.message);
+  const body = DocumentApp.getActiveDocument().getBody();
+  for (const chave in subs) {
+    const placeholder = '{{' + chave + '}}';
+    const valor = String(subs[chave] ?? '');
+    // Escapa caracteres especiais no placeholder para uso em regex
+    const placeholderEscaped = placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    body.replaceText(placeholderEscaped, valor);
   }
+  return true;
 }
 
 /**
@@ -562,18 +470,6 @@ function preencherDocumentoComSubs(subs) {
  * @param {string} templateId - ID do template (Deliberativo ou Pleno)
  */
 function gerarDocumentoParaFicha(subs, templateId) {
-  const props = PropertiesService.getDocumentProperties();
-  const cacheId = props.getProperty(PROP_TEMPLATE_CACHE_ID);
-  const cachedTemplateId = props.getProperty(PROP_TEMPLATE_ID);
-
-  // Se não há cache ou o template mudou, inicializa do zero
-  if (!cacheId || cachedTemplateId !== templateId) {
-    inicializarTemplateNoAtivo(templateId);
-  } else {
-    // Restaura o documento ativo a partir do cache
-    copiarDocumentoParaAtivo(cacheId);
-  }
-
-  // Agora aplica as substituições
+  copiarDocumentoParaAtivo(templateId);
   return preencherDocumentoComSubs(subs);
 }
