@@ -28,18 +28,27 @@
       return;
     }
 
-    // 1. Popula caches de autocomplete (Dados Estáticos)
-    PL_estado.cacheMembros      = inicial.cadastros.membros      || [];
+    // Processa membros: extrai nomes para cache e cria mapa de gêneros
+    if (inicial.cadastros.membros && Array.isArray(inicial.cadastros.membros)) {
+      PL_estado.cacheMembros = inicial.cadastros.membros.map(m => m.nome);
+      PL_estado.mapaGeneros = {};
+      inicial.cadastros.membros.forEach(m => {
+        if (m.nome) PL_estado.mapaGeneros[m.nome] = m.genero || 'Masculino';
+      });
+    } else {
+      PL_estado.cacheMembros = [];
+      PL_estado.mapaGeneros = {};
+    }
+
     PL_estado.cacheProcuradores = inicial.cadastros.procuradores || [];
-    
-    // Configura o motor de busca do Materialize
+
+    // Configura autocompletes
     PL_JS_configurarAutocompletes();
 
-    // 2. Monta o dropdown de sessões
+    // Monta dropdown de sessões
     PL_JS_popularDropdown(inicial.sessoes);
 
-    // 3. GATILHO DE CARREGAMENTO DINÂMICO
-    // Em vez de usar dados injetados, pedimos ao servidor a versão mais nova da 1ª sessão
+    // Carrega primeira sessão
     if (inicial.sessoes && inicial.sessoes.length > 0) {
       PL_JS_selecionarSessao(inicial.sessoes[0].id);
     } else {
@@ -556,7 +565,45 @@
     const dataExtenso = 'Goiânia, ' + hoje.getDate() + ' de ' +
                         meses[hoje.getMonth()] + ' de ' + hoje.getFullYear();
 
+    // --- Funções auxiliares de flexão (definidas dentro para usar o mapaGeneros) ---
+    function pluralizarPalavra(palavra, valor) {
+      if (!valor) return palavra;
+      if (valor.includes(';')) return palavra + 's';
+      return palavra;
+    }
+
+    function flexionarPalavra(palavra, nome) {
+      if (!nome) return palavra;
+      const genero = PL_estado.mapaGeneros[nome] || 'Masculino';
+      if (genero === 'Feminino') {
+        const femininos = {
+          'Relator': 'Relatora',
+          'relator': 'relatora',
+          'secretário': 'secretária',
+          'o': 'a',
+          'do': 'da'
+        };
+        return femininos[palavra] || palavra;
+      }
+      return palavra;
+    }
+
+    // --- Cálculo dos placeholders dinâmicos ---
+    const requerenteLabel = pluralizarPalavra('Requerente', ficha.requerente);
+    const requeridoLabel  = pluralizarPalavra('Requerido', ficha.requerido);
+
+    const relatorNome    = ficha.relator || '';
+    const secretarioNome = document.getElementById('inputSecretario').value || '';
+
+    const relatorLabel     = flexionarPalavra('Relator', relatorNome);
+    const relatorLabelMin  = flexionarPalavra('relator', relatorNome);
+    const secretarioLabel  = flexionarPalavra('secretário', secretarioNome);
+    const artigoRelator    = flexionarPalavra('o', relatorNome);
+    const preposicaoSecretario = flexionarPalavra('do', secretarioNome);
+
+    // Mapa de substituição completo
     const subs = {
+      // Dados da ficha
       'tabProcessos.Processo':   ficha.processo    || '',
       'tabProcessos.Requerente': ficha.requerente  || '',
       'tabProcessos.Requerido':  ficha.requerido   || '',
@@ -569,12 +616,21 @@
       'tabFichas.Expediente':    document.getElementById('expedienteTexto').value || '',
       'tabSessoes.DataSessao':   dataExtenso,
       'tabSessoes.Presidente':   document.getElementById('inputPresidente').value  || '',
-      'tabSessoes.Secretário':   document.getElementById('inputSecretario').value  || '',
+      'tabSessoes.Secretário':   secretarioNome,
       'tabSessoes.Órgão':        orgao,
       'Placar.Relator':          String(ficha.votosRelator  || '0'),
       'Placar.Divergência1':     '0',
       'Placar.Divergência2':     '0',
-      'Placar.Total':            String(ficha.totalVotantes || '0')
+      'Placar.Total':            String(ficha.totalVotantes || '0'),
+
+      // Rótulos flexionados
+      'Requerente': requerenteLabel,
+      'Requerido':  requeridoLabel,
+      'Relator':    relatorLabel,
+      'relator':    relatorLabelMin,
+      'secretário': secretarioLabel,
+      'o':          artigoRelator,
+      'do':         preposicaoSecretario
     };
 
     PL_JS_toast('Gerando documento...', 'ok');
@@ -602,6 +658,21 @@
       })
       .withFailureHandler(function(err) { PL_JS_toast('Erro: ' + err.message, 'erro'); })
       .preencherDocumentoComSubs(subs);
+  }
+
+  function flexionarPalavra(palavra, nome) {
+    if (!nome) return palavra;
+    const genero = PL_estado.mapaGeneros[nome] || 'Masculino';
+    if (genero === 'Feminino') {
+      const femininos = {
+        'Relator': 'Relatora',
+        'relator': 'relatora',
+        'secretário': 'secretária',
+        'o': 'a'
+      };
+      return femininos[palavra] || palavra;
+    }
+    return palavra;
   }
 
   /**

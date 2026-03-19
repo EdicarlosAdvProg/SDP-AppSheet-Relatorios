@@ -344,17 +344,21 @@ function PainelLateral_obterVotosDaSessao(sessaoId) {
  */
 function PainelLateral_listarMembrosCompleto() {
   try {
-    const ss = PainelLateral_getPlanilha();
+    const ss = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
     const sheet = ss.getSheetByName('tabMembros');
     if (!sheet) return [];
 
     const dados = sheet.getDataRange().getValues();
     const mapa = getMapaColunas(sheet);
     const iNome = (mapa['nome'] || 2) - 1;
+    const iGenero = (mapa['gênero'] || mapa['genero'] || 3) - 1; // ajuste conforme sua planilha
 
     return dados.slice(1)
-      .map(row => (row[iNome] || '').toString().trim())
-      .filter(nome => nome !== '');
+      .map(row => ({
+        nome: (row[iNome] || '').toString().trim(),
+        genero: (row[iGenero] || 'Masculino').toString().trim()
+      }))
+      .filter(item => item.nome !== '');
   } catch (err) {
     Logger.log('Erro em listarMembrosCompleto: ' + err.message);
     return [];
