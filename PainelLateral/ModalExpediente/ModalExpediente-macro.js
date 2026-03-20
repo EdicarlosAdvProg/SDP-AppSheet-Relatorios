@@ -20,9 +20,9 @@
 function modalExpediente_abrir() {
   const template = HtmlService.createTemplateFromFile('ModalExpediente-front');
   const html = template.evaluate()
-    .setTitle('Expediente Predefinido')
+    .setTitle('Expedientes Predefinidos')
     .setWidth(500)
-    .setHeight(620);
+    .setHeight(310);
   DocumentApp.getUi().showModalDialog(html, ' ');
 }
 

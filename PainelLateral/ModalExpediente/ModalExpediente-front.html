@@ -45,27 +45,20 @@ body {
    2. CABEÇALHO FIXO
 ══════════════════════════════════════════════════════════════════════ */
 .exp-header {
-  background:    var(--oab-azul);
-  padding:       14px 20px 12px;
-  flex-shrink:   0;
-  display:       flex;
-  align-items:   center;
-  gap:           12px;
-  border-bottom: 3px solid var(--oab-vermelho);
-}
-
-.exp-header-icone {
-  color:     var(--oab-vermelho);
-  font-size: 22px;
+  background: var(--oab-vermelho); /* alterado de azul para vermelho */
+  padding: 10px 20px;
+  flex-shrink: 0;
+  border-bottom: 3px solid var(--oab-azul-escuro); /* borda inferior azul escuro para contraste */
 }
 
 .exp-header h1 {
-  color:          var(--oab-branco);
-  font-size:      1rem;
-  font-weight:    700;
+  color: var(--oab-branco);
+  font-size: 1rem;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  margin:         0;
+  margin: 0;
+  text-align: left;
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -74,42 +67,14 @@ body {
 .exp-body {
   flex:       1;
   overflow-y: auto;
-  padding:    16px 20px 8px;
+  padding:    16px 20px 20px;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ══════════════════════════════════════════════════════════════════════
-   4. CAMPO RELATOR
-══════════════════════════════════════════════════════════════════════ */
-.exp-relator-wrap .input-field {
-  margin: 0 0 4px;
-}
-
-.exp-relator-wrap .input-field input[type=text] {
-  font-size: 12px !important;
-  height:    2.1rem !important;
-  color:     #263238 !important;
-  border-bottom: 1px solid var(--oab-cinza-md) !important;
-}
-
-.exp-relator-wrap .input-field input[type=text]:focus {
-  border-bottom: 1px solid var(--oab-azul) !important;
-  box-shadow:    0 1px 0 0 var(--oab-azul) !important;
-}
-
-.exp-relator-wrap .input-field label {
-  font-size: 11px !important;
-  color:     var(--oab-cinza-txt) !important;
-}
-
-.exp-relator-wrap .input-field input:focus + label,
-.exp-relator-wrap .input-field label.active {
-  color:       var(--oab-azul) !important;
-  font-weight: 700 !important;
-}
-
-/* ══════════════════════════════════════════════════════════════════════
-   5. LISTA DE CARDS DE SELEÇÃO (mantido para referência, mas substituído pelo dropdown)
+   4. DROPDOWN CUSTOMIZADO
 ══════════════════════════════════════════════════════════════════════ */
 .exp-secao-label {
   font-size:      9px;
@@ -117,94 +82,14 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.07em;
   color:          var(--oab-cinza-txt);
-  margin:         12px 0 6px;
+  margin:         0 0 6px;
   display:        block;
 }
 
-.exp-lista {
-  border:        1.5px solid var(--oab-cinza-bg);
-  border-radius: 10px;
-  overflow:      hidden;
-  max-height:    220px;
-  overflow-y:    auto;
-}
-
-.exp-card {
-  padding:       10px 12px;
-  border-bottom: 1.5px solid var(--oab-cinza-bg);
-  cursor:        pointer;
-  display:       flex;
-  align-items:   center;
-  gap:           8px;
-  border-left:   3px solid transparent;
-  transition:    background 0.15s, border-left-color 0.15s;
-}
-
-.exp-card:last-child  { border-bottom: none; }
-
-.exp-card:hover {
-  background: #f0f4ff;
-}
-
-.exp-card.selecionado {
-  background:       #e8f0fe;
-  border-left-color: var(--oab-azul);
-}
-
-.exp-card-body {
-  flex:      1;
-  min-width: 0;
-}
-
-.exp-card-chave {
-  display:       block;
-  font-size:     11px;
-  font-weight:   700;
-  color:         var(--oab-azul);
-  margin-bottom: 2px;
-  white-space:   nowrap;
-  overflow:      hidden;
-  text-overflow: ellipsis;
-}
-
-.exp-card-valor {
-  display:       block;
-  font-size:     10px;
-  color:         var(--oab-cinza-txt);
-  font-style:    italic;
-  white-space:   nowrap;
-  overflow:      hidden;
-  text-overflow: ellipsis;
-}
-
-.btn-card-edit {
-  flex-shrink:     0;
-  background:      none;
-  border:          none;
-  cursor:          pointer;
-  color:           var(--oab-cinza-md);
-  padding:         4px;
-  border-radius:   50%;
-  display:         flex;
-  align-items:     center;
-  justify-content: center;
-  transition:      color 0.18s, background 0.18s;
-}
-
-.btn-card-edit:hover {
-  color:      var(--oab-azul);
-  background: rgba(0,68,128,0.09);
-}
-
-.btn-card-edit i { font-size: 16px; }
-
-/* ══════════════════════════════════════════════════════════════════════
-   DROPDOWN CUSTOMIZADO (copiado do painel lateral com adaptações)
-══════════════════════════════════════════════════════════════════════ */
 .custom-dropdown {
   position: relative;
   width: 100%;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .dropdown-selected {
@@ -262,7 +147,7 @@ body {
   border-radius: 8px;
   box-shadow: 0 6px 16px rgba(0,0,0,0.15);
   overflow-y: auto;
-  max-height: 240px;
+  max-height: 180px;
   z-index: 1000;
   border: 1.5px solid var(--oab-azul);
 }
@@ -305,15 +190,15 @@ body {
 }
 
 /* ══════════════════════════════════════════════════════════════════════
-   6. CAMPO VISTAS (condicional)
+   5. CAMPO VISTAS (condicional)
 ══════════════════════════════════════════════════════════════════════ */
 .exp-campo-vistas {
-  margin-top:    10px;
-  padding:       10px 14px 4px;
-  background:    #f0f4ff;
-  border:        1.5px solid var(--oab-azul);
+  margin: 16px 0;
+  padding: 10px 14px 4px;
+  background: #f0f4ff;
+  border: 1.5px solid var(--oab-azul);
   border-radius: 8px;
-  animation:     exp-fadeIn 0.2s ease;
+  animation: exp-fadeIn 0.2s ease;
 }
 
 .exp-campo-vistas .input-field {
@@ -322,240 +207,263 @@ body {
 
 .exp-campo-vistas .input-field input[type=text] {
   font-size: 12px !important;
-  height:    2.1rem !important;
-  color:     #263238 !important;
+  height: 2.1rem !important;
+  color: #263238 !important;
   border-bottom: 1px solid var(--oab-azul) !important;
   box-shadow: none !important;
 }
 
 .exp-campo-vistas .input-field input[type=text]:focus {
   border-bottom: 1px solid var(--oab-azul-escuro) !important;
-  box-shadow:    0 1px 0 0 var(--oab-azul-escuro) !important;
+  box-shadow: 0 1px 0 0 var(--oab-azul-escuro) !important;
 }
 
 .exp-campo-vistas .input-field label {
   font-size: 11px !important;
-  color:     var(--oab-azul) !important;
+  color: var(--oab-azul) !important;
   font-weight: 700;
 }
 
 /* ══════════════════════════════════════════════════════════════════════
-   7. PAINEIS EDITAR / NOVO
+   6. PAINEIS EDITAR / NOVO
 ══════════════════════════════════════════════════════════════════════ */
 .exp-painel {
   animation: exp-fadeIn 0.18s ease;
 }
 
 .exp-chave-readonly {
-  display:       block;
-  font-size:     11px;
-  font-weight:   700;
-  color:         var(--oab-azul);
-  background:    var(--oab-cinza-bg);
-  padding:       6px 10px;
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--oab-azul);
+  background: var(--oab-cinza-bg);
+  padding: 6px 10px;
   border-radius: 6px;
   margin-bottom: 10px;
-  word-break:    break-word;
+  word-break: break-word;
 }
 
-/* Textarea compartilhado */
 .exp-textarea {
-  width:        100%;
-  font-family:  'Inter', sans-serif !important;
-  font-size:    11px               !important;
-  color:        #263238            !important;
-  background:   #fff               !important;
-  border:       1.5px solid var(--oab-cinza-md) !important;
-  border-radius: 8px               !important;
-  padding:      10px 12px          !important;
-  min-height:   80px;
-  max-height:   180px;
-  box-shadow:   none               !important;
-  resize:       none;
-  box-sizing:   border-box;
-  outline:      none;
-  line-height:  1.55;
-  overflow-y:   auto;
-  transition:   border-color 0.2s;
-  display:      block;
+  width: 100%;
+  font-family: 'Inter', sans-serif !important;
+  font-size: 11px !important;
+  color: #263238 !important;
+  background: #fff !important;
+  border: 1.5px solid var(--oab-cinza-md) !important;
+  border-radius: 8px !important;
+  padding: 10px 12px !important;
+  min-height: 60px;
+  max-height: 120px;
+  box-shadow: none !important;
+  resize: none;
+  box-sizing: border-box;
+  outline: none;
+  line-height: 1.55;
+  overflow-y: auto;
+  transition: border-color 0.2s;
+  display: block;
 }
 
 .exp-textarea:focus {
   border-color: var(--oab-azul) !important;
 }
 
-/* Tags de placeholder */
 .exp-ph-wrap {
-  display:     flex;
-  flex-wrap:   wrap;
-  gap:         4px;
-  margin:      6px 0 2px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 6px 0 2px;
 }
 
 .exp-ph-tag {
-  font-size:     9px;
-  font-family:   monospace;
-  font-weight:   700;
-  background:    #e8f0fe;
-  color:         var(--oab-azul-escuro);
-  padding:       2px 7px;
+  font-size: 9px;
+  font-family: monospace;
+  font-weight: 700;
+  background: #e8f0fe;
+  color: var(--oab-azul-escuro);
+  padding: 2px 7px;
   border-radius: 4px;
-  cursor:        pointer;
-  user-select:   none;
-  transition:    background 0.15s, color 0.15s;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s, color 0.15s;
 }
 
 .exp-ph-tag:hover {
   background: var(--oab-azul);
-  color:      #fff;
+  color: #fff;
 }
 
-/* ── Campo de nova chave: prefixo fixo ── */
 .exp-chave-nova-wrap {
-  display:       flex;
-  align-items:   center;
-  gap:           4px;
-  background:    var(--oab-cinza-bg);
-  border:        1.5px solid transparent;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--oab-cinza-bg);
+  border: 1.5px solid transparent;
   border-radius: 8px;
-  padding:       6px 10px;
+  padding: 6px 10px;
   margin-bottom: 10px;
-  transition:    border-color 0.2s, background 0.2s;
+  transition: border-color 0.2s, background 0.2s;
 }
 
 .exp-chave-nova-wrap:focus-within {
   border-color: var(--oab-azul);
-  background:   #fff;
+  background: #fff;
 }
 
 .exp-prefixo-fixo {
-  font-size:   11px;
+  font-size: 11px;
   font-weight: 700;
-  color:       var(--oab-azul);
+  color: var(--oab-azul);
   white-space: nowrap;
   flex-shrink: 0;
   user-select: none;
 }
 
 #exp_chave_sufixo {
-  flex:        1;
-  border:      none      !important;
-  background:  transparent !important;
-  box-shadow:  none      !important;
-  outline:     none      !important;
-  padding:     0         !important;
-  margin:      0         !important;
-  height:      auto      !important;
-  min-width:   0;
+  flex: 1;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  height: auto !important;
+  min-width: 0;
   font-family: 'Inter', sans-serif;
-  font-size:   11px;
+  font-size: 11px;
   font-weight: 600;
-  color:       var(--oab-azul-escuro);
+  color: var(--oab-azul-escuro);
   border-bottom: none !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   7. BOTÕES DE AÇÃO (dentro do corpo)
+══════════════════════════════════════════════════════════════════════ */
+.exp-actions {
+  margin-top: auto;
+  padding-top: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-top: 1px solid var(--oab-cinza-bg);
+}
+
+.exp-actions-left,
+.exp-actions-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-exp {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 0 12px;
+  height: 32px;
+  border-radius: 50px;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  transition: all 0.18s;
+}
+
+.btn-exp-ghost {
+  background: none;
+  border: 1.5px solid var(--oab-cinza-md);
+  color: var(--oab-cinza-txt);
+}
+
+.btn-exp-ghost:hover {
+  background: var(--oab-vermelho);
+  border-color: var(--oab-vermelho);
+  color: #fff;
+}
+
+.btn-exp-primary {
+  background: var(--oab-azul);
+  border: 1.5px solid var(--oab-azul);
+  color: #fff;
+}
+
+.btn-exp-primary:hover:not(:disabled) {
+  background: var(--oab-vermelho);
+  border-color: var(--oab-vermelho);
+  box-shadow: 0 3px 8px rgba(255, 0, 0, 0.3); /* sombra vermelha opcional */
+}
+
+.btn-exp-outline {
+  background: none;
+  border: 1.5px dashed var(--oab-azul);
+  color: var(--oab-azul);
+}
+
+.btn-exp-outline:hover {
+  background: var(--oab-vermelho);
+  border-color: var(--oab-vermelho);
+  color: #fff;
+}
+
+.btn-exp-primary {
+  background: var(--oab-azul);
+  border: 1.5px solid var(--oab-azul);
+  color: #fff;
+}
+
+.btn-exp-primary:hover:not(:disabled) {
+  background: var(--oab-azul-escuro);
+  border-color: var(--oab-azul-escuro);
+  box-shadow: 0 3px 8px rgba(0,47,93,0.25);
+}
+
+.btn-exp-primary:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
+.btn-exp i {
+  font-size: 14px;
+}
+
+.btn-exp-primary {
+  background: var(--oab-azul);
+  border: 1.5px solid var(--oab-azul);
+  color: #fff;
+}
+
+.btn-exp-primary:hover:not(:disabled) {
+  background: var(--oab-vermelho);
+  border-color: var(--oab-vermelho);
+  box-shadow: 0 3px 8px rgba(255, 0, 0, 0.3); /* sombra vermelha opcional */
 }
 
 /* ══════════════════════════════════════════════════════════════════════
    8. ESTADOS: LOADING / VAZIO / ERRO
 ══════════════════════════════════════════════════════════════════════ */
 .exp-estado {
-  text-align:  center;
-  padding:     30px 20px;
-  color:       var(--oab-cinza-txt);
-  font-size:   12px;
+  text-align: center;
+  padding: 30px 20px;
+  color: var(--oab-cinza-txt);
+  font-size: 12px;
 }
 
 .exp-estado i {
-  font-size:     40px;
-  display:       block;
-  color:         var(--oab-cinza-md);
+  font-size: 40px;
+  display: block;
+  color: var(--oab-cinza-md);
   margin-bottom: 8px;
 }
 
-/* Spinner usando cor OAB */
 .spinner-oab .circle-clipper .circle {
   border-color: var(--oab-azul) !important;
 }
 
 /* ══════════════════════════════════════════════════════════════════════
-   9. FOOTER FIXO
-══════════════════════════════════════════════════════════════════════ */
-.exp-footer {
-  flex-shrink:     0;
-  background:      #f8f9fa;
-  border-top:      1.5px solid var(--oab-cinza-bg);
-  padding:         10px 20px;
-  display:         flex;
-  align-items:     center;
-  justify-content: space-between;
-  gap:             8px;
-}
-
-.exp-footer-left,
-.exp-footer-right {
-  display:     flex;
-  align-items: center;
-  gap:         6px;
-}
-
-/* Botão pílula genérico */
-.btn-exp {
-  font-family:   'Inter', sans-serif;
-  font-size:     11px;
-  font-weight:   700;
-  padding:       0 16px;
-  height:        34px;
-  border-radius: 50px;
-  border:        none;
-  cursor:        pointer;
-  display:       inline-flex;
-  align-items:   center;
-  gap:           5px;
-  white-space:   nowrap;
-  transition:    background 0.18s, color 0.18s, box-shadow 0.18s, border-color 0.18s;
-}
-
-.btn-exp-ghost {
-  background:  none;
-  border:      1.5px solid var(--oab-cinza-md);
-  color:       var(--oab-cinza-txt);
-}
-
-.btn-exp-ghost:hover {
-  border-color: var(--oab-azul);
-  color:        var(--oab-azul);
-}
-
-.btn-exp-outline {
-  background:  none;
-  border:      1.5px dashed var(--oab-azul);
-  color:       var(--oab-azul);
-}
-
-.btn-exp-outline:hover {
-  background: rgba(0,68,128,0.07);
-}
-
-.btn-exp-primary {
-  background: var(--oab-azul);
-  border:     1.5px solid var(--oab-azul);
-  color:      #fff;
-}
-
-.btn-exp-primary:hover:not(:disabled) {
-  background:  var(--oab-azul-escuro);
-  border-color: var(--oab-azul-escuro);
-  box-shadow:  0 3px 10px rgba(0,47,93,0.25);
-}
-
-.btn-exp-primary:disabled {
-  opacity: 0.38;
-  cursor:  not-allowed;
-}
-
-.btn-exp i { font-size: 14px; }
-
-/* ══════════════════════════════════════════════════════════════════════
-   10. UTILITÁRIOS
+   9. UTILITÁRIOS
 ══════════════════════════════════════════════════════════════════════ */
 .hidden { display: none !important; }
 
@@ -572,29 +480,19 @@ body {
      CABEÇALHO
 ══════════════════════════════════════════════════════════════════════ -->
 <div class="exp-header">
-  <i class="material-icons exp-header-icone">history_edu</i>
-  <h1>Expediente Predefinido</h1>
+  <h1>Expedientes predefinidos</h1>
 </div>
-
 
 <!-- ══════════════════════════════════════════════════════════════════════
      CORPO
 ══════════════════════════════════════════════════════════════════════ -->
 <div class="exp-body">
 
-  <!-- Campo Relator (sempre visível — usado para flexão de gênero) -->
-  <div class="exp-relator-wrap">
-    <div class="input-field">
-      <input type="text" id="exp_relator" autocomplete="off">
-      <label for="exp_relator">Relator(a) da ficha — usado para flexão de gênero</label>
-    </div>
-  </div>
-
   <!-- ─── PAINEL SELEÇÃO ──────────────────────────────────────── -->
   <div id="expPainelSelecao">
     <span class="exp-secao-label">Selecione o expediente</span>
 
-    <!-- Dropdown customizado (mesmo padrão do painel lateral) -->
+    <!-- Dropdown customizado -->
     <div class="custom-dropdown" id="expDropdown">
       <div class="dropdown-selected" onclick="exp_toggleDropdown()">
         <div class="selected-info">
@@ -610,17 +508,14 @@ body {
     <div id="expCampoVistas" class="exp-campo-vistas hidden">
       <div class="input-field">
         <input type="text" id="exp_membro_vistas" autocomplete="off"
-              placeholder="Digite o nome do membro...">
+               placeholder="Digite o nome do membro...">
         <label for="exp_membro_vistas">Para quem foi dado vista?</label>
       </div>
     </div>
-
   </div><!-- /expPainelSelecao -->
-
 
   <!-- ─── PAINEL EDITAR ───────────────────────────────────────── -->
   <div id="expPainelEditar" class="exp-painel hidden">
-
     <span class="exp-secao-label">Chave (nome da configuração)</span>
     <span id="expEditarChaveTexto" class="exp-chave-readonly">—</span>
 
@@ -635,13 +530,10 @@ body {
       <span class="exp-ph-tag" onclick="exp_ph('exp_valor_editar','{{Dr.}}')">{{Dr.}}</span>
       <span class="exp-ph-tag" onclick="exp_ph('exp_valor_editar','{{tabMembros.Nome}}')">{{tabMembros.Nome}}</span>
     </div>
-
   </div><!-- /expPainelEditar -->
-
 
   <!-- ─── PAINEL NOVO ─────────────────────────────────────────── -->
   <div id="expPainelNovo" class="exp-painel hidden">
-
     <span class="exp-secao-label">Chave (nome da configuração)</span>
     <div class="exp-chave-nova-wrap">
       <span class="exp-prefixo-fixo">Expediente</span>
@@ -661,42 +553,38 @@ body {
       <span class="exp-ph-tag" onclick="exp_ph('exp_valor_novo','{{Dr.}}')">{{Dr.}}</span>
       <span class="exp-ph-tag" onclick="exp_ph('exp_valor_novo','{{tabMembros.Nome}}')">{{tabMembros.Nome}}</span>
     </div>
-
   </div><!-- /expPainelNovo -->
 
+  <!-- ─── BOTÕES DE AÇÃO ─────────────────────────────────────── -->
+  <div class="exp-actions">
+    <div class="exp-actions-left">
+      <button class="btn-exp btn-exp-outline" id="expBtnNovo"
+              onclick="exp_mostrarNovo()">
+        <i class="material-icons">add</i> Novo
+      </button>
+
+      <button class="btn-exp btn-exp-outline" id="expBtnEditar"
+              onclick="exp_editarSelecionado()" style="display:none;">
+        <i class="material-icons">edit</i> Editar
+      </button>
+
+      <button class="btn-exp btn-exp-ghost hidden" id="expBtnVoltar"
+              onclick="exp_voltarSelecao()">
+        <i class="material-icons">arrow_back</i> Voltar
+      </button>
+    </div>
+    <div class="exp-actions-right">
+      <button class="btn-exp btn-exp-ghost"
+              onclick="google.script.host.close()">Cancelar</button>
+      <button class="btn-exp btn-exp-primary" id="expBtnAcao"
+              onclick="exp_acao()" disabled>
+        <i class="material-icons" id="expBtnIcone">edit_note</i>
+        <span id="expBtnTexto">Inserir</span>
+      </button>
+    </div>
+  </div>
+
 </div><!-- /exp-body -->
-
-
-<!-- ══════════════════════════════════════════════════════════════════════
-     FOOTER
-══════════════════════════════════════════════════════════════════════ -->
-<div class="exp-footer">
-
-  <div class="exp-footer-left">
-    <!-- Exibido apenas no painel de seleção -->
-    <button class="btn-exp btn-exp-outline" id="expBtnNovo"
-            onclick="exp_mostrarNovo()">
-      <i class="material-icons">add</i> Novo
-    </button>
-    <!-- Exibido nos painéis editar / novo -->
-    <button class="btn-exp btn-exp-ghost hidden" id="expBtnVoltar"
-            onclick="exp_voltarSelecao()">
-      <i class="material-icons">arrow_back</i> Voltar
-    </button>
-  </div>
-
-  <div class="exp-footer-right">
-    <button class="btn-exp btn-exp-ghost"
-            onclick="google.script.host.close()">Cancelar</button>
-    <button class="btn-exp btn-exp-primary" id="expBtnAcao"
-            onclick="exp_acao()" disabled>
-      <i class="material-icons" id="expBtnIcone">edit_note</i>
-      <span id="expBtnTexto">Inserir</span>
-    </button>
-  </div>
-
-</div>
-
 
 <!-- Materialize JS -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
@@ -730,7 +618,6 @@ function exp_carregarDoServidor() {
         return;
       }
 
-      // Popula membros e mapa de gêneros
       EXP.membros = res.membros || [];
       EXP.mapaGeneros = {};
       EXP.membros.forEach(function (m) {
@@ -739,12 +626,6 @@ function exp_carregarDoServidor() {
 
       EXP.configs = res.configs || [];
       EXP.relatorDocumento = res.relatorDocumento || '';
-
-      // Preenche campo relator (readonly)
-      var inputRelator = document.getElementById('exp_relator');
-      inputRelator.value = EXP.relatorDocumento;
-      inputRelator.setAttribute('readonly', true);
-      M.updateTextFields();
 
       // Autocomplete apenas no campo de vistas
       var nomes = EXP.membros.map(function (m) { return m.nome; });
@@ -768,7 +649,6 @@ function exp_toggleDropdown() {
   }
 }
 
-// Fecha dropdown ao clicar fora
 window.addEventListener('click', function (e) {
   var drop = document.getElementById('expDropdown');
   var lista = document.getElementById('expDropdownList');
@@ -822,12 +702,12 @@ function exp_selecionarCard(idx) {
   document.getElementById('expDropdownChave').textContent = cfg.chave;
   document.getElementById('expDropdownValor').textContent = cfg.valor;
 
-  // Destaca o item ativo no dropdown
+  // Destaca o item ativo
   document.querySelectorAll('.dropdown-item-card').forEach(function (el) {
     el.classList.toggle('active', parseInt(el.getAttribute('data-idx')) === idx);
   });
 
-  // Exibe campo de vistas somente para o expediente correspondente
+  // Exibe campo de vistas se necessário
   var chave = (cfg.chave || '').toLowerCase();
   var isVistas = chave.indexOf('vista') !== -1;
   var campoV = document.getElementById('expCampoVistas');
@@ -838,6 +718,11 @@ function exp_selecionarCard(idx) {
   } else {
     campoV.classList.add('hidden');
     document.getElementById('exp_membro_vistas').value = '';
+  }
+
+  // Mostra o botão Editar (se estiver no estado seleção)
+  if (EXP.estado === 'selecao') {
+    document.getElementById('expBtnEditar').style.display = 'inline-flex';
   }
 
   exp_atualizarBotao();
@@ -860,6 +745,9 @@ function exp_mostrarEditar(idx) {
   exp_exibirPainel('editar');
   exp_atualizarBotao();
 
+  // Esconde o botão Editar
+  document.getElementById('expBtnEditar').style.display = 'none';
+
   setTimeout(function () { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }, 60);
 }
 
@@ -869,6 +757,10 @@ function exp_mostrarNovo() {
   document.getElementById('exp_valor_novo').value = '';
   exp_exibirPainel('novo');
   exp_atualizarBotao();
+
+  // Esconde o botão Editar
+  document.getElementById('expBtnEditar').style.display = 'none';
+
   setTimeout(function () { document.getElementById('exp_chave_sufixo').focus(); }, 60);
 }
 
@@ -876,6 +768,13 @@ function exp_voltarSelecao() {
   EXP.estado = 'selecao';
   exp_exibirPainel('selecao');
   exp_atualizarBotao();
+
+  // Se houver um item selecionado, mostra o botão Editar
+  if (EXP.indexSel !== -1) {
+    document.getElementById('expBtnEditar').style.display = 'inline-flex';
+  } else {
+    document.getElementById('expBtnEditar').style.display = 'none';
+  }
 }
 
 function exp_exibirPainel(estado) {
@@ -915,6 +814,12 @@ function exp_acao() {
 // ════════════════════════════════════════════════════════════════════════
 // SALVAR EDIÇÃO
 // ════════════════════════════════════════════════════════════════════════
+function exp_editarSelecionado() {
+  if (EXP.indexSel !== -1) {
+    exp_mostrarEditar(EXP.indexSel);
+  }
+}
+
 function exp_salvarEdicao() {
   var cfg = EXP.configs[EXP.indexSel];
   if (!cfg) return;
@@ -1051,7 +956,7 @@ function exp_ph(taId, ph) {
 
 function exp_ajustarAltura(ta) {
   ta.style.height = 'auto';
-  ta.style.height = Math.min(ta.scrollHeight, 180) + 'px';
+  ta.style.height = Math.min(ta.scrollHeight, 120) + 'px';
 }
 
 function exp_setBtnCarregando(rotulo) {
@@ -1069,7 +974,7 @@ function exp_toast(msg, erro) {
   M.toast({
     html: msg,
     classes: erro ? 'red darken-2' : 'teal darken-2',
-    displayLength: 2800
+    displayLength: 2000
   });
 }
 
@@ -1106,6 +1011,5 @@ function exp_esc(str) {
   }
 });
 </script>
-
 </body>
 </html>
