@@ -14,7 +14,8 @@
     presidente: "",
     secretario: "",
     templateInicializado: false,  // indica se o template já foi copiado para a sessão atual
-    templateIdAtual: null         // ID do template usado na última inicialização
+    templateIdAtual: null,        // ID do template usado na última inicialização
+    ultimaFichaId: null
   };
 
   // ================================================================
@@ -454,29 +455,38 @@
   }
 
   /**
-   * Insere um texto padrão no campo de expediente
-   */
-  function PL_JS_inserirExpedientePredefinido() {
-    console.log("Ação: Inserir Expediente");
-    // Você pode chamar uma função que busca um texto fixo da sua planilha
-    google.script.run
-      .withSuccessHandler(function(texto) {
-        var campo = document.getElementById('expedienteTexto');
-        campo.value = texto;
-        M.textareaAutoResize(campo); // Ajusta a altura após inserir
-        PL_JS_toast("Expediente predefinido inserido.", "ok");
-      })
-      .PainelLateral_obterExpedientePadrao();
-  }
-
-  /**
    * Salva manualmente os dados da ficha selecionada
    */
+  // Função do botão Salvar Ficha
   function PL_JS_salvarFicha() {
-    console.log("Ação: Salvar Ficha");
-    // Aqui você implementaria a lógica de salvar os dados específicos da ficha
-    PL_JS_toast("Ficha salva com sucesso!", "ok");
+  if (!PL_estado.ultimaFichaId) {
+    PL_JS_toast('Nenhuma ficha selecionada. Clique em uma ficha primeiro.', 'erro');
+    return;
   }
+  PL_JS_toast('Salvando ficha...', 'ok');
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (res.sucesso) {
+        // Atualiza o cache local com os novos valores
+        var sessaoId = PL_estado.sessaoAtualId;
+        var pauta = PL_estado.pautasCarregadas[sessaoId];
+        if (pauta) {
+          var ficha = pauta.fichas.find(f => f.id == res.fichaId);
+          if (ficha) {
+            ficha.expediente = res.expediente;   // atualiza expediente
+            ficha.voto = res.voto;                // atualiza voto
+          }
+        }
+        PL_JS_toast('Ficha salva com sucesso!', 'ok');
+      } else {
+        PL_JS_toast('Erro: ' + res.erro, 'erro');
+      }
+    })
+    .withFailureHandler(function(err) {
+      PL_JS_toast('Erro: ' + err.message, 'erro');
+    })
+    .PainelLateral_salvarFicha(PL_estado.ultimaFichaId);
+}
 
   /**
    * Executa a lógica de apuração de votos
@@ -548,6 +558,9 @@
   function PL_JS_gerarDocumentoPeloCard(idFicha) {
     const sessaoId = PL_estado.sessaoAtualId;
     const pauta    = PL_estado.pautasCarregadas[sessaoId];
+    
+    PL_estado.ultimaFichaId = idFicha;
+
     if (!pauta) return PL_JS_toast('Dados da pauta não carregados.', 'erro');
 
     const ficha = pauta.fichas.find(function(f) { return f.id == idFicha; });
@@ -613,7 +626,7 @@
       'tabVotos.Resultado':      ficha.resultado   || '',
       'tabFichas.Relator':       ficha.relator     || '',
       'tabFichas.Membros':       PL_estado.membros.join(', '),
-      'tabFichas.Expediente':    document.getElementById('expedienteTexto').value || '',
+      'tabFichas.Expediente':    ficha.expediente || '', 
       'tabSessoes.DataSessao':   dataExtenso,
       'tabSessoes.Presidente':   document.getElementById('inputPresidente').value  || '',
       'tabSessoes.Secretário':   secretarioNome,

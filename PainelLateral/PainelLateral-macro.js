@@ -154,6 +154,7 @@ function PainelLateral_carregarPauta(sessaoId) {
     const iFProcId   = (mF['idprocesso'] || 3) - 1;
     const iFOrdem    = (mF['ordem']      || 4) - 1;
     const iFRelator  = (mF['relator']    || 5) - 1;
+    const iFExpediente = (mF['expediente'] || 6) - 1;
 
     const fichas = dadosFichas.slice(1)
       .filter(r => r[iFSessao] == idBusca)
@@ -168,6 +169,7 @@ function PainelLateral_carregarPauta(sessaoId) {
           idProcesso:     idProc,
           ordem:          r[iFOrdem]   || '',
           relator:        r[iFRelator] || '',
+          expediente:     r[iFExpediente] || '',
 
           // tabProcessos — campos completos para o documento
           processo:       linhaProc ? linhaProc[(mP['processo']   || 2) - 1] : 'N/D',
@@ -325,20 +327,6 @@ function PainelLateral_obterPacoteInicial() {
   }
 }
 
-function PainelLateral_obterVotosDaSessao(sessaoId) {
-  const ss = PainelLateral_getPlanilha();
-  const sheetVotos = ss.getSheetByName('tabVotos');
-  const dadosVotos = sheetVotos.getDataRange().getValues();
-  const mapaVotos = getMapaColunas(sheetVotos);
-  
-  // Pegamos os votos onde o ID do Processo ou ID da Ficha pertença a esta sessão
-  // Nota: Na sua pautaAtiva já temos os IDs das fichas carregados
-  return dadosVotos.slice(1).map(v => ({
-    idFicha: v[(mapaVotos['idfichavotacao'] || 2) - 1],
-    voto: v[(mapaVotos['voto'] || 6) - 1]
-  })).filter(v => v.voto !== ""); // Filtro simples para não enviar lixo
-}
-
 /**
  * Retorna a lista completa de nomes da tabMembros para o cache de autocompletes.
  */
@@ -476,4 +464,131 @@ function preencherDocumentoComSubs(subs) {
 function gerarDocumentoParaFicha(subs, templateId) {
   copiarDocumentoParaAtivo(templateId);
   return preencherDocumentoComSubs(subs);
+}
+
+// =================================================================================
+// [BLOCO] FUNÇÕES DE SALVAMENTO DE FICHA
+// =================================================================================
+
+/**
+ * Extrai o texto do expediente do documento ativo (após "Expediente:").
+ */
+function extrairExpedienteDoDocumento() {
+  const body = DocumentApp.getActiveDocument().getBody();
+  const encontrado = body.findText("Expediente:");
+  if (!encontrado) return '';
+  const elem = encontrado.getElement();
+  const textoCompleto = elem.asText().getText();
+  const pos = textoCompleto.indexOf('Expediente:');
+  if (pos === -1) return '';
+  return textoCompleto.substring(pos + 'Expediente:'.length).trim();
+}
+
+/**
+ * Extrai o texto do voto do documento ativo.
+ * Localiza o título "VOTO" e captura o texto até a linha que contém a data (ex: "Goiânia,").
+ */
+function extrairVotoDoDocumento() {
+  const body = DocumentApp.getActiveDocument().getBody();
+  const numChildren = body.getNumChildren();
+  let voto = '';
+  let capturando = false;
+  for (let i = 0; i < numChildren; i++) {
+    const elem = body.getChild(i);
+    if (elem.getType() === DocumentApp.ElementType.PARAGRAPH) {
+      const texto = elem.asParagraph().getText();
+      if (!capturando) {
+        if (texto.trim().toUpperCase() === 'VOTO' || texto.trim().toUpperCase().startsWith('VOTO')) {
+          capturando = true;
+        }
+      } else {
+        if (texto.trim().startsWith('Goiânia,')) break;
+        if (voto) voto += '\n';
+        voto += texto;
+      }
+    }
+  }
+  return voto.trim();
+}
+
+/**
+ * Salva a ficha atual: atualiza Expediente em tabFichas e Voto em tabVotos.
+ * @param {string|number} fichaId
+ */
+function PainelLateral_salvarFicha(fichaId) {
+  try {
+    const ss = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
+    
+    // Extrair dados do documento
+    const expediente = extrairExpedienteDoDocumento();
+    const voto = extrairVotoDoDocumento();
+    
+    // Atualizar tabFichas (campo Expediente)
+    const sheetFichas = ss.getSheetByName('tabFichas');
+    if (!sheetFichas) throw new Error('Aba tabFichas não encontrada.');
+    const mapaF = getMapaColunas(sheetFichas);
+    const dadosF = sheetFichas.getDataRange().getValues();
+    const iFId = (mapaF['id'] || 1) - 1;
+    const iFExpediente = mapaF['expediente'];
+    if (!iFExpediente) throw new Error('Coluna "expediente" não encontrada em tabFichas.');
+    
+    let linhaFicha = -1;
+    for (let i = 1; i < dadosF.length; i++) {
+      if (dadosF[i][iFId] == fichaId) {
+        linhaFicha = i + 1;
+        break;
+      }
+    }
+    if (linhaFicha === -1) throw new Error('Ficha ID ' + fichaId + ' não encontrada.');
+    sheetFichas.getRange(linhaFicha, iFExpediente).setValue(expediente);
+    
+    // Obter o relator da ficha (para o voto)
+    const iFRelator = mapaF['relator'] || 5;
+    const relator = dadosF[linhaFicha - 1][iFRelator - 1] || '';
+    
+    // Atualizar tabVotos
+    const sheetVotos = ss.getSheetByName('tabVotos');
+    if (!sheetVotos) throw new Error('Aba tabVotos não encontrada.');
+    const mapaV = getMapaColunas(sheetVotos);
+    const dadosV = sheetVotos.getDataRange().getValues();
+    const iVIdFicha = mapaV['idfichavotacao'] || 2;
+    const iVVoto = mapaV['voto'] || 6;
+    const iVTipoVoto = mapaV['tipovoto'];
+    const iVRelator = mapaV['relator'];
+    
+    // Procurar se já existe um voto para esta ficha
+    let linhaVoto = -1;
+    for (let i = 1; i < dadosV.length; i++) {
+      if (dadosV[i][iVIdFicha - 1] == fichaId) {
+        linhaVoto = i + 1;
+        break;
+      }
+    }
+    
+    if (linhaVoto !== -1) {
+      // Atualiza existente
+      sheetVotos.getRange(linhaVoto, iVVoto).setValue(voto);
+      if (iVTipoVoto) sheetVotos.getRange(linhaVoto, iVTipoVoto).setValue('Voto do relator');
+      if (iVRelator) sheetVotos.getRange(linhaVoto, iVRelator).setValue(relator);
+    } else {
+      // Criar novo registro
+      // Determinar o número máximo de colunas
+      const maxCol = Math.max(...Object.values(mapaV));
+      const novaLinha = new Array(maxCol).fill('');
+      novaLinha[iVIdFicha - 1] = fichaId;
+      novaLinha[iVVoto - 1] = voto;
+      if (iVTipoVoto) novaLinha[iVTipoVoto - 1] = 'Voto do relator';
+      if (iVRelator) novaLinha[iVRelator - 1] = relator;
+      sheetVotos.appendRow(novaLinha);
+    }
+    
+    return { 
+      sucesso: true, 
+      fichaId: fichaId,
+      expediente: expediente,
+      voto: voto
+    };
+  } catch (err) {
+    return { sucesso: false, erro: err.message };
+  }
 }
