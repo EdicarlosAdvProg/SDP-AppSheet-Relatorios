@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+
+  <!-- Materialize CSS -->
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+  <!-- Material Icons -->
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <!-- Inter -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
+        rel="stylesheet">
+
+<style>
+/* ══════════════════════════════════════════════════════════════════════
+   1. RESET E IDENTIDADE OAB-GO
+══════════════════════════════════════════════════════════════════════ */
+:root {
+  --oab-vermelho:    #ff0000;
+  --oab-azul:        #004480;
+  --oab-azul-escuro: #002f5d;
+  --oab-fundo:       #d1d8db;
+  --oab-branco:      #ffffff;
+  --oab-cinza-md:    #b0bec5;
+  --oab-cinza-txt:   #546e7a;
+  --oab-cinza-bg:    #eceff1;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  font-family:      'Inter', sans-serif;
+  background-color: var(--oab-fundo);
+  margin:           0;
+  padding:          0;
+  height:           100vh;
+  display:          flex;
+  flex-direction:   column;
+  overflow:         hidden;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   2. CABEÇALHO FIXO
+══════════════════════════════════════════════════════════════════════ */
+.exp-header {
+  background:    var(--oab-azul);
+  padding:       14px 20px 12px;
+  flex-shrink:   0;
+  display:       flex;
+  align-items:   center;
+  gap:           12px;
+  border-bottom: 3px solid var(--oab-vermelho);
+}
+
+.exp-header-icone {
+  color:     var(--oab-vermelho);
+  font-size: 22px;
+}
+
+.exp-header h1 {
+  color:          var(--oab-branco);
+  font-size:      1rem;
+  font-weight:    700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin:         0;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   3. CORPO PRINCIPAL (scrollável)
+══════════════════════════════════════════════════════════════════════ */
+.exp-body {
+  flex:       1;
+  overflow-y: auto;
+  padding:    16px 20px 8px;
+  min-height: 0;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   4. CAMPO RELATOR
+══════════════════════════════════════════════════════════════════════ */
+.exp-relator-wrap .input-field {
+  margin: 0 0 4px;
+}
+
+.exp-relator-wrap .input-field input[type=text] {
+  font-size: 12px !important;
+  height:    2.1rem !important;
+  color:     #263238 !important;
+  border-bottom: 1px solid var(--oab-cinza-md) !important;
+}
+
+.exp-relator-wrap .input-field input[type=text]:focus {
+  border-bottom: 1px solid var(--oab-azul) !important;
+  box-shadow:    0 1px 0 0 var(--oab-azul) !important;
+}
+
+.exp-relator-wrap .input-field label {
+  font-size: 11px !important;
+  color:     var(--oab-cinza-txt) !important;
+}
+
+.exp-relator-wrap .input-field input:focus + label,
+.exp-relator-wrap .input-field label.active {
+  color:       var(--oab-azul) !important;
+  font-weight: 700 !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   5. LISTA DE CARDS DE SELEÇÃO (mantido para referência, mas substituído pelo dropdown)
+══════════════════════════════════════════════════════════════════════ */
+.exp-secao-label {
+  font-size:      9px;
+  font-weight:    700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color:          var(--oab-cinza-txt);
+  margin:         12px 0 6px;
+  display:        block;
+}
+
+.exp-lista {
+  border:        1.5px solid var(--oab-cinza-bg);
+  border-radius: 10px;
+  overflow:      hidden;
+  max-height:    220px;
+  overflow-y:    auto;
+}
+
+.exp-card {
+  padding:       10px 12px;
+  border-bottom: 1.5px solid var(--oab-cinza-bg);
+  cursor:        pointer;
+  display:       flex;
+  align-items:   center;
+  gap:           8px;
+  border-left:   3px solid transparent;
+  transition:    background 0.15s, border-left-color 0.15s;
+}
+
+.exp-card:last-child  { border-bottom: none; }
+
+.exp-card:hover {
+  background: #f0f4ff;
+}
+
+.exp-card.selecionado {
+  background:       #e8f0fe;
+  border-left-color: var(--oab-azul);
+}
+
+.exp-card-body {
+  flex:      1;
+  min-width: 0;
+}
+
+.exp-card-chave {
+  display:       block;
+  font-size:     11px;
+  font-weight:   700;
+  color:         var(--oab-azul);
+  margin-bottom: 2px;
+  white-space:   nowrap;
+  overflow:      hidden;
+  text-overflow: ellipsis;
+}
+
+.exp-card-valor {
+  display:       block;
+  font-size:     10px;
+  color:         var(--oab-cinza-txt);
+  font-style:    italic;
+  white-space:   nowrap;
+  overflow:      hidden;
+  text-overflow: ellipsis;
+}
+
+.btn-card-edit {
+  flex-shrink:     0;
+  background:      none;
+  border:          none;
+  cursor:          pointer;
+  color:           var(--oab-cinza-md);
+  padding:         4px;
+  border-radius:   50%;
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  transition:      color 0.18s, background 0.18s;
+}
+
+.btn-card-edit:hover {
+  color:      var(--oab-azul);
+  background: rgba(0,68,128,0.09);
+}
+
+.btn-card-edit i { font-size: 16px; }
+
+/* ══════════════════════════════════════════════════════════════════════
+   DROPDOWN CUSTOMIZADO (copiado do painel lateral com adaptações)
+══════════════════════════════════════════════════════════════════════ */
+.custom-dropdown {
+  position: relative;
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.dropdown-selected {
+  background: var(--oab-branco);
+  border: 1.5px solid var(--oab-cinza-md);
+  border-radius: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: border-color 0.2s;
+}
+
+.dropdown-selected:hover {
+  border-color: var(--oab-azul);
+}
+
+.selected-info {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex: 1;
+}
+
+#expDropdownChave {
+  color: var(--oab-azul-escuro);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#expDropdownValor {
+  color: var(--oab-cinza-txt);
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dropdown-arrow {
+  color: var(--oab-cinza-txt);
+  font-size: 18px;
+  margin-left: 8px;
+}
+
+.dropdown-list {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: var(--oab-branco);
+  border-radius: 8px;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+  overflow-y: auto;
+  max-height: 240px;
+  z-index: 1000;
+  border: 1.5px solid var(--oab-azul);
+}
+
+.dropdown-item-card {
+  padding: 10px 14px;
+  border-bottom: 1.5px solid var(--oab-cinza-bg);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.dropdown-item-card:last-child {
+  border-bottom: none;
+}
+
+.dropdown-item-card:hover {
+  background: var(--oab-cinza-bg);
+}
+
+.dropdown-item-card.active {
+  border-left: 4px solid var(--oab-vermelho);
+  background: #f0f4f8;
+}
+
+.item-chave {
+  display: block;
+  color: var(--oab-azul);
+  font-size: 11px;
+  font-weight: 700;
+  margin-bottom: 3px;
+}
+
+.item-valor {
+  display: block;
+  color: var(--oab-cinza-txt);
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   6. CAMPO VISTAS (condicional)
+══════════════════════════════════════════════════════════════════════ */
+.exp-campo-vistas {
+  margin-top:    10px;
+  padding:       10px 14px 4px;
+  background:    #f0f4ff;
+  border:        1.5px solid var(--oab-azul);
+  border-radius: 8px;
+  animation:     exp-fadeIn 0.2s ease;
+}
+
+.exp-campo-vistas .input-field {
+  margin: 0;
+}
+
+.exp-campo-vistas .input-field input[type=text] {
+  font-size: 12px !important;
+  height:    2.1rem !important;
+  color:     #263238 !important;
+  border-bottom: 1px solid var(--oab-azul) !important;
+  box-shadow: none !important;
+}
+
+.exp-campo-vistas .input-field input[type=text]:focus {
+  border-bottom: 1px solid var(--oab-azul-escuro) !important;
+  box-shadow:    0 1px 0 0 var(--oab-azul-escuro) !important;
+}
+
+.exp-campo-vistas .input-field label {
+  font-size: 11px !important;
+  color:     var(--oab-azul) !important;
+  font-weight: 700;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   7. PAINEIS EDITAR / NOVO
+══════════════════════════════════════════════════════════════════════ */
+.exp-painel {
+  animation: exp-fadeIn 0.18s ease;
+}
+
+.exp-chave-readonly {
+  display:       block;
+  font-size:     11px;
+  font-weight:   700;
+  color:         var(--oab-azul);
+  background:    var(--oab-cinza-bg);
+  padding:       6px 10px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  word-break:    break-word;
+}
+
+/* Textarea compartilhado */
+.exp-textarea {
+  width:        100%;
+  font-family:  'Inter', sans-serif !important;
+  font-size:    11px               !important;
+  color:        #263238            !important;
+  background:   #fff               !important;
+  border:       1.5px solid var(--oab-cinza-md) !important;
+  border-radius: 8px               !important;
+  padding:      10px 12px          !important;
+  min-height:   80px;
+  max-height:   180px;
+  box-shadow:   none               !important;
+  resize:       none;
+  box-sizing:   border-box;
+  outline:      none;
+  line-height:  1.55;
+  overflow-y:   auto;
+  transition:   border-color 0.2s;
+  display:      block;
+}
+
+.exp-textarea:focus {
+  border-color: var(--oab-azul) !important;
+}
+
+/* Tags de placeholder */
+.exp-ph-wrap {
+  display:     flex;
+  flex-wrap:   wrap;
+  gap:         4px;
+  margin:      6px 0 2px;
+}
+
+.exp-ph-tag {
+  font-size:     9px;
+  font-family:   monospace;
+  font-weight:   700;
+  background:    #e8f0fe;
+  color:         var(--oab-azul-escuro);
+  padding:       2px 7px;
+  border-radius: 4px;
+  cursor:        pointer;
+  user-select:   none;
+  transition:    background 0.15s, color 0.15s;
+}
+
+.exp-ph-tag:hover {
+  background: var(--oab-azul);
+  color:      #fff;
+}
+
+/* ── Campo de nova chave: prefixo fixo ── */
+.exp-chave-nova-wrap {
+  display:       flex;
+  align-items:   center;
+  gap:           4px;
+  background:    var(--oab-cinza-bg);
+  border:        1.5px solid transparent;
+  border-radius: 8px;
+  padding:       6px 10px;
+  margin-bottom: 10px;
+  transition:    border-color 0.2s, background 0.2s;
+}
+
+.exp-chave-nova-wrap:focus-within {
+  border-color: var(--oab-azul);
+  background:   #fff;
+}
+
+.exp-prefixo-fixo {
+  font-size:   11px;
+  font-weight: 700;
+  color:       var(--oab-azul);
+  white-space: nowrap;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+#exp_chave_sufixo {
+  flex:        1;
+  border:      none      !important;
+  background:  transparent !important;
+  box-shadow:  none      !important;
+  outline:     none      !important;
+  padding:     0         !important;
+  margin:      0         !important;
+  height:      auto      !important;
+  min-width:   0;
+  font-family: 'Inter', sans-serif;
+  font-size:   11px;
+  font-weight: 600;
+  color:       var(--oab-azul-escuro);
+  border-bottom: none !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   8. ESTADOS: LOADING / VAZIO / ERRO
+══════════════════════════════════════════════════════════════════════ */
+.exp-estado {
+  text-align:  center;
+  padding:     30px 20px;
+  color:       var(--oab-cinza-txt);
+  font-size:   12px;
+}
+
+.exp-estado i {
+  font-size:     40px;
+  display:       block;
+  color:         var(--oab-cinza-md);
+  margin-bottom: 8px;
+}
+
+/* Spinner usando cor OAB */
+.spinner-oab .circle-clipper .circle {
+  border-color: var(--oab-azul) !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   9. FOOTER FIXO
+══════════════════════════════════════════════════════════════════════ */
+.exp-footer {
+  flex-shrink:     0;
+  background:      #f8f9fa;
+  border-top:      1.5px solid var(--oab-cinza-bg);
+  padding:         10px 20px;
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  gap:             8px;
+}
+
+.exp-footer-left,
+.exp-footer-right {
+  display:     flex;
+  align-items: center;
+  gap:         6px;
+}
+
+/* Botão pílula genérico */
+.btn-exp {
+  font-family:   'Inter', sans-serif;
+  font-size:     11px;
+  font-weight:   700;
+  padding:       0 16px;
+  height:        34px;
+  border-radius: 50px;
+  border:        none;
+  cursor:        pointer;
+  display:       inline-flex;
+  align-items:   center;
+  gap:           5px;
+  white-space:   nowrap;
+  transition:    background 0.18s, color 0.18s, box-shadow 0.18s, border-color 0.18s;
+}
+
+.btn-exp-ghost {
+  background:  none;
+  border:      1.5px solid var(--oab-cinza-md);
+  color:       var(--oab-cinza-txt);
+}
+
+.btn-exp-ghost:hover {
+  border-color: var(--oab-azul);
+  color:        var(--oab-azul);
+}
+
+.btn-exp-outline {
+  background:  none;
+  border:      1.5px dashed var(--oab-azul);
+  color:       var(--oab-azul);
+}
+
+.btn-exp-outline:hover {
+  background: rgba(0,68,128,0.07);
+}
+
+.btn-exp-primary {
+  background: var(--oab-azul);
+  border:     1.5px solid var(--oab-azul);
+  color:      #fff;
+}
+
+.btn-exp-primary:hover:not(:disabled) {
+  background:  var(--oab-azul-escuro);
+  border-color: var(--oab-azul-escuro);
+  box-shadow:  0 3px 10px rgba(0,47,93,0.25);
+}
+
+.btn-exp-primary:disabled {
+  opacity: 0.38;
+  cursor:  not-allowed;
+}
+
+.btn-exp i { font-size: 14px; }
+
+/* ══════════════════════════════════════════════════════════════════════
+   10. UTILITÁRIOS
+══════════════════════════════════════════════════════════════════════ */
+.hidden { display: none !important; }
+
+@keyframes exp-fadeIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+</style>
+</head>
+
+<body>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     CABEÇALHO
+══════════════════════════════════════════════════════════════════════ -->
+<div class="exp-header">
+  <i class="material-icons exp-header-icone">history_edu</i>
+  <h1>Expediente Predefinido</h1>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     CORPO
+══════════════════════════════════════════════════════════════════════ -->
+<div class="exp-body">
+
+  <!-- Campo Relator (sempre visível — usado para flexão de gênero) -->
+  <div class="exp-relator-wrap">
+    <div class="input-field">
+      <input type="text" id="exp_relator" autocomplete="off">
+      <label for="exp_relator">Relator(a) da ficha — usado para flexão de gênero</label>
+    </div>
+  </div>
+
+  <!-- ─── PAINEL SELEÇÃO ──────────────────────────────────────── -->
+  <div id="expPainelSelecao">
+    <span class="exp-secao-label">Selecione o expediente</span>
+
+    <!-- Dropdown customizado (mesmo padrão do painel lateral) -->
+    <div class="custom-dropdown" id="expDropdown">
+      <div class="dropdown-selected" onclick="exp_toggleDropdown()">
+        <div class="selected-info">
+          <span id="expDropdownChave">Selecione um expediente</span>
+          <span id="expDropdownValor" class="exp-dropdown-valor"></span>
+        </div>
+        <i class="material-icons dropdown-arrow">arrow_drop_down</i>
+      </div>
+      <div class="dropdown-list hidden" id="expDropdownList"></div>
+    </div>
+
+    <!-- Campo extra: vistas -->
+    <div id="expCampoVistas" class="exp-campo-vistas hidden">
+      <div class="input-field">
+        <input type="text" id="exp_membro_vistas" autocomplete="off"
+              placeholder="Digite o nome do membro...">
+        <label for="exp_membro_vistas">Para quem foi dado vista?</label>
+      </div>
+    </div>
+
+  </div><!-- /expPainelSelecao -->
+
+
+  <!-- ─── PAINEL EDITAR ───────────────────────────────────────── -->
+  <div id="expPainelEditar" class="exp-painel hidden">
+
+    <span class="exp-secao-label">Chave (nome da configuração)</span>
+    <span id="expEditarChaveTexto" class="exp-chave-readonly">—</span>
+
+    <span class="exp-secao-label">Texto do expediente</span>
+    <textarea id="exp_valor_editar" class="exp-textarea"
+              placeholder="Digite o texto do expediente..."></textarea>
+
+    <div class="exp-ph-wrap">
+      <span class="exp-ph-tag" onclick="exp_ph('exp_valor_editar','{{do}}')">{{do}}</span>
+      <span class="exp-ph-tag" onclick="exp_ph('exp_valor_editar','{{relator}}')">{{relator}}</span>
+      <span class="exp-ph-tag" onclick="exp_ph('exp_valor_editar','{{ao}}')">{{ao}}</span>
+      <span class="exp-ph-tag" onclick="exp_ph('exp_valor_editar','{{Dr.}}')">{{Dr.}}</span>
+      <span class="exp-ph-tag" onclick="exp_ph('exp_valor_editar','{{tabMembros.Nome}}')">{{tabMembros.Nome}}</span>
+    </div>
+
+  </div><!-- /expPainelEditar -->
+
+
+  <!-- ─── PAINEL NOVO ─────────────────────────────────────────── -->
+  <div id="expPainelNovo" class="exp-painel hidden">
+
+    <span class="exp-secao-label">Chave (nome da configuração)</span>
+    <div class="exp-chave-nova-wrap">
+      <span class="exp-prefixo-fixo">Expediente</span>
+      <span style="color:var(--oab-cinza-md); flex-shrink:0;">&nbsp;</span>
+      <input type="text" id="exp_chave_sufixo"
+             placeholder="nome do expediente...">
+    </div>
+
+    <span class="exp-secao-label">Texto do expediente</span>
+    <textarea id="exp_valor_novo" class="exp-textarea"
+              placeholder="Use {{do}}, {{relator}}, {{ao}}, {{Dr.}}, {{tabMembros.Nome}} para variáveis flexionadas por gênero."></textarea>
+
+    <div class="exp-ph-wrap">
+      <span class="exp-ph-tag" onclick="exp_ph('exp_valor_novo','{{do}}')">{{do}}</span>
+      <span class="exp-ph-tag" onclick="exp_ph('exp_valor_novo','{{relator}}')">{{relator}}</span>
+      <span class="exp-ph-tag" onclick="exp_ph('exp_valor_novo','{{ao}}')">{{ao}}</span>
+      <span class="exp-ph-tag" onclick="exp_ph('exp_valor_novo','{{Dr.}}')">{{Dr.}}</span>
+      <span class="exp-ph-tag" onclick="exp_ph('exp_valor_novo','{{tabMembros.Nome}}')">{{tabMembros.Nome}}</span>
+    </div>
+
+  </div><!-- /expPainelNovo -->
+
+</div><!-- /exp-body -->
+
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     FOOTER
+══════════════════════════════════════════════════════════════════════ -->
+<div class="exp-footer">
+
+  <div class="exp-footer-left">
+    <!-- Exibido apenas no painel de seleção -->
+    <button class="btn-exp btn-exp-outline" id="expBtnNovo"
+            onclick="exp_mostrarNovo()">
+      <i class="material-icons">add</i> Novo
+    </button>
+    <!-- Exibido nos painéis editar / novo -->
+    <button class="btn-exp btn-exp-ghost hidden" id="expBtnVoltar"
+            onclick="exp_voltarSelecao()">
+      <i class="material-icons">arrow_back</i> Voltar
+    </button>
+  </div>
+
+  <div class="exp-footer-right">
+    <button class="btn-exp btn-exp-ghost"
+            onclick="google.script.host.close()">Cancelar</button>
+    <button class="btn-exp btn-exp-primary" id="expBtnAcao"
+            onclick="exp_acao()" disabled>
+      <i class="material-icons" id="expBtnIcone">edit_note</i>
+      <span id="expBtnTexto">Inserir</span>
+    </button>
+  </div>
+
+</div>
+
+
+<!-- Materialize JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+
+<script>
+// ════════════════════════════════════════════════════════════════════════
+// ESTADO GLOBAL DO MODAL
+// ════════════════════════════════════════════════════════════════════════
+var EXP = {
+  estado: 'selecao',
+  configs: [],
+  membros: [],
+  mapaGeneros: {},
+  relatorDocumento: '',
+  indexSel: -1
+};
+
+// ════════════════════════════════════════════════════════════════════════
+// INICIALIZAÇÃO
+// ════════════════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', function () {
+  M.updateTextFields();
+  exp_carregarDoServidor();
+});
+
+function exp_carregarDoServidor() {
+  google.script.run
+    .withSuccessHandler(function (res) {
+      if (!res || !res.sucesso) {
+        exp_mostrarMensagemDropdown('warning', res ? res.erro : 'Erro desconhecido.');
+        return;
+      }
+
+      // Popula membros e mapa de gêneros
+      EXP.membros = res.membros || [];
+      EXP.mapaGeneros = {};
+      EXP.membros.forEach(function (m) {
+        if (m.nome) EXP.mapaGeneros[m.nome] = m.genero || 'Masculino';
+      });
+
+      EXP.configs = res.configs || [];
+      EXP.relatorDocumento = res.relatorDocumento || '';
+
+      // Preenche campo relator (readonly)
+      var inputRelator = document.getElementById('exp_relator');
+      inputRelator.value = EXP.relatorDocumento;
+      inputRelator.setAttribute('readonly', true);
+      M.updateTextFields();
+
+      // Autocomplete apenas no campo de vistas
+      var nomes = EXP.membros.map(function (m) { return m.nome; });
+      exp_autocompleteInline(document.getElementById('exp_membro_vistas'), nomes);
+
+      exp_popularDropdown(EXP.configs);
+    })
+    .withFailureHandler(function (err) {
+      exp_mostrarMensagemDropdown('error', 'Falha na comunicação: ' + err.message);
+    })
+    .modalExpediente_buscarDados();
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// DROPDOWN (padrão painel lateral)
+// ════════════════════════════════════════════════════════════════════════
+function exp_toggleDropdown() {
+  var lista = document.getElementById('expDropdownList');
+  if (lista) {
+    lista.classList.toggle('hidden');
+  }
+}
+
+// Fecha dropdown ao clicar fora
+window.addEventListener('click', function (e) {
+  var drop = document.getElementById('expDropdown');
+  var lista = document.getElementById('expDropdownList');
+  if (drop && !drop.contains(e.target) && lista) {
+    lista.classList.add('hidden');
+  }
+});
+
+function exp_popularDropdown(configs) {
+  var listContainer = document.getElementById('expDropdownList');
+  listContainer.innerHTML = '';
+
+  if (!configs || configs.length === 0) {
+    listContainer.innerHTML = '<div class="dropdown-item-card">Nenhum expediente cadastrado.</div>';
+    return;
+  }
+
+  configs.forEach(function (cfg, idx) {
+    var card = document.createElement('div');
+    card.className = 'dropdown-item-card';
+    card.setAttribute('data-idx', idx);
+    card.onclick = function () {
+      exp_selecionarCard(idx);
+      exp_fecharDropdown();
+    };
+    card.innerHTML = `
+      <span class="item-chave">${exp_esc(cfg.chave)}</span>
+      <span class="item-valor">${exp_esc(cfg.valor)}</span>
+    `;
+    listContainer.appendChild(card);
+  });
+}
+
+function exp_fecharDropdown() {
+  document.getElementById('expDropdownList').classList.add('hidden');
+}
+
+function exp_mostrarMensagemDropdown(icone, msg) {
+  var listContainer = document.getElementById('expDropdownList');
+  listContainer.innerHTML = `<div class="dropdown-item-card" style="text-align:center;"><i class="material-icons">${icone}</i><br>${msg}</div>`;
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// SELEÇÃO DE CARD
+// ════════════════════════════════════════════════════════════════════════
+function exp_selecionarCard(idx) {
+  EXP.indexSel = idx;
+  var cfg = EXP.configs[idx];
+
+  // Atualiza o texto do dropdown
+  document.getElementById('expDropdownChave').textContent = cfg.chave;
+  document.getElementById('expDropdownValor').textContent = cfg.valor;
+
+  // Destaca o item ativo no dropdown
+  document.querySelectorAll('.dropdown-item-card').forEach(function (el) {
+    el.classList.toggle('active', parseInt(el.getAttribute('data-idx')) === idx);
+  });
+
+  // Exibe campo de vistas somente para o expediente correspondente
+  var chave = (cfg.chave || '').toLowerCase();
+  var isVistas = chave.indexOf('vista') !== -1;
+  var campoV = document.getElementById('expCampoVistas');
+
+  if (isVistas) {
+    campoV.classList.remove('hidden');
+    M.updateTextFields();
+  } else {
+    campoV.classList.add('hidden');
+    document.getElementById('exp_membro_vistas').value = '';
+  }
+
+  exp_atualizarBotao();
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// MÁQUINA DE ESTADOS
+// ════════════════════════════════════════════════════════════════════════
+function exp_mostrarEditar(idx) {
+  EXP.estado = 'editar';
+  EXP.indexSel = idx;
+  var cfg = EXP.configs[idx] || {};
+
+  document.getElementById('expEditarChaveTexto').textContent = cfg.chave || '';
+
+  var ta = document.getElementById('exp_valor_editar');
+  ta.value = cfg.valor || '';
+  exp_ajustarAltura(ta);
+
+  exp_exibirPainel('editar');
+  exp_atualizarBotao();
+
+  setTimeout(function () { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }, 60);
+}
+
+function exp_mostrarNovo() {
+  EXP.estado = 'novo';
+  document.getElementById('exp_chave_sufixo').value = '';
+  document.getElementById('exp_valor_novo').value = '';
+  exp_exibirPainel('novo');
+  exp_atualizarBotao();
+  setTimeout(function () { document.getElementById('exp_chave_sufixo').focus(); }, 60);
+}
+
+function exp_voltarSelecao() {
+  EXP.estado = 'selecao';
+  exp_exibirPainel('selecao');
+  exp_atualizarBotao();
+}
+
+function exp_exibirPainel(estado) {
+  document.getElementById('expPainelSelecao').classList.toggle('hidden', estado !== 'selecao');
+  document.getElementById('expPainelEditar').classList.toggle('hidden', estado !== 'editar');
+  document.getElementById('expPainelNovo').classList.toggle('hidden', estado !== 'novo');
+  document.getElementById('expBtnNovo').classList.toggle('hidden', estado !== 'selecao');
+  document.getElementById('expBtnVoltar').classList.toggle('hidden', estado === 'selecao');
+}
+
+function exp_atualizarBotao() {
+  var btn = document.getElementById('expBtnAcao');
+  var icone = document.getElementById('expBtnIcone');
+  var texto = document.getElementById('expBtnTexto');
+
+  if (EXP.estado === 'editar') {
+    icone.textContent = 'save';
+    texto.textContent = 'Salvar';
+    btn.disabled = false;
+  } else if (EXP.estado === 'novo') {
+    icone.textContent = 'add_circle';
+    texto.textContent = 'Adicionar';
+    btn.disabled = false;
+  } else {
+    icone.textContent = 'edit_note';
+    texto.textContent = 'Inserir';
+    btn.disabled = (EXP.indexSel === -1);
+  }
+}
+
+function exp_acao() {
+  if (EXP.estado === 'editar') { exp_salvarEdicao(); return; }
+  if (EXP.estado === 'novo') { exp_salvarNovo(); return; }
+  if (EXP.estado === 'selecao') { exp_inserirExpediente(); }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// SALVAR EDIÇÃO
+// ════════════════════════════════════════════════════════════════════════
+function exp_salvarEdicao() {
+  var cfg = EXP.configs[EXP.indexSel];
+  if (!cfg) return;
+  var valor = document.getElementById('exp_valor_editar').value.trim();
+  if (!valor) return exp_toast('O texto não pode ser vazio.', true);
+
+  exp_setBtnCarregando('Salvando...');
+
+  google.script.run
+    .withSuccessHandler(function () {
+      EXP.configs[EXP.indexSel].valor = valor;
+      exp_toast('Expediente atualizado!');
+      exp_setBtnCarregando(null);
+      var idxAtual = EXP.indexSel;
+      exp_voltarSelecao();
+      exp_popularDropdown(EXP.configs);
+      setTimeout(function () { exp_selecionarCard(idxAtual); }, 80);
+    })
+    .withFailureHandler(function (err) {
+      exp_toast('Erro: ' + err.message, true);
+      exp_setBtnCarregando(null);
+    })
+    .modalExpediente_salvarConfig(cfg.chave, valor);
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// SALVAR NOVO
+// ════════════════════════════════════════════════════════════════════════
+function exp_salvarNovo() {
+  var sufixo = document.getElementById('exp_chave_sufixo').value.trim();
+  var valor = document.getElementById('exp_valor_novo').value.trim();
+
+  if (!sufixo) return exp_toast('Informe o nome da chave após "Expediente".', true);
+  if (!valor) return exp_toast('O texto não pode ser vazio.', true);
+
+  var chave = 'Expediente ' + sufixo;
+
+  var duplicado = EXP.configs.some(function (c) {
+    return c.chave.toLowerCase() === chave.toLowerCase();
+  });
+  if (duplicado) return exp_toast('Já existe um expediente com esta chave.', true);
+
+  exp_setBtnCarregando('Adicionando...');
+
+  google.script.run
+    .withSuccessHandler(function () {
+      var novoIdx = EXP.configs.length;
+      EXP.configs.push({ chave: chave, valor: valor });
+      exp_toast('Expediente adicionado!');
+      exp_setBtnCarregando(null);
+      exp_voltarSelecao();
+      exp_popularDropdown(EXP.configs);
+      setTimeout(function () { exp_selecionarCard(novoIdx); }, 80);
+    })
+    .withFailureHandler(function (err) {
+      exp_toast('Erro: ' + err.message, true);
+      exp_setBtnCarregando(null);
+    })
+    .modalExpediente_salvarConfig(chave, valor);
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// FLEXÃO DE PLACEHOLDERS
+// ════════════════════════════════════════════════════════════════════════
+function exp_flexionar(textoBase, relatorNome, vistasNome) {
+  let resultado = textoBase;
+  const generoRelator = EXP.mapaGeneros[relatorNome] || 'Masculino';
+  
+  resultado = resultado.replace(/\{\{relator\}\}/g, generoRelator === 'Feminino' ? 'relatora' : 'relator');
+  resultado = resultado.replace(/\{\{do\}\}/g, generoRelator === 'Feminino' ? 'da' : 'do');
+  
+  if (vistasNome) {
+    const generoVistas = EXP.mapaGeneros[vistasNome] || 'Masculino';
+    resultado = resultado.replace(/\{\{tabMembros\.Nome\}\}/g, vistasNome);
+    resultado = resultado.replace(/\{\{ao\}\}/g, generoVistas === 'Feminino' ? 'à' : 'ao');
+    resultado = resultado.replace(/\{\{Dr\.\}\}/g, generoVistas === 'Feminino' ? 'Dra.' : 'Dr.');
+  }
+  return resultado;
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// INSERIR NO DOCUMENTO
+// ════════════════════════════════════════════════════════════════════════
+function exp_inserirExpediente() {
+  if (EXP.indexSel === -1) return exp_toast('Selecione um expediente.', true);
+  
+  const cfg = EXP.configs[EXP.indexSel];
+  const vistasNome = document.getElementById('exp_membro_vistas').value.trim();
+  const isVistas = cfg.chave.toLowerCase().includes('vista');
+  
+  if (isVistas && !vistasNome) {
+    return exp_toast('Informe para quem foi dado vista.', true);
+  }
+
+  if (!EXP.relatorDocumento) {
+    exp_toast('Relator não identificado no documento. A flexão usará gênero masculino.', false);
+  }
+
+  const textoFinal = exp_flexionar(cfg.valor, EXP.relatorDocumento, isVistas ? vistasNome : null);
+
+  exp_setBtnCarregando('Inserindo...');
+  google.script.run
+    .withSuccessHandler(exp_aposInsercao)
+    .withFailureHandler(function (err) {
+      exp_setBtnCarregando(null);
+      exp_toast('Erro: ' + err.message, true);
+    })
+    .modalExpediente_inserirNoDocumento(textoFinal);
+}
+
+function exp_aposInsercao(res) {
+  exp_setBtnCarregando(null);
+  if (res && res.sucesso) {
+    exp_toast('Expediente inserido!');
+    setTimeout(function () { google.script.host.close(); }, 1200);
+  } else {
+    exp_toast(res?.erro || 'Erro ao inserir.', true);
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// UTILITÁRIOS
+// ════════════════════════════════════════════════════════════════════════
+function exp_ph(taId, ph) {
+  var ta = document.getElementById(taId);
+  if (!ta) return;
+  var ini = ta.selectionStart, fim = ta.selectionEnd;
+  ta.value = ta.value.substring(0, ini) + ph + ta.value.substring(fim);
+  var pos = ini + ph.length;
+  ta.setSelectionRange(pos, pos);
+  ta.focus();
+  exp_ajustarAltura(ta);
+}
+
+function exp_ajustarAltura(ta) {
+  ta.style.height = 'auto';
+  ta.style.height = Math.min(ta.scrollHeight, 180) + 'px';
+}
+
+function exp_setBtnCarregando(rotulo) {
+  var btn = document.getElementById('expBtnAcao');
+  var texto = document.getElementById('expBtnTexto');
+  if (rotulo) {
+    btn.disabled = true;
+    texto.textContent = rotulo;
+  } else {
+    exp_atualizarBotao();
+  }
+}
+
+function exp_toast(msg, erro) {
+  M.toast({
+    html: msg,
+    classes: erro ? 'red darken-2' : 'teal darken-2',
+    displayLength: 2800
+  });
+}
+
+function exp_autocompleteInline(input, lista) {
+  if (!input || !lista) return;
+  input.addEventListener('keyup', function (e) {
+    var ignorar = [8, 46, 37, 38, 39, 40, 9, 13, 16, 17, 18, 20];
+    if (ignorar.indexOf(e.keyCode) !== -1) return;
+    var digitado = this.value;
+    if (digitado.length < 2) return;
+    var sugestao = lista.find(function (n) {
+      return n.toLowerCase().startsWith(digitado.toLowerCase());
+    });
+    if (sugestao) {
+      this.value = sugestao;
+      if (this.setSelectionRange) {
+        this.setSelectionRange(digitado.length, sugestao.length);
+      }
+    }
+  });
+}
+
+function exp_esc(str) {
+  return String(str || '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// Auto-resize dos textareas
+['exp_valor_editar', 'exp_valor_novo'].forEach(function (id) {
+  var el = document.getElementById(id);
+  if (el) {
+    el.addEventListener('input', function () { exp_ajustarAltura(this); });
+  }
+});
+</script>
+
+</body>
+</html>
