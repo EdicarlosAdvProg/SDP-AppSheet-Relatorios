@@ -143,17 +143,24 @@
       const resCl  = !p.requerido  ? 'text-missing' : '';
       const procCl = !p.procurador ? 'text-missing' : '';
 
-      // Chip de status
+      // 1. Chip de Status Original
       const statusCfg = STATUS_MAP[p.status] || null;
       const chipHTML  = statusCfg
         ? `<span class="status-chip ${statusCfg.classe}">
-             <i class="material-icons" style="font-size:11px">${statusCfg.icone}</i>${p.status}
-           </span>`
+            <i class="material-icons" style="font-size:11px">${statusCfg.icone}</i>${p.status}
+          </span>`
         : (p.status ? `<span class="status-chip s-vazio">${p.status}</span>` : '');
 
-      // Ícone e tooltip do botão de toggle de status
+      // 2. NOVA ETIQUETA: Pílula de Pauta (Aparece apenas se p.dataPauta existir)
+      // Usando o azul escuro padrão do projeto (#002f5d)
+      const pautaHTML = p.dataPauta 
+        ? `<span class="pauta-pill" style="background-color: #002f5d; color: white; padding: 2px 10px; border-radius: 50px; font-size: 0.65rem; font-weight: 700; margin-left: 8px; display: inline-flex; align-items: center; gap: 4px; vertical-align: middle; text-transform: uppercase;">
+            <i class="material-icons" style="font-size:12px">event</i>Pautado para ${p.dataPauta}
+          </span>` 
+        : '';
+
+      // 3. Ícones e Tooltips de Status
       const isConcl  = p.status === 'Concluso';
-      const isSec    = p.status === 'Na secretaria';
       const statusIcone    = isConcl  ? 'inbox'     : 'task_alt';
       const statusClasse   = isConcl  ? 'c-secretaria' : 'c-concluso';
       const statusTooltip  = isConcl  ? 'Mover para Na secretaria' : 'Marcar como Concluso';
@@ -161,7 +168,6 @@
 
       const idSafe   = _esc(p.id);
       const numSafe  = _esc(p.processo);
-      const reqSafe  = _esc((p.requerente || "").substring(0, 60));
       const descSafe = _esc(p.ultimaDesc || "").substring(0, 120);
 
       const card = document.createElement('div');
@@ -171,6 +177,7 @@
           <span class="lvl-1">
             ${p.processo || '<span class="text-missing">S/N</span>'}
             ${chipHTML}
+            ${pautaHTML}
           </span>
           <span class="lvl-2 ${reqCl}">
             <i class="material-icons lvl-icon">arrow_forward</i>
@@ -198,31 +205,32 @@
 
         <div class="p-col-actions">
           <i class="material-icons act-btn c-edit tooltipped"
-             data-tooltip="Visualizar / Editar"
-             onclick="abrirEditar('${idSafe}')">visibility</i>
+            data-tooltip="Visualizar / Editar"
+            onclick="abrirEditar('${idSafe}')">visibility</i>
 
           <i class="material-icons act-btn c-hist tooltipped"
-             data-tooltip="Ver histórico"
-             onclick="abrirHistorico('${idSafe}', '${numSafe}')">history</i>
+            data-tooltip="Ver histórico"
+            onclick="abrirHistorico('${idSafe}', '${numSafe}')">history</i>
 
           <i class="material-icons act-btn c-pauta tooltipped"
-             data-tooltip="Incluir na pauta"
-             onclick="incluirPauta('${idSafe}', '${numSafe}')">event_note</i>
+            data-tooltip="Incluir na pauta"
+            onclick="incluirPauta('${idSafe}', '${numSafe}')">event_note</i>
 
           <i class="material-icons act-btn ${statusClasse} tooltipped"
-             data-tooltip="${statusTooltip}"
-             onclick="abrirModalStatus('${idSafe}', '${numSafe}', '${_esc(novoStatusCalc)}', '${_esc(p.status)}')">
-             ${statusIcone}
+            data-tooltip="${statusTooltip}"
+            onclick="abrirModalStatus('${idSafe}', '${numSafe}', '${_esc(novoStatusCalc)}', '${_esc(p.status)}')">
+            ${statusIcone}
           </i>
 
           <i class="material-icons act-btn c-del tooltipped"
-             data-tooltip="Excluir"
-             onclick="deletarProc('${idSafe}', '${numSafe}')">delete</i>
+            data-tooltip="Excluir"
+            onclick="deletarProc('${idSafe}', '${numSafe}')">delete</i>
         </div>
       `;
       container.appendChild(card);
     });
 
+    // Reinicializa tooltips do Materialize
     M.Tooltip.init(document.querySelectorAll('.tooltipped'));
   }
 
@@ -950,4 +958,4 @@ function abrirEditar(id) {
 
     return nomeFormatado;
   }
-</script>
+</script> 

@@ -88,27 +88,58 @@ function formProcessos_buscarDadosCompletos() {
       });
     }
 
-    // ── Monta lista final de processos ────────────────────────────────────────
+    
+    // ── Mapeamento de Pautas para Processos Conclusos ──────────────────────
+    const sheetFichas = ss.getSheetByName("tabFichas");
+    const pautasAtivas = {}; // Objeto para guardar { idProcesso: "dd/mm/yyyy" }
+
+    if (sheetFichas && sheetSess) {
+      const mapaF = getMapaColunas(sheetFichas);
+      const dadosF = sheetFichas.getDataRange().getValues();
+      dadosF.shift();
+
+      // Criamos um mapa rápido das sessões para consulta
+      const mapaDatasSessao = {};
+      listaSessoes.forEach(s => { mapaDatasSessao[s.id] = s.data; });
+
+      dadosF.forEach(f => {
+        const idProcF = String(f[mapaF['idprocesso'] - 1]);
+        const idSessF = String(f[mapaF['idsessao'] - 1]);
+        const dataSess = mapaDatasSessao[idSessF];
+
+        if (dataSess) {
+          // Se o processo já estiver no mapa, mantemos a data mais recente
+          pautasAtivas[idProcF] = dataSess; 
+        }
+      });
+    }
+
+    // ── Monta lista final de processos (Ajustado com dataPauta) ─────────────────
     let listaFinal = dadosProc.map(linha => {
       const id = String(linha[mapaProc['id'] - 1] || "");
+      const statusAtual = String(linha[mapaProc['status'] - 1] || "");
+      
       let dataFmt = "---", descFmt = "Sem registros";
       if (ultimoEventoMap[id]) {
         dataFmt = Utilities.formatDate(ultimoEventoMap[id].data, "GMT-3", "dd/MM/yyyy");
         descFmt = ultimoEventoMap[id].descricao;
       }
+
       return {
-        id:         id,
-        processo:   String(linha[mapaProc['processo']   - 1] || "S/N"),
-        requerente: String(linha[mapaProc['requerente'] - 1] || ""),
-        requerido:  String(linha[mapaProc['requerido']  - 1] || ""),
-        procurador: String(linha[mapaProc['procurador'] - 1] || ""),
-        local:      mapaProc['local da ocorrência'] ? String(linha[mapaProc['local da ocorrência'] - 1] || "") : "",
-        status:     mapaProc['status'] ? String(linha[mapaProc['status'] - 1] || "") : "",
-        resumo:     mapaProc['resumo'] ? String(linha[mapaProc['resumo'] - 1] || "") : "",
-        ementa:     mapaProc['ementa'] ? String(linha[mapaProc['ementa'] - 1] || "") : "",
-        provas:     mapaProc['provas'] ? String(linha[mapaProc['provas'] - 1] || "") : "",
-        ultimaData: dataFmt,
-        ultimaDesc: descFmt
+        id:          id,
+        processo:    String(linha[mapaProc['processo']   - 1] || "S/N"),
+        requerente:  String(linha[mapaProc['requerente'] - 1] || ""),
+        requerido:   String(linha[mapaProc['requerido']  - 1] || ""),
+        procurador:  String(linha[mapaProc['procurador'] - 1] || ""),
+        local:       mapaProc['local da ocorrência'] ? String(linha[mapaProc['local da ocorrência'] - 1] || "") : "",
+        status:      statusAtual,
+        resumo:      mapaProc['resumo'] ? String(linha[mapaProc['resumo'] - 1] || "") : "",
+        ementa:      mapaProc['ementa'] ? String(linha[mapaProc['ementa'] - 1] || "") : "",
+        provas:      mapaProc['provas'] ? String(linha[mapaProc['provas'] - 1] || "") : "",
+        ultimaData:  dataFmt,
+        ultimaDesc:  descFmt,
+        // Só anexa a data da pauta se o status for exatamente "Concluso"
+        dataPauta:   (statusAtual === "Concluso") ? (pautasAtivas[id] || null) : null
       };
     });
 
