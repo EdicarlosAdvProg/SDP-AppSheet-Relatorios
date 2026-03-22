@@ -440,7 +440,7 @@ function subsecoes_capturarDetalhes(url) {
     const presMatch  = /<strong>Presidente<\/strong>:(.*?)<br>/i.exec(html);
     const presidente = presMatch ? subsecoes_limparTexto([null, presMatch[1]]) : 'Não informado';
     const cidades    = [];
-    const abaMatch   = /id="aba4"[\s\S]*?<ul>([\s\S]*?)<\/ul>/i.exec(html);
+    const abaMatch = /id="aba\d+"[\s\S]*?<ul>([\s\S]*?)<\/ul>/i.exec(html);
     if (abaMatch) {
       const liRegex = /<li>(.*?)<\/li>/gi;
       let liMatch;

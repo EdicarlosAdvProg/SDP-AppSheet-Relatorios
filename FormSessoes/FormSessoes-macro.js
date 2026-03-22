@@ -77,6 +77,15 @@ function formSessoes_buscarDadosCompletos() {
     const chaveProc     = _encontrarChave(mapaSess, ['procuradores']);
     const chaveExped    = _encontrarChave(mapaSess, ['expediente']);
 
+    // ── Extração de Locais Únicos para Autocomplete ──────────────────────────
+    const locaisAuto = {};
+    if (chaveLocal) {
+      dadosSess.forEach(linha => {
+        const loc = String(linha[mapaSess[chaveLocal] - 1] || '').trim();
+        if (loc) locaisAuto[loc] = null;
+      });
+    }
+
     // ── Monta lista de sessões ────────────────────────────────────────────────
     const listaSessoes = dadosSess.map(linha => {
       const id      = String(linha[mapaSess['id'] - 1] || '');
@@ -94,13 +103,18 @@ function formSessoes_buscarDadosCompletos() {
         presidente:  chavePresid ? String(linha[mapaSess[chavePresid] - 1] || '') : '',
         secretario:  chaveSecret ? String(linha[mapaSess[chaveSecret] - 1] || '') : '',
         membros:     chaveMembros ? String(linha[mapaSess[chaveMembros] - 1] || '') : '',
-        procuradores:chaveProc   ? String(linha[mapaSess[chaveProc]   - 1] || '') : '',
-        expediente:  chaveExped  ? String(linha[mapaSess[chaveExped]  - 1] || '') : '',
+        procuradores:chaveProc    ? String(linha[mapaSess[chaveProc]   - 1] || '') : '',
+        expediente:  chaveExped   ? String(linha[mapaSess[chaveExped]  - 1] || '') : '',
         totalFichas: contagemFichas[id] || 0
       };
     }).sort((a, b) => b.datasort - a.datasort);
 
-    return { sucesso: true, sessoes: listaSessoes, membros: membrosAuto };
+    return { 
+      sucesso: true, 
+      sessoes: listaSessoes, 
+      membros: membrosAuto, 
+      locais: locaisAuto // Nova chave retornada
+    };
 
   } catch (e) {
     console.error('Erro em formSessoes_buscarDadosCompletos: ' + e.message);
@@ -456,18 +470,36 @@ function formSessoes_importarProcessosEmMassa(idSessao, listaNumeros, orgao) {
     const dadosF = sheetFichas.getDataRange().getValues();
     const dadosV = sheetVotos.getDataRange().getValues();
 
-    // 3. Define a última ordem da sessão
+    // 3. Controle de Duplicidade e Ordem
+    // Criamos um Set com os IDs de processos que JÁ ESTÃO nesta sessão
+    const processosNaSessao = new Set();
     let ultimaOrdem = 0;
-    for (let j = 1; j < dadosF.length; j++) {
-      if (String(dadosF[j][mapaF['idsessao'] - 1]) === String(idSessao)) {
-        const o = parseInt(dadosF[j][mapaF['ordem'] - 1]) || 0;
+    let ultimoIdFicha = "";
+    let ultimoIdVoto = "";
+
+    // Pegamos o último ID absoluto da planilha para o incremental (independente da sessão)
+    for (let i = 1; i < dadosF.length; i++) {
+      const idF = String(dadosF[i][mapaF['id'] - 1]);
+      if (idF > ultimoIdFicha) ultimoIdFicha = idF;
+      
+      // Verifica se o processo pertence a esta sessão para evitar duplicata
+      if (String(dadosF[i][mapaF['idsessao'] - 1]) === String(idSessao)) {
+        processosNaSessao.add(String(dadosF[i][mapaF['idprocesso'] - 1]));
+        const o = parseInt(dadosF[i][mapaF['ordem'] - 1]) || 0;
         if (o > ultimaOrdem) ultimaOrdem = o;
       }
+    }
+    
+    // Pegamos o último ID da tabVotos para o incremental
+    for (let i = 1; i < dadosV.length; i++){
+       const idV = String(dadosV[i][mapaV['id'] - 1]);
+       if (idV > ultimoIdVoto) ultimoIdVoto = idV;
     }
 
     const ehPleno = (orgao === "Pleno do SDP");
     const relatorPadrao = ehPleno ? "Órgão Deliberativo" : "";
     let adicionados = 0;
+    let puladosDuplicados = 0;
     let naoEncontrados = [];
 
     // 4. Processamento
@@ -475,8 +507,16 @@ function formSessoes_importarProcessosEmMassa(idSessao, listaNumeros, orgao) {
       const idRealDoProcesso = cacheProcessos[num];
 
       if (idRealDoProcesso) {
+        // --- FILTRO DE DUPLICIDADE ---
+        if (processosNaSessao.has(idRealDoProcesso)) {
+          puladosDuplicados++;
+          return; // Pula para o próximo número
+        }
+
         ultimaOrdem++;
-        const idNovaFicha = novoIdTimeStamp() + "_" + adicionados;
+        // Geração de ID usando sua função incremental
+        ultimoIdFicha = gerarProximoIdIncremental(ultimoIdFicha);
+        const idNovaFicha = ultimoIdFicha;
         
         // --- CRIAR A FICHA ---
         const novaFicha = new Array(Object.keys(mapaF).length).fill('');
@@ -486,55 +526,59 @@ function formSessoes_importarProcessosEmMassa(idSessao, listaNumeros, orgao) {
         novaFicha[mapaF['ordem'] - 1] = ultimaOrdem;
         novaFicha[mapaF['relator'] - 1] = relatorPadrao;
         sheetFichas.appendRow(novaFicha);
+        
+        // Adiciona ao Set para evitar duplicidade caso o número apareça duas vezes no mesmo texto
+        processosNaSessao.add(idRealDoProcesso);
 
-        // --- LÓGICA DO PLENO: BUSCAR E REPLICAR VOTO ---
+        // --- LÓGICA DO PLENO ---
         if (ehPleno) {
           let votoMaisRecente = null;
-          let maiorIdVoto = 0; // Usando o timestamp do ID para saber qual é o último
+          let maiorRefVoto = 0; 
 
-          // Varre a tabVotos em busca do ID do processo
           for (let k = 1; k < dadosV.length; k++) {
             const idProcNoVoto = String(dadosV[k][mapaV['idprocesso'] - 1]).trim();
             if (idProcNoVoto === idRealDoProcesso) {
-              const idVotoAtual = parseInt(dadosV[k][mapaV['id'] - 1]) || 0;
-              if (idVotoAtual >= maiorIdVoto) {
-                maiorIdVoto = idVotoAtual;
+              const refVoto = dadosV[k][mapaV['id'] - 1]; 
+              if (refVoto >= maiorRefVoto) {
+                maiorRefVoto = refVoto;
                 votoMaisRecente = dadosV[k];
               }
             }
           }
 
-          // Se achou um voto anterior, replica para a nova ficha
           if (votoMaisRecente) {
+            ultimoIdVoto = gerarProximoIdIncremental(ultimoIdVoto);
             const novoVoto = new Array(Object.keys(mapaV).length).fill('');
             
-            novoVoto[mapaV['id'] - 1] = novoIdTimeStamp() + "_V" + adicionados;
-            novoVoto[mapaV['idfichavotacao'] - 1] = idNovaFicha; // Vincula à ficha que acabamos de criar
+            novoVoto[mapaV['id'] - 1] = ultimoIdVoto;
+            novoVoto[mapaV['idfichavotacao'] - 1] = idNovaFicha;
             novoVoto[mapaV['idprocesso'] - 1] = idRealDoProcesso;
             novoVoto[mapaV['tipovoto'] - 1] = "Voto do relator";
-            novoVoto[mapaV['relator'] - 1] = "Órgão Deliberativo"; // Força o relator conforme solicitado
-            novoVoto[mapaV['voto'] - 1] = votoMaisRecente[mapaV['voto'] - 1]; // Copia o conteúdo do voto
+            novoVoto[mapaV['relator'] - 1] = "Órgão Deliberativo";
+            novoVoto[mapaV['voto'] - 1] = votoMaisRecente[mapaV['voto'] - 1];
             
-            // Se houver coluna de URL de relatório, podemos copiar também
             const colUrl = _encontrarChave(mapaV, ['urlvoto', 'url relatório']);
             if (colUrl) {
                novoVoto[mapaV[colUrl] - 1] = votoMaisRecente[mapaV[colUrl] - 1];
             }
-
             sheetVotos.appendRow(novoVoto);
           }
         }
-
         adicionados++;
       } else {
         naoEncontrados.push(num);
       }
     });
 
+    // Montagem da mensagem de retorno
+    let msgAviso = [];
+    if (naoEncontrados.length > 0) msgAviso.push(`Não cadastrados: ${naoEncontrados.length}`);
+    if (puladosDuplicados > 0) msgAviso.push(`Já estavam na pauta: ${puladosDuplicados}`);
+
     return { 
       sucesso: true, 
       adicionados: adicionados, 
-      avisos: naoEncontrados.length > 0 ? `Processos ignorados (não cadastrados): ${naoEncontrados.join(', ')}` : null 
+      avisos: msgAviso.length > 0 ? msgAviso.join(' | ') : null 
     };
 
   } catch (e) {

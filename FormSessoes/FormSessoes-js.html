@@ -16,6 +16,7 @@
   let sessaoAtualId = '';           // ID da sessão atual no modal de fichas
   let fichasDaSessao = [];          // cache das fichas da sessão atual
   let sortableInstance = null;      // instância do SortableJS
+  let baseLocais = {};              // para o carregamento do autocomplet de locais da sessão
 
   const MESES_PT = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
@@ -54,6 +55,7 @@
         if (res.sucesso) {
           baseSessoes = res.sessoes || [];
           baseMembros = res.membros || {};
+          baseLocais  = res.locais  || {}; // Armazena os locais recebidos
           formSessoes_renderizar(baseSessoes);
         } else {
           M.toast({ html: 'Erro ao carregar: ' + res.erro, classes: 'red darken-2' });
@@ -65,7 +67,7 @@
         M.toast({ html: 'Falha crítica no servidor.', classes: 'red darken-2' });
       })
       .formSessoes_buscarDadosCompletos();
-  }
+}
 
   function formSessoes_renderizar(lista) {
   const container = document.getElementById('listaSessoes');
@@ -139,7 +141,7 @@
   });
 
   M.Tooltip.init(document.querySelectorAll('.tooltipped'));
-}
+  }
 
   // ============================================================
   // FILTRO
@@ -217,11 +219,63 @@
     if (valorExibido) { el.value = valorExibido; M.updateTextFields(); }
   }
 
-  function _autocompleteMembrosSessao() {
-    ['sess_f_Presidente', 'sess_f_Secretario'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) M.Autocomplete.init(el, { data: baseMembros, minLength: 2, limit: 7 });
+  /**
+ * Inicializa os autocompletes.
+ * Presidente e Secretário agora possuem lógica de preenchimento inline manual.
+ */
+function _autocompleteMembrosSessao() {
+  const listaNomes = Object.keys(baseMembros);
+
+  // Configuração para Presidente e Secretário
+  ['sess_f_Presidente', 'sess_f_Secretario'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+
+    // Remove instâncias e eventos antigos para não duplicar
+    const inst = M.Autocomplete.getInstance(el);
+    if (inst) inst.destroy();
+    el.removeEventListener('input', _handleInlineAutocomplete);
+
+    // Inicializa o Materialize (mantemos o dropdown como backup visual, se desejar)
+    M.Autocomplete.init(el, { 
+      data: baseMembros, 
+      minLength: 1, 
+      limit: 5 
     });
+
+    // Adiciona a "Mágica" do preenchimento inline
+    el.addEventListener('input', (e) => _handleInlineAutocomplete(e, listaNomes));
+  });
+
+  // Local / Sala: Continua como lista suspensa padrão
+  const elLocal = document.getElementById('sess_f_Local');
+  if (elLocal) {
+    M.Autocomplete.init(elLocal, { data: baseLocais, minLength: 0, limit: 5 });
+  }
+}
+
+/**
+ * Lógica manual para preenchimento inline e seleção de texto
+ */
+function _handleInlineAutocomplete(e, lista) {
+  const input = e.target;
+  const valor = input.value;
+  
+  // Se for delete/backspace ou estiver vazio, não autocompleta
+  if (e.inputType === 'deleteContentBackward' || !valor) return;
+
+  // Busca a primeira correspondência que começa com o que foi digitado
+  const sugestao = lista.find(nome => 
+    nome.toLowerCase().startsWith(valor.toLowerCase())
+  );
+
+  if (sugestao) {
+    const posicaoCursor = input.selectionStart;
+    input.value = sugestao;
+
+    // Seleciona do cursor até o final do nome sugerido
+    input.setSelectionRange(posicaoCursor, sugestao.length);
+  }
   }
 
   function formSessoes_salvar() {
@@ -1082,31 +1136,34 @@
 
     if (!texto.trim()) return M.toast({html: 'Cole algum texto primeiro.', classes:'orange'});
 
-    // REGEX MÁGICA: Encontra números de 9 dígitos que começam com "20"
-    // Captura globalmente mesmo que estejam colados ou separados por qualquer caractere
     const regex = /(20\d{7})/g;
     const encontrados = texto.match(regex) || [];
-    
-    // Remove duplicados mantendo a ordem de aparição
     const processosUnicos = [...new Set(encontrados)];
 
     if (processosUnicos.length === 0) {
-      return M.toast({html: 'Nenhum número de processo válido identificado.', classes:'red'});
+      return M.toast({html: 'Nenhum processo válido identificado.', classes:'red'});
     }
 
     const btn = event.target.closest('button');
     btn.disabled = true;
+    const originalHtml = btn.innerHTML;
     btn.innerHTML = 'Processando...';
 
     google.script.run
       .withSuccessHandler(function(res) {
         btn.disabled = false;
-        btn.innerHTML = '<i class="material-icons left">flash_on</i>Processar e Adicionar';
+        btn.innerHTML = originalHtml;
         
         if(res.sucesso) {
-          M.toast({html: `${res.adicionados} fichas criadas com sucesso!`, classes:'green'});
-          M.Modal.getInstance(document.getElementById('modalPincelMagico')).close();
-          formSessoes_carregar(); // Recarrega a lista para atualizar a contagem de fichas
+          let statusMsg = `${res.adicionados} fichas criadas.`;
+          if (res.avisos) statusMsg += ` (${res.avisos})`;
+          
+          M.toast({html: statusMsg, classes: res.adicionados > 0 ? 'green' : 'orange', displayLength: 5000});
+          
+          if (res.adicionados > 0) {
+             M.Modal.getInstance(document.getElementById('modalPincelMagico')).close();
+             formSessoes_carregar();
+          }
         } else {
           M.toast({html: 'Erro: ' + res.erro, classes:'red'});
         }
