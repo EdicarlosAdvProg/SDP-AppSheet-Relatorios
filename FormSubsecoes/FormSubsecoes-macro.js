@@ -440,7 +440,27 @@ function subsecoes_capturarDetalhes(url) {
     const presMatch  = /<strong>Presidente<\/strong>:(.*?)<br>/i.exec(html);
     const presidente = presMatch ? subsecoes_limparTexto([null, presMatch[1]]) : 'Não informado';
     const cidades    = [];
-    const abaMatch = /id="aba\d+"[\s\S]*?<ul>([\s\S]*?)<\/ul>/i.exec(html);
+
+    // 1. Descobre qual aba contém "Cidades jurisdicionadas" lendo o nav
+    let idAba = null;
+    const navMatch = /href="(#aba\d+)"[^>]*>[^<]*[Cc]idades jurisdicionadas/i.exec(html);
+    if (navMatch) {
+      idAba = navMatch[1].replace('#', ''); // ex: "aba4"
+    }
+
+    // 2. Se encontrou o id da aba correta, busca o <ul> dentro dela
+    let abaMatch = null;
+    if (idAba) {
+      const regexAba = new RegExp('id="' + idAba + '"[\\s\\S]*?<ul>([\\s\\S]*?)<\\/ul>', 'i');
+      abaMatch = regexAba.exec(html);
+    }
+
+    // 3. Fallback: tenta aba3 e aba4 se não encontrou pela navegação
+    if (!abaMatch) {
+      abaMatch = /id="aba3"[\s\S]*?<ul>([\s\S]*?)<\/ul>/i.exec(html) ||
+                 /id="aba4"[\s\S]*?<ul>([\s\S]*?)<\/ul>/i.exec(html);
+    }
+
     if (abaMatch) {
       const liRegex = /<li>(.*?)<\/li>/gi;
       let liMatch;
@@ -448,6 +468,7 @@ function subsecoes_capturarDetalhes(url) {
         cidades.push(subsecoes_limparTexto([null, liMatch[1]]));
       }
     }
+
     return { presidente, cidades };
   } catch (e) {
     return { presidente: 'Erro', cidades: [] };
