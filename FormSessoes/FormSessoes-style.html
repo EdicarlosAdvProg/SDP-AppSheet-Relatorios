@@ -52,7 +52,6 @@
     background-color: #fff !important;
     border-radius: 12px !important;
     margin-bottom: 15px !important;
-    padding: 0 !important;
     border: 2px solid transparent !important;
     transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
@@ -62,10 +61,18 @@
     cursor: default;
   }
 
-  .collection-item-sessao:hover {
+  .collection-item-sessao:not(.expandido):hover {
     transform: translateY(-5px);
     border: 2px solid #002f5d !important;
     box-shadow: 0 12px 24px rgba(0, 0, 0, 0.13);
+  }
+
+  /* Wrapper dos elementos normais do card */
+  .sess-card-top {
+    display: flex;
+    align-items: stretch;
+    width: 100%;
+    min-width: 0;
   }
 
   .sess-col-data {
@@ -82,27 +89,9 @@
     flex-shrink: 0;
   }
 
-  .sess-data-dia {
-    font-size: 2.4rem;
-    font-weight: 800;
-    line-height: 1;
-    color: #fff;
-  }
-
-  .sess-data-mes {
-    font-size: 0.75rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: rgba(255,255,255,0.75);
-    margin-top: 4px;
-  }
-
-  .sess-data-ano {
-    font-size: 0.7rem;
-    color: rgba(255,255,255,0.55);
-    margin-top: 2px;
-  }
+  .sess-data-dia { font-size: 2.4rem; font-weight: 800; line-height: 1; color: #fff; }
+  .sess-data-mes { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.75); margin-top: 4px; }
+  .sess-data-ano { font-size: 0.7rem; color: rgba(255,255,255,0.55); margin-top: 2px; }
 
   .sess-col-info {
     flex: 1;
@@ -111,23 +100,12 @@
     min-width: 0;
   }
 
-  .sess-orgao {
-    display: block;
-    font-size: 1.05rem;
-    font-weight: 800;
-    color: #004480;
-    margin-bottom: 5px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .sess-local {
-    display: block;
-    font-size: 0.82rem;
-    color: #616161;
-    margin-bottom: 5px;
-  }
+  .sess-orgao { display: block; font-size: 1.05rem; font-weight: 800; color: #004480; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sess-local { display: block; font-size: 0.82rem; color: #616161; margin-bottom: 5px; }
+  .collection-item-sessao.expandido .sess-local,
+  .collection-item-sessao.expandido .sess-participantes,
+  .collection-item-sessao.expandido .sess-presidente, 
+  .collection-item-sessao.expandido .sess-secretario { display: none !important; }
 
   .sess-participantes {
     display: block;
@@ -136,41 +114,24 @@
     font-style: italic;
   }
 
+  /* X (c-fichas) vai para o final da linha de ícones */
+  .collection-item-sessao.expandido .c-fichas { order: 9; }
+
   .sess-col-metricas {
-    min-width: 120px;
-    max-width: 130px;
+    min-width: 120px; max-width: 130px;
     padding: 16px 14px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
     border-right: 1px solid #f0f0f0;
     text-align: center;
   }
 
-  .sess-metrica-num {
-    font-size: 2rem;
-    font-weight: 800;
-    color: #a68945;
-    line-height: 1;
-  }
+  .sess-metrica-num { font-size: 2rem; font-weight: 800; color: #a68945; line-height: 1; }
+  .sess-metrica-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em; color: #aaa; font-weight: 700; margin-top: 4px; }
 
-  .sess-metrica-label {
-    font-size: 0.65rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: #aaa;
-    font-weight: 700;
-    margin-top: 4px;
-  }
-
-  /* Container de ações transformado em Grade */
   .sess-col-actions {
     display: grid !important;
-    /* Cria colunas de tamanho fixo */
-    grid-template-columns: repeat(2, 40px); 
-    /* Espaçamento entre os ícones */
-    grid-gap: 8px; 
+    grid-template-columns: repeat(2, 40px);
+    grid-gap: 8px;
     align-items: center;
     justify-content: center;
     padding-left: 15px;
@@ -178,21 +139,104 @@
   }
 
   /* =====================================================
+     3b. CARD EXPANDIDO — FICHAS INLINE
+  ===================================================== */
+
+  /* Estado expandido: flex column, altura calculada via JS */
+  .collection-item-sessao.expandido {
+    flex-direction: column !important;
+    /* height é definida dinamicamente em formSessoes_abrirFichas() */
+    align-items: stretch !important;
+    transform: none !important;
+    border: 2px solid #004480 !important;
+    box-shadow: 0 8px 28px rgba(0, 68, 128, 0.2) !important;
+    padding: 0 !important;
+    overflow: hidden !important;     /* garante que nada vaze fora do card */
+  }
+
+  /* Header compacto: barra azul sticky no topo do card */
+  .collection-item-sessao.expandido .sess-card-top {
+    background: linear-gradient(90deg, #002f5d, #004480);
+    height: 46px;
+    flex-shrink: 0;
+    align-items: center;
+    border-radius: 0;
+    padding: 0;
+    position: sticky;   /* gruda no topo durante scroll interno do card */
+    top: 0;
+    z-index: 5;
+  }
+
+  /* Data inline no header compacto */
+  .collection-item-sessao.expandido .sess-col-data {
+    min-width: auto; max-width: none; width: auto;
+    background: transparent;
+    flex-direction: row; align-items: center;
+    gap: 5px; padding: 0 14px;
+    border-right: 1px solid rgba(255,255,255,0.2);
+  }
+  .collection-item-sessao.expandido .sess-data-dia { font-size: 1.1rem; }
+  .collection-item-sessao.expandido .sess-data-mes { font-size: 0.72rem; margin-top: 0; }
+  .collection-item-sessao.expandido .sess-data-ano { display: none; }
+
+  /* Info compacta no header */
+  .collection-item-sessao.expandido .sess-col-info {
+    padding: 0 14px; border: none; display: flex; align-items: center;
+  }
+  .collection-item-sessao.expandido .sess-orgao {
+    font-size: 0.85rem; color: #fff; margin: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .collection-item-sessao.expandido .sess-local,
+  .collection-item-sessao.expandido .sess-participantes { display: none; }
+  .collection-item-sessao.expandido .sess-col-metricas { display: none; }
+
+  /* Botões brancos sobre fundo azul — coluna mais larga, distribuídos na horizontal */
+  .collection-item-sessao.expandido .sess-col-actions {
+    border-left: 1px solid rgba(255,255,255,0.2);
+    padding: 0 16px;
+    grid-template-columns: repeat(4, 36px); /* 4 ícones lado a lado */
+    grid-gap: 4px;
+  }
+  .collection-item-sessao.expandido .act-btn { color: rgba(255,255,255,0.75); }
+  .collection-item-sessao.expandido .act-btn:hover { color: #fff; transform: scale(1.2); }
+
+  /* Esconde o FAB principal enquanto um card está expandido */
+  body.fichas-abertas .fixed-action-btn { display: none !important; }
+
+  /* Painel de expansão: filho direto do card expandido */
+  #sessExpansionPanel {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    /* display: flex; flex-direction: column; → definido via JS ao expandir */
+  }
+
+  /* Barra interna: subtítulo + fechar */
+  .fichas-inner-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 5px 14px; border-bottom: 1px solid #f0f0f0;
+    flex-shrink: 0; background: #fafafa;
+  }
+
+  /* Enquanto há um card expandido, bloqueia o scroll da lista externa */
+  .list-wrapper.scroll-bloqueado {
+    overflow: hidden !important;
+  }
+
+  /* =====================================================
      4. BOTÕES DE AÇÃO DOS CARDS
   ===================================================== */
-  /* Ajuste nos botões de ação para não perderem o formato circular */
   .act-btn {
-    margin: 0 !important; /* Remove margens que podem quebrar a grade */
+    margin: 0 !important;
     cursor: pointer;
     transition: transform 0.2s;
+    font-size: 22px;
   }
 
-  .act-btn:hover {
-    transform: scale(1.2);
-  }
+  .act-btn:hover { transform: scale(1.2); }
 
-  /* Cores específicas para o novo ícone */
-  .c-magic { color: #a68945; } /* Dourado OAB */
+  .c-magic  { color: #a68945; }
   .c-edit   { color: #004480; }
   .c-fichas { color: #a68945; }
   .c-del    { color: #ff0000; }
@@ -202,40 +246,22 @@
   ===================================================== */
   .btn-oab-red { background-color: #ff0000 !important; }
 
-  .btn-hover-zoom {
-    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
-  }
-
-  .btn-hover-zoom:hover {
-    transform: scale(1.15) !important;
-    background-color: #002f5d !important;
-  }
+  .btn-hover-zoom { transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important; }
+  .btn-hover-zoom:hover { transform: scale(1.15) !important; background-color: #002f5d !important; }
 
   .material-tooltip { background-color: #004480 !important; }
 
   /* =====================================================
      6. BOTÕES AUXILIARES
   ===================================================== */
-  .btn-oab-blue {
-    background-color: #004480 !important;
-    border-radius: 50px;
-    font-weight: 700;
-    text-transform: none;
-  }
-
+  .btn-oab-blue { background-color: #004480 !important; border-radius: 50px; font-weight: 700; text-transform: none; }
   .btn-oab-blue:hover { background-color: #002f5d !important; }
 
-  .btn-oab-gold {
-    background-color: #a68945 !important;
-    border-radius: 50px;
-    font-weight: 700;
-    text-transform: none;
-  }
-
+  .btn-oab-gold { background-color: #a68945 !important; border-radius: 50px; font-weight: 700; text-transform: none; }
   .btn-oab-gold:hover { background-color: #7a6330 !important; }
 
   /* =====================================================
-     7. MODAIS — BASE
+     7. MODAIS — BASE (confirmação, sessão, pincel)
   ===================================================== */
   .modal {
     border-radius: 12px !important;
@@ -244,17 +270,11 @@
     max-width: 850px;
   }
 
-  .modal.modal-pequena {
-    max-width: 460px !important;
-    height: auto !important;
-    overflow-y: hidden !important;
-  }
-
+  .modal.modal-pequena { max-width: 460px !important; height: auto !important; overflow-y: hidden !important; }
   .modal.modal-sessao-cad { max-width: 680px !important; }
 
   .modal-content h5 {
-    font-weight: 700;
-    color: #004480;
+    font-weight: 700; color: #004480;
     border-left: 6px solid #ff0000;
     padding-left: 15px;
     text-transform: uppercase;
@@ -266,610 +286,260 @@
     background-color: #f8f9fa !important;
     padding: 0 25px 0 0 !important;
     height: 66px !important;
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
+    display: flex; align-items: center; justify-content: flex-end;
   }
 
   .btn-salvar-modal {
     background-color: #004480 !important;
-    border-radius: 50px;
-    font-weight: 700;
-    text-transform: none;
-    padding: 0 24px;
+    border-radius: 50px; font-weight: 700; text-transform: none; padding: 0 24px;
   }
-
   .btn-salvar-modal:hover { background-color: #002f5d !important; }
 
   /* =====================================================
-     8. MODAL DE FICHAS — ESTRUTURA PRINCIPAL
+     8. PAINEL DE FICHAS — ESTRUTURA (reutilizado no card inline)
   ===================================================== */
-  .modal.modal-fichas {
-    max-width: 1050px !important;
-    width: 96% !important;
-    height: 88% !important;
-    max-height: 88% !important;
-    overflow: hidden !important;
-    padding: 0 !important;
-    display: flex !important;
-    flex-direction: column !important;
-  }
 
-  .modal.modal-fichas .modal-content {
-    padding: 0 !important;
-    flex: 1;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-  }
-
-  /* Cabeçalho fixo do modal fichas */
-  .fichas-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 14px 20px 12px 20px;
-    border-bottom: 2px solid #f0f0f0;
-    background: #fff;
-    flex-shrink: 0;
-  }
-
-  .fichas-header h5 {
-    border-left: 5px solid #a68945;
-    padding-left: 12px;
-    margin: 0;
-    color: #004480;
-    font-size: 1rem;
-    font-weight: 700;
-    text-transform: uppercase;
-  }
-
-  /* Corpo dividido — ocupa todo o espaço restante */
+  /* Corpo dividido */
   .fichas-body {
     display: flex;
     flex: 1;
     overflow: hidden;
-    min-height: 0; /* essencial para flex + overflow funcionar */
+    min-height: 0;
   }
 
   /* =====================================================
      9. PAINEL ESQUERDO — LISTA DE PROCESSOS
   ===================================================== */
   .fichas-painel-esq {
-    width: 270px;
-    min-width: 240px;
+    width: 270px; min-width: 240px;
     flex-shrink: 0;
     border-right: 2px solid #f0f0f0;
-    display: flex;
-    flex-direction: column;
+    display: flex; flex-direction: column;
     background: #f8f9fa;
     min-height: 0;
   }
 
   .fichas-painel-titulo {
     padding: 10px 14px;
-    font-size: 0.68rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: #888;
+    font-size: 0.68rem; font-weight: 800;
+    text-transform: uppercase; letter-spacing: 0.08em; color: #888;
     border-bottom: 1px solid #eee;
-    display: flex;
-    align-items: center;
-    gap: 4px;
+    display: flex; align-items: center; gap: 4px;
     flex-shrink: 0;
   }
 
   .badge-count {
-    background: #004480;
-    color: #fff;
-    border-radius: 50px;
-    font-size: 0.65rem;
-    padding: 1px 6px;
-    font-weight: 700;
+    background: #004480; color: #fff;
+    border-radius: 50px; font-size: 0.65rem; padding: 1px 6px; font-weight: 700;
     margin-left: auto;
   }
 
-  .fichas-lista-proc {
-    flex: 1;
-    overflow-y: auto;
-    min-height: 0;
-  }
+  .fichas-lista-proc { flex: 1; overflow-y: auto; min-height: 0; }
 
   /* Ícone de exclusão na lista de fichas */
-  .ficha-proc-item {
-    position: relative; /* para posicionar o ícone absolutamente */
+  .ficha-proc-item { position: relative; padding: 12px 14px; border-bottom: 1px solid #eee; cursor: pointer; transition: all 0.15s ease; }
+  .ficha-proc-item:hover { background: #e8f0fe; }
+
+  .ficha-proc-item.selecionado {
+    background: linear-gradient(90deg, #002f5d, #004480);
+    border-left: none;
+    padding-left: 14px;
+  }
+
+  .ficha-proc-item.selecionado .ficha-proc-num,
+  .ficha-proc-item.selecionado .ficha-proc-num span { color: #fff !important; }
+
+  .ficha-proc-item.selecionado .ficha-proc-req-short { color: rgba(255,255,255,0.8); }
+
+  .ficha-proc-item.selecionado .ficha-proc-status-mini {
+    background: rgba(255,255,255,0.2);
+    color: #fff;
+  }
+
+  .ficha-proc-item.selecionado .delete-ficha-icon {
+    background: rgba(0,0,0,0.2);
+    color: rgba(255,255,255,0.7);
   }
 
   .ficha-proc-item .delete-ficha-icon {
-    position: absolute;
-    right: 8px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: #ff0000;
-    cursor: pointer;
-    opacity: 0;
-    transition: opacity 0.2s ease, transform 0.2s;
-    font-size: 18px;
-    background: rgba(255,255,255,0.9);
-    border-radius: 50%;
-    padding: 3px;
+    position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+    color: #ff0000; cursor: pointer; opacity: 0; transition: opacity 0.2s, transform 0.2s;
+    font-size: 18px; background: rgba(255,255,255,0.9); border-radius: 50%; padding: 3px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   }
+  .ficha-proc-item:hover .delete-ficha-icon { opacity: 1; }
+  .ficha-proc-item .delete-ficha-icon:hover { transform: translateY(-50%) scale(1.2); background: #ffebee; }
 
-  .ficha-proc-item:hover .delete-ficha-icon {
-    opacity: 1;
-  }
-
-  .ficha-proc-item .delete-ficha-icon:hover {
-    transform: translateY(-50%) scale(1.2);
-    background: #ffebee;
-  }
-
-  .ficha-proc-num {
-    font-size: 0.9rem;
-    font-weight: 800;
-    color: #004480;
-    display: block;
-    margin-bottom: 2px;
-  }
-
-  .ficha-proc-req-short {
-    font-size: 0.75rem;
-    color: #555;
-    display: block;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .ficha-proc-status-mini {
-    display: inline-block;
-    font-size: 0.6rem;
-    font-weight: 700;
-    padding: 1px 6px;
-    border-radius: 50px;
-    margin-top: 4px;
-    text-transform: uppercase;
-  }
+  .ficha-proc-num { font-size: 0.9rem; font-weight: 800; color: #004480; display: block; margin-bottom: 2px; }
+  .ficha-proc-req-short { font-size: 0.75rem; color: #555; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ficha-proc-status-mini { display: inline-block; font-size: 0.6rem; font-weight: 700; padding: 1px 6px; border-radius: 50px; margin-top: 4px; text-transform: uppercase; }
 
   /* =====================================================
      10. PAINEL DIREITO — ESTRUTURA
   ===================================================== */
   .fichas-painel-dir {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    background: #fff;
-    position: relative; /* ancora o FAB interno */
-    min-height: 0;
+    flex: 1; display: flex; flex-direction: column;
+    overflow: hidden; background: #fff;
+    position: relative; min-height: 0;
   }
 
-  /* Estado vazio */
   .fichas-vazio-msg {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    color: #bbb;
-    text-align: center;
-    padding: 40px;
-    font-size: 0.9rem;
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    color: #bbb; text-align: center; padding: 40px; font-size: 0.9rem;
   }
 
-  /* Cabeçalho azul do processo — FIXO no topo do painel direito */
   .ficha-proc-info {
     background: linear-gradient(135deg, #002f5d 0%, #004480 100%);
-    padding: 14px 20px;
-    flex-shrink: 0;
+    padding: 14px 20px; flex-shrink: 0;
   }
 
-  .ficha-proc-numero {
-    font-size: 1.2rem;
-    font-weight: 800;
-    color: #fff;
-  }
-
-  .ficha-proc-req {
-    font-size: 0.82rem;
-    color: rgba(255,255,255,0.8);
-    margin-top: 3px;
-  }
-
-  .ficha-proc-local {
-    font-size: 0.75rem;
-    color: rgba(255,255,255,0.55);
-    font-style: italic;
-    margin-top: 2px;
-  }
+  .ficha-proc-numero { font-size: 1.2rem; font-weight: 800; color: #fff; }
+  .ficha-proc-req { font-size: 0.82rem; color: rgba(255,255,255,0.8); margin-top: 3px; }
+  .ficha-proc-local { font-size: 0.75rem; color: rgba(255,255,255,0.55); font-style: italic; margin-top: 2px; }
 
   .ficha-status-chip {
-    display: inline-block;
-    font-size: 0.65rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    padding: 2px 8px;
-    border-radius: 50px;
-    margin-top: 6px;
-    background: rgba(255,255,255,0.2);
-    color: #fff;
-    letter-spacing: 0.05em;
+    display: inline-block; font-size: 0.65rem; font-weight: 700;
+    text-transform: uppercase; padding: 2px 8px; border-radius: 50px;
+    margin-top: 6px; background: rgba(255,255,255,0.2); color: #fff; letter-spacing: 0.05em;
   }
 
-  /* fichasConteudo: flex column ocupando todo espaço disponível,
-     overflow hidden para ceder o scroll ao filho fichas-dir-scroll */
   #fichasConteudo {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    min-height: 0;
+    flex: 1; display: flex; flex-direction: column;
+    overflow: hidden; min-height: 0;
   }
 
-  /* ÚNICO contêiner de scroll: campos + label + formulário + votos,
-     tudo no mesmo frame rolável */
   .fichas-dir-scroll {
-    flex: 1;
-    overflow-y: auto;
-    min-height: 0;
-    padding-bottom: 20px; /* antes 72px */
+    flex: 1; overflow-y: auto; min-height: 0;
+    padding-bottom: 20px;
   }
 
-  /* Campos editáveis (relator, expediente) */
-  .ficha-campos {
-    padding: 4px 20px 0 20px;
-    border-bottom: 2px solid #f0f0f0;
-  }
+  .ficha-campos { padding: 4px 20px 0 20px; border-bottom: 2px solid #f0f0f0; }
 
-  /* Label da seção votos */
   .ficha-secao-votos {
-    font-size: 0.68rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: #888;
+    font-size: 0.68rem; font-weight: 800;
+    text-transform: uppercase; letter-spacing: 0.08em; color: #888;
     padding: 12px 20px 8px 20px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    display: flex; align-items: center; justify-content: space-between;
   }
 
   .ficha-secao-votos-total {
-    background: #f0f4f8;
-    color: #666;
-    font-size: 0.65rem;
-    padding: 2px 8px;
-    border-radius: 50px;
+    background: #f0f4f8; color: #666;
+    font-size: 0.65rem; padding: 2px 8px; border-radius: 50px;
   }
 
   /* =====================================================
      11. VOTOS — LISTA ACCORDION
   ===================================================== */
-  .votos-lista {
-    padding: 0 16px 4px 16px;
-  }
+  .votos-lista { padding: 0 16px 4px 16px; }
 
   .voto-accordion {
-    border: 1.5px solid #eee;
-    border-radius: 10px;
-    margin-bottom: 8px;
-    overflow: hidden;
+    border: 1.5px solid #eee; border-radius: 10px;
+    margin-bottom: 8px; overflow: hidden;
     transition: border-color 0.2s, box-shadow 0.2s;
   }
+  .voto-accordion.aberto { border-color: #004480; box-shadow: 0 4px 12px rgba(0,68,128,0.1); }
 
-  .voto-accordion.aberto {
-    border-color: #004480;
-    box-shadow: 0 4px 12px rgba(0,68,128,0.1);
-  }
-
-  /* Cabeçalho clicável do voto */
   .voto-accordion-header {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 14px;
-    cursor: pointer;
-    background: #fff;
-    transition: background 0.15s;
-    user-select: none;
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px; cursor: pointer;
+    background: #fff; transition: background 0.15s; user-select: none;
   }
-
   .voto-accordion-header:hover { background: #f8f9fa; }
+  .voto-accordion.aberto .voto-accordion-header { background: #f0f4ff; border-bottom: 1px solid #e0e8ff; }
 
-  .voto-accordion.aberto .voto-accordion-header {
-    background: #f0f4ff;
-    border-bottom: 1px solid #e0e8ff;
-  }
-
-  .voto-tipo-chip {
-    flex-shrink: 0;
-    font-size: 0.62rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    padding: 3px 9px;
-    border-radius: 50px;
-    letter-spacing: 0.04em;
-    white-space: nowrap;
-  }
-
+  .voto-tipo-chip { flex-shrink: 0; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; padding: 3px 9px; border-radius: 50px; letter-spacing: 0.04em; white-space: nowrap; }
   .voto-tipo-relator { background: #e3f2fd; color: #1565c0; }
   .voto-tipo-membro  { background: #f3e5f5; color: #6a1b9a; }
   .voto-tipo-minerva { background: #fff3e0; color: #e65100; }
   .voto-tipo-vogal   { background: #e8f5e9; color: #2e7d32; }
   .voto-tipo-default { background: #f5f5f5; color: #666; }
 
-  .voto-header-info {
-    flex: 1;
-    min-width: 0;
-  }
+  .voto-header-info { flex: 1; min-width: 0; }
+  .voto-header-votante { font-size: 0.82rem; font-weight: 700; color: #333; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-  .voto-header-votante {
-    font-size: 0.82rem;
-    font-weight: 700;
-    color: #333;
-    display: block;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  /* Seta de expansão */
-  .voto-chevron {
-    font-size: 20px;
-    color: #aaa;
-    transition: transform 0.25s ease;
-    flex-shrink: 0;
-  }
-
+  .voto-chevron { font-size: 20px; color: #aaa; transition: transform 0.25s ease; flex-shrink: 0; }
   .voto-accordion.aberto .voto-chevron { transform: rotate(180deg); }
 
-  /* Corpo do voto expandido */
-  .voto-accordion-body {
-    display: none;
-    padding: 12px 14px 12px 14px;
-    background: #f8f9fa;
-  }
-
+  .voto-accordion-body { display: none; padding: 12px 14px; background: #f8f9fa; }
   .voto-accordion.aberto .voto-accordion-body { display: block; }
 
-  .voto-detalhe-linha {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 8px;
-    align-items: baseline;
+  /* PDF links e botões */
+  .voto-pdf-container { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+
+  .voto-pdf-link {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 0.75rem; font-weight: 700; color: #fff !important;
+    background: #004480; padding: 6px 14px; border-radius: 50px;
+    transition: all 0.2s; text-decoration: none !important; border: none; cursor: pointer;
   }
+  .voto-pdf-link:hover { background: #002f5d; transform: translateY(-1px); box-shadow: 0 3px 8px rgba(0,0,0,0.15); }
+  .voto-pdf-link i { font-size: 16px; }
 
-  .voto-detalhe-label {
-    font-size: 0.68rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    color: #aaa;
-    letter-spacing: 0.06em;
-    min-width: 72px;
-    flex-shrink: 0;
+  .btn-pdf-excluir {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; border-radius: 50%;
+    background: #fff; color: #ff0000; border: 1px solid #ffcdd2; cursor: pointer; transition: all 0.2s;
   }
+  .btn-pdf-excluir:hover { background: #ff0000; color: #fff; border-color: #ff0000; }
 
-  .voto-detalhe-valor {
-    font-size: 0.82rem;
-    color: #333;
-    font-weight: 600;
+  .btn-pdf-adicionar {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 0.72rem; font-weight: 700; color: #a68945 !important;
+    background: #fff; border: 1.5px dashed #a68945;
+    padding: 5px 12px; border-radius: 50px; cursor: pointer; transition: all 0.2s; margin-top: 5px;
   }
+  .btn-pdf-adicionar:hover { background: #fdf6e3; transform: scale(1.02); }
 
-  .voto-resultado-chip {
-    display: inline-block;
-    font-size: 0.68rem;
-    font-weight: 700;
-    padding: 2px 10px;
-    border-radius: 50px;
-    background: #e8f5e9;
-    color: #2e7d32;
-  }
-
-  /* Container de ações do relatório para alinhar Abrir e Excluir */
-.voto-pdf-container {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 8px;
-}
-
-/* Botão de abrir PDF (Ajustado) */
-.voto-pdf-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: #fff !important;
-  background: #004480; /* Azul OAB */
-  padding: 6px 14px;
-  border-radius: 50px;
-  transition: all 0.2s ease;
-  text-decoration: none !important;
-  border: none;
-  cursor: pointer;
-}
-
-.voto-pdf-link:hover {
-  background: #002f5d;
-  transform: translateY(-1px);
-  box-shadow: 0 3px 8px rgba(0,0,0,0.15);
-}
-
-.voto-pdf-link i { font-size: 16px; }
-
-/* Botão de excluir PDF (Novo) */
-.btn-pdf-excluir {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: #fff;
-  color: #ff0000;
-  border: 1px solid #ffcdd2;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-pdf-excluir:hover {
-  background: #ff0000;
-  color: #fff;
-  border-color: #ff0000;
-}
-
-/* Botão para adicionar PDF quando estiver vazio (Novo) */
-.btn-pdf-adicionar {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: #a68945 !important; /* Dourado OAB */
-  background: #fff;
-  border: 1.5px dashed #a68945;
-  padding: 5px 12px;
-  border-radius: 50px;
-  cursor: pointer;
-  transition: all 0.2s;
-  margin-top: 5px;
-}
-
-.btn-pdf-adicionar:hover {
-  background: #fdf6e3;
-  transform: scale(1.02);
-}
-
-  .voto-accordion-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-    margin-top: 10px;
-    padding-top: 8px;
-    border-top: 1px solid #eee;
-  }
+  /* Footer e botões do accordion */
+  .voto-accordion-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; padding-top: 8px; border-top: 1px solid #eee; }
 
   .btn-voto-del {
-    background: none;
-    border: 1px solid #ffcdd2;
-    color: #c62828;
-    font-size: 0.75rem;
-    font-weight: 700;
-    padding: 4px 12px;
-    border-radius: 50px;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    transition: background 0.15s;
+    background: none; border: 1px solid #ffcdd2; color: #c62828;
+    font-size: 0.75rem; font-weight: 700; padding: 4px 12px; border-radius: 50px;
+    cursor: pointer; display: inline-flex; align-items: center; gap: 4px; transition: background 0.15s;
   }
-
   .btn-voto-del:hover { background: #ffebee; }
 
   .btn-voto-salvar {
-    background: none;
-    border: 1px solid #c8d8f8;
-    color: #004480;
-    font-size: 0.75rem;
-    font-weight: 700;
-    padding: 4px 12px;
-    border-radius: 50px;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    transition: background 0.15s;
+    background: none; border: 1px solid #c8d8f8; color: #004480;
+    font-size: 0.75rem; font-weight: 700; padding: 4px 12px; border-radius: 50px;
+    cursor: pointer; display: inline-flex; align-items: center; gap: 4px; transition: background 0.15s;
   }
-
   .btn-voto-salvar:hover { background: #e8f0fe; }
 
-  /* Placar de resultado no cabeçalho do accordion */
+  /* Placar e campos editáveis */
   .voto-resultado-placar {
-    font-size: 0.8rem;
-    font-weight: 800;
-    color: #a68945;
-    background: #fdf6e3;
-    border: 1.5px solid #e8d9a0;
-    padding: 3px 9px;
-    border-radius: 50px;
-    white-space: nowrap;
-    flex-shrink: 0;
-    letter-spacing: 0.03em;
+    font-size: 0.8rem; font-weight: 800; color: #a68945;
+    background: #fdf6e3; border: 1.5px solid #e8d9a0;
+    padding: 3px 9px; border-radius: 50px;
+    white-space: nowrap; flex-shrink: 0; letter-spacing: 0.03em;
   }
+  .voto-resultado-readonly { display: inline-block; margin-top: 2px; }
 
-  /* Variante somente leitura no corpo expandido */
-  .voto-resultado-readonly {
-    display: inline-block;
-    margin-top: 2px;
-  }
-
-  /* Grupos de campos editáveis no corpo do accordion */
-  .voto-campo-grupo {
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-    margin-bottom: 2px;
-  }
+  .voto-campo-grupo { display: flex; align-items: baseline; gap: 10px; margin-bottom: 2px; }
+  .voto-campo-grupo-voto { align-items: flex-start !important; }
 
   .voto-campo-label {
-    font-size: 0.68rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    color: #aaa;
-    letter-spacing: 0.06em;
-    min-width: 64px;
-    flex-shrink: 0;
-    margin-top: 8px;
+    font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+    color: #aaa; letter-spacing: 0.06em; min-width: 64px; flex-shrink: 0; margin-top: 8px;
   }
 
-  .voto-campo-input {
-    flex: 1;
-    margin: 0 !important;
-    padding-top: 0 !important;
-  }
+  .voto-campo-input { flex: 1; margin: 0 !important; padding-top: 0 !important; }
+  .voto-campo-input input, .voto-campo-input .select-wrapper input { font-size: 0.82rem !important; height: 2rem !important; margin: 0 !important; }
+  .voto-campo-input .select-wrapper + label, .voto-campo-input label { display: none !important; }
 
-  .voto-campo-input input,
-  .voto-campo-input .select-wrapper input {
-    font-size: 0.82rem !important;
-    height: 2rem !important;
-    margin: 0 !important;
-  }
+  .voto-textarea { font-size: 0.82rem !important; min-height: 60px !important; padding-top: 4px !important; line-height: 1.5 !important; }
 
-  .voto-campo-input .select-wrapper + label,
-  .voto-campo-input label { display: none !important; }
-
-  /* Textarea do campo Voto (texto longo) */
-  .voto-textarea {
-    font-size: 0.82rem !important;
-    min-height: 60px !important;
-    padding-top: 4px !important;
-    line-height: 1.5 !important;
-  }
-
-  .voto-campo-grupo-voto {
-    align-items: flex-start !important;
-  }
-
-  .votos-vazio {
-    text-align: center;
-    padding: 30px 20px;
-    color: #bbb;
-    font-size: 0.85rem;
-  }
+  .votos-vazio { text-align: center; padding: 30px 20px; color: #bbb; font-size: 0.85rem; }
 
   /* =====================================================
-     13. FORMULÁRIO DE NOVO VOTO (EXPANSÍVEL)
+     12. FORMULÁRIO DE NOVO VOTO (EXPANSÍVEL)
   ===================================================== */
   .painel-novo-voto {
     margin: 6px 16px 12px 16px;
-    background: #f1f4f9;
-    border: 1.5px dashed #004480;
-    border-radius: 10px;
-    padding: 14px 16px 6px 16px;
+    background: #f1f4f9; border: 1.5px dashed #004480;
+    border-radius: 10px; padding: 14px 16px 6px 16px;
     animation: slideDown 0.2s ease;
   }
 
@@ -879,82 +549,40 @@
   }
 
   .painel-novo-voto-titulo {
-    font-size: 0.72rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: #004480;
-    margin-bottom: 6px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    font-size: 0.72rem; font-weight: 800; text-transform: uppercase;
+    letter-spacing: 0.08em; color: #004480; margin-bottom: 6px;
+    display: flex; align-items: center; justify-content: space-between;
   }
 
-  /* Área de upload de PDF */
   .upload-area {
-    border: 1.5px dashed #a68945;
-    border-radius: 8px;
-    padding: 12px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.2s;
-    margin: 4px 0 8px 0;
-    background: #fff;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
+    border: 1.5px dashed #a68945; border-radius: 8px; padding: 12px;
+    text-align: center; cursor: pointer; transition: all 0.2s;
+    margin: 4px 0 8px 0; background: #fff;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
   }
-
-  .upload-area:hover {
-    background: #fdf6e3;
-    border-color: #7a6330;
-  }
-
-  .upload-area .material-icons {
-    font-size: 26px;
-    color: #a68945;
-  }
-
-  .upload-area p {
-    font-size: 0.72rem;
-    color: #888;
-    margin: 0;
-    line-height: 1.3;
-  }
-
+  .upload-area:hover { background: #fdf6e3; border-color: #7a6330; }
+  .upload-area .material-icons { font-size: 26px; color: #a68945; }
+  .upload-area p { font-size: 0.72rem; color: #888; margin: 0; line-height: 1.3; }
   .upload-area p strong { color: #a68945; font-weight: 700; }
-
-  .upload-area.selecionado {
-    background: #f0f4ff;
-    border-color: #004480;
-    border-style: solid;
-  }
-
+  .upload-area.selecionado { background: #f0f4ff; border-color: #004480; border-style: solid; }
   .upload-area.selecionado .material-icons { color: #004480; }
   .upload-area.selecionado p { color: #004480; }
 
   /* =====================================================
-     14. INPUT FIELDS DENTRO DOS MODAIS
+     13. INPUT FIELDS DENTRO DOS MODAIS E PAINÉIS
   ===================================================== */
   .input-field label,
   .input-field input:not([type]):+label,
   .input-field input[type=text]:not(.browser-default)+label,
   .input-field textarea.materialize-textarea+label {
-    color: #004480 !important;
-    font-size: 0.9rem !important;
+    color: #004480 !important; font-size: 0.9rem !important;
   }
 
-  .input-field input:focus+label,
-  .input-field textarea:focus+label,
-  .input-field label.active {
-    color: #002f5d !important;
-    font-size: 0.8rem !important;
-    font-weight: 700 !important;
+  .input-field input:focus+label, .input-field textarea:focus+label, .input-field label.active {
+    color: #002f5d !important; font-size: 0.8rem !important; font-weight: 700 !important;
   }
 
-  .input-field input:focus,
-  .input-field textarea:focus {
+  .input-field input:focus, .input-field textarea:focus {
     border-bottom: 1px solid #004480 !important;
     box-shadow: 0 1px 0 0 #004480 !important;
   }
@@ -963,18 +591,8 @@
   .input-field .prefix.active { color: #ff0000 !important; }
 
   /* =====================================================
-     15. MISCELÂNEA
+     14. MISCELÂNEA
   ===================================================== */
-  .lista-vazia-msg {
-    text-align: center;
-    padding: 60px 20px;
-    color: #aaa;
-  }
-
-  .lista-vazia-msg i {
-    font-size: 52px;
-    display: block;
-    margin-bottom: 14px;
-    color: #ccc;
-  }
+  .lista-vazia-msg { text-align: center; padding: 60px 20px; color: #aaa; }
+  .lista-vazia-msg i { font-size: 52px; display: block; margin-bottom: 14px; color: #ccc; }
 </style>

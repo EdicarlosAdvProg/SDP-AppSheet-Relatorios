@@ -9,14 +9,15 @@
   // ============================================================
   let baseSessoes = [];
   let baseMembros = {};
+  let baseLocais  = {};
   let sessaoDataISO = '';
   let fichaAtualId = '';
   let fichaAtualIdProc = '';
-  let pdfSelecionado = null; // { file, base64 } do PDF do novo voto
-  let sessaoAtualId = '';           // ID da sessão atual no modal de fichas
-  let fichasDaSessao = [];          // cache das fichas da sessão atual
-  let sortableInstance = null;      // instância do SortableJS
-  let baseLocais = {};              // para o carregamento do autocomplet de locais da sessão
+  let pdfSelecionado = null;
+  let sessaoAtualId = '';
+  let fichasDaSessao = [];
+  let sortableInstance = null;
+  let fichaSelecionadaOriginal = null;
 
   const MESES_PT = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
@@ -26,15 +27,10 @@
   document.addEventListener('DOMContentLoaded', function () {
     M.AutoInit();
     M.FloatingActionButton.init(document.querySelectorAll('.fixed-action-btn'), { hoverEnabled: true });
-
     ['modalConfirmacao'].forEach(id => {
       const el = document.getElementById(id);
       if (el) M.Modal.init(el, { dismissible: false });
     });
-
-    const elFichas = document.getElementById('modalFichas');
-    if (elFichas) M.Modal.init(elFichas, { dismissible: true });
-
     formSessoes_carregar();
   });
 
@@ -43,6 +39,9 @@
   // ============================================================
 
   function formSessoes_carregar() {
+    // Garante que o painel esteja de volta ao body antes de re-renderizar
+    formSessoes_fecharFichas();
+
     const loader = document.getElementById('loaderLista');
     const container = document.getElementById('listaSessoes');
     loader.style.display = 'block';
@@ -55,7 +54,7 @@
         if (res.sucesso) {
           baseSessoes = res.sessoes || [];
           baseMembros = res.membros || {};
-          baseLocais  = res.locais  || {}; // Armazena os locais recebidos
+          baseLocais  = res.locais  || {};
           formSessoes_renderizar(baseSessoes);
         } else {
           M.toast({ html: 'Erro ao carregar: ' + res.erro, classes: 'red darken-2' });
@@ -67,80 +66,79 @@
         M.toast({ html: 'Falha crítica no servidor.', classes: 'red darken-2' });
       })
       .formSessoes_buscarDadosCompletos();
-}
+  }
 
   function formSessoes_renderizar(lista) {
-  const container = document.getElementById('listaSessoes');
-  container.innerHTML = '';
+    const container = document.getElementById('listaSessoes');
+    container.innerHTML = '';
 
-  if (!lista || lista.length === 0) {
-    container.innerHTML = `
+    if (!lista || lista.length === 0) {
+      container.innerHTML = `
         <div class="lista-vazia-msg">
           <i class="material-icons">event_busy</i>
           <p>Nenhuma sessão encontrada para esta busca.</p>
         </div>`;
-    return;
-  }
+      return;
+    }
 
-  lista.forEach(s => {
-    const partes = s.datasessao && s.datasessao !== 'Data não informada'
-      ? s.datasessao.split('/') : null;
+    lista.forEach(s => {
+      const partes = s.datasessao && s.datasessao !== 'Data não informada'
+        ? s.datasessao.split('/') : null;
+      const dia = partes ? partes[0] : '--';
+      const mes = partes ? (MESES_PT[parseInt(partes[1], 10) - 1] || '') : '';
+      const ano = partes ? partes[2] : '';
+      const idSafe = _esc(s.id);
 
-    const dia = partes ? partes[0] : '--';
-    const mes = partes ? (MESES_PT[parseInt(partes[1], 10) - 1] || '') : '';
-    const ano = partes ? partes[2] : '';
+      const card = document.createElement('div');
+      card.className = 'collection-item-sessao';
+      card.setAttribute('data-sessao-id', s.id); // âncora para o painel de expansão
 
-    const idSafe = _esc(s.id);
-
-    const card = document.createElement('div');
-    card.className = 'collection-item-sessao';
-    card.innerHTML = `
-      <div class="sess-col-data">
-        <span class="sess-data-dia">${dia}</span>
-        <span class="sess-data-mes">${mes}</span>
-        <span class="sess-data-ano">${ano}</span>
-      </div>
-      <div class="sess-col-info">
-        <span class="sess-orgao">${s.orgao || 'Órgão não informado'}</span>
-        <span class="sess-local">
-          <i class="material-icons" style="font-size:13px; vertical-align:middle; margin-right:3px;">location_on</i>
-          ${s.local || 'Local não informado'}
-        </span>
-        <span class="sess-participantes" style="display: block; margin-top: 2px;">
-          <strong>Presidente: </strong>${s.presidente || 'Não informado'}
-        </span>
-        <span class="sess-participantes" style="display: block; margin-top: 2px;">
-          <strong>Secretário: </strong>${s.secretario || 'Não informado'}
-        </span>
-      </div>
-      <div class="sess-col-metricas">
-        <span class="sess-metrica-num">${s.totalFichas}</span>
-        <span class="sess-metrica-label">Processo${s.totalFichas !== 1 ? 's' : ''}<br>pautado${s.totalFichas !== 1 ? 's' : ''}</span>
-      </div>
-      
-      <div class="sess-col-actions">
-        <i class="material-icons act-btn c-magic tooltipped" 
-          data-tooltip="Pincel Mágico" 
-          onclick="formSessoes_abrirPincelMagico('${idSafe}', '${_esc(s.orgao)}')">auto_fix_high</i>
-        
-        <i class="material-icons act-btn c-fichas tooltipped" 
-          data-tooltip="Fichas de Votação" 
-          onclick="formSessoes_abrirFichas('${idSafe}')">ballot</i>
-          
-        <i class="material-icons act-btn c-edit tooltipped" 
-          data-tooltip="Editar Sessão" 
-          onclick="formSessoes_abrirEditar('${idSafe}')">edit</i>
-
-        <i class="material-icons act-btn c-del tooltipped" 
-          data-tooltip="Excluir Sessão" 
-          onclick="formSessoes_confirmarExclusao('${idSafe}', '${_esc(s.datasessao)}')">delete</i>
-          
+      // Conteúdo normal do card dentro de .sess-card-top
+      card.innerHTML = `
+        <div class="sess-card-top">
+          <div class="sess-col-data">
+            <span class="sess-data-dia">${dia}</span>
+            <span class="sess-data-mes">${mes}</span>
+            <span class="sess-data-ano">${ano}</span>
+          </div>
+          <div class="sess-col-info">
+            <span class="sess-orgao">${s.orgao || 'Órgão não informado'}</span>
+            <span class="sess-local">
+              <i class="material-icons" style="font-size:13px; vertical-align:middle; margin-right:3px;">location_on</i>
+              ${s.local || 'Local não informado'}
+            </span>
+            <span class="sess-participantes sess-presidente" style="display: block; margin-top: 2px;">
+              <strong>Presidente: </strong>${s.presidente || 'Não informado'}
+            </span>
+            <span class="sess-participantes sess-secretario" style="display: block; margin-top: 2px;">
+              <strong>Secretário: </strong>${s.secretario || 'Não informado'}
+            </span>
+          </div>
+          <div class="sess-col-metricas">
+            <span class="sess-metrica-num">${s.totalFichas}</span>
+            <span class="sess-metrica-label">Processo${s.totalFichas !== 1 ? 's' : ''}<br>pautado${s.totalFichas !== 1 ? 's' : ''}</span>
+          </div>
+          <div class="sess-col-actions">
+            <i class="material-icons act-btn c-magic tooltipped"
+              data-tooltip="Pincel Mágico"
+              onclick="formSessoes_abrirPincelMagico('${idSafe}', '${_esc(s.orgao)}')">auto_fix_high</i>
+            <i class="material-icons act-btn c-fichas tooltipped"
+              data-tooltip="Fichas de Votação"
+              onclick="formSessoes_abrirFichas('${idSafe}')">ballot</i>
+            <i class="material-icons act-btn c-edit tooltipped"
+              data-tooltip="Editar Sessão"
+              onclick="formSessoes_abrirEditar('${idSafe}')">edit</i>
+            <i class="material-icons act-btn c-del tooltipped"
+              data-tooltip="Excluir Sessão"
+              onclick="formSessoes_confirmarExclusao('${idSafe}', '${_esc(s.datasessao)}')">delete</i>
+          </div>
         </div>
-  `;
-    container.appendChild(card);
-  });
+      `;
 
-  M.Tooltip.init(document.querySelectorAll('.tooltipped'));
+      container.appendChild(card);
+    });
+
+    M.Tooltip.init(document.querySelectorAll('.tooltipped'));
   }
 
   // ============================================================
@@ -150,7 +148,6 @@
   function formSessoes_filtrar() {
     const termo = (document.getElementById('inputBuscaSessao').value || '').toLowerCase().trim();
     if (!termo) { formSessoes_renderizar(baseSessoes); return; }
-
     const filtrados = baseSessoes.filter(s =>
       (s.datasessao || '').toLowerCase().includes(termo) ||
       (s.orgao || '').toLowerCase().includes(termo) ||
@@ -188,7 +185,6 @@
     document.getElementById('sess_f_Presidente').value = s.presidente || '';
     document.getElementById('sess_f_Secretario').value = s.secretario || '';
     sessaoDataISO = s.dataiso || '';
-
     _initDatepickerSessao(s.datasessao || '');
 
     setTimeout(() => {
@@ -219,63 +215,30 @@
     if (valorExibido) { el.value = valorExibido; M.updateTextFields(); }
   }
 
-  /**
- * Inicializa os autocompletes.
- * Presidente e Secretário agora possuem lógica de preenchimento inline manual.
- */
-function _autocompleteMembrosSessao() {
-  const listaNomes = Object.keys(baseMembros);
-
-  // Configuração para Presidente e Secretário
-  ['sess_f_Presidente', 'sess_f_Secretario'].forEach(id => {
-    const el = document.getElementById(id);
-    if (!el) return;
-
-    // Remove instâncias e eventos antigos para não duplicar
-    const inst = M.Autocomplete.getInstance(el);
-    if (inst) inst.destroy();
-    el.removeEventListener('input', _handleInlineAutocomplete);
-
-    // Inicializa o Materialize (mantemos o dropdown como backup visual, se desejar)
-    M.Autocomplete.init(el, { 
-      data: baseMembros, 
-      minLength: 1, 
-      limit: 5 
+  function _autocompleteMembrosSessao() {
+    const listaNomes = Object.keys(baseMembros);
+    ['sess_f_Presidente', 'sess_f_Secretario'].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const inst = M.Autocomplete.getInstance(el);
+      if (inst) inst.destroy();
+      M.Autocomplete.init(el, { data: baseMembros, minLength: 1, limit: 5 });
+      el.addEventListener('input', (e) => _handleInlineAutocomplete(e, listaNomes));
     });
-
-    // Adiciona a "Mágica" do preenchimento inline
-    el.addEventListener('input', (e) => _handleInlineAutocomplete(e, listaNomes));
-  });
-
-  // Local / Sala: Continua como lista suspensa padrão
-  const elLocal = document.getElementById('sess_f_Local');
-  if (elLocal) {
-    M.Autocomplete.init(elLocal, { data: baseLocais, minLength: 0, limit: 5 });
+    const elLocal = document.getElementById('sess_f_Local');
+    if (elLocal) M.Autocomplete.init(elLocal, { data: baseLocais, minLength: 0, limit: 5 });
   }
-}
 
-/**
- * Lógica manual para preenchimento inline e seleção de texto
- */
-function _handleInlineAutocomplete(e, lista) {
-  const input = e.target;
-  const valor = input.value;
-  
-  // Se for delete/backspace ou estiver vazio, não autocompleta
-  if (e.inputType === 'deleteContentBackward' || !valor) return;
-
-  // Busca a primeira correspondência que começa com o que foi digitado
-  const sugestao = lista.find(nome => 
-    nome.toLowerCase().startsWith(valor.toLowerCase())
-  );
-
-  if (sugestao) {
-    const posicaoCursor = input.selectionStart;
-    input.value = sugestao;
-
-    // Seleciona do cursor até o final do nome sugerido
-    input.setSelectionRange(posicaoCursor, sugestao.length);
-  }
+  function _handleInlineAutocomplete(e, lista) {
+    const input = e.target;
+    const valor = input.value;
+    if (e.inputType === 'deleteContentBackward' || !valor) return;
+    const sugestao = lista.find(nome => nome.toLowerCase().startsWith(valor.toLowerCase()));
+    if (sugestao) {
+      const posicaoCursor = input.selectionStart;
+      input.value = sugestao;
+      input.setSelectionRange(posicaoCursor, sugestao.length);
+    }
   }
 
   function formSessoes_salvar() {
@@ -315,11 +278,9 @@ function _handleInlineAutocomplete(e, lista) {
   // ============================================================
 
   function formSessoes_confirmarExclusao(id, data) {
-    // Reseta o visual do modal caso tenha sido alterado por um erro anterior
     document.getElementById('iconConfirmacao').innerText = 'delete_forever';
     document.getElementById('iconConfirmacao').className = 'material-icons large red-text text-darken-2';
     document.getElementById('tituloConfirmacao').innerText = 'Confirmar exclusão';
-    
     document.getElementById('msgConfirmacao').innerText =
       `A sessão de ${data} será removida permanentemente.\n\nAs fichas (pauta) sem votos também serão excluídas.\nEsta ação não pode ser desfeita.`;
 
@@ -329,10 +290,8 @@ function _handleInlineAutocomplete(e, lista) {
     btnConf.parentNode.replaceChild(novoBtn, btnConf);
 
     novoBtn.onclick = function () {
-      // Desabilita o botão para evitar múltiplos cliques
       novoBtn.disabled = true;
       novoBtn.innerHTML = 'Processando...';
-
       google.script.run
         .withSuccessHandler(function () {
           M.toast({ html: 'Sessão excluída com sucesso.', classes: 'blue-grey darken-2' });
@@ -340,14 +299,10 @@ function _handleInlineAutocomplete(e, lista) {
           formSessoes_carregar();
         })
         .withFailureHandler(function (err) {
-          // TRATAMENTO DO FREIO DE SEGURANÇA
           novoBtn.disabled = false;
           novoBtn.innerHTML = 'Excluir Sessão';
-          
-          // Se for o erro de bloqueio, avisa com destaque
           if (err.message.includes("BLOQUEIO")) {
             M.toast({ html: err.message.replace("Error: ", ""), classes: 'orange darken-4', displayLength: 6000 });
-            // Opcional: Fechar o modal automaticamente já que não pode excluir
             M.Modal.getInstance(document.getElementById('modalConfirmacao')).close();
           } else {
             M.toast({ html: 'Erro: ' + err.message, classes: 'red darken-2' });
@@ -359,24 +314,43 @@ function _handleInlineAutocomplete(e, lista) {
   }
 
   // ============================================================
-  // MODAL DE FICHAS DE VOTAÇÃO
+  // EXPANSÃO INLINE DO CARD — FICHAS DE VOTAÇÃO
   // ============================================================
 
+  /**
+   * Abre o painel de fichas expandindo o card da sessão.
+   * Clicar no mesmo card fechado → expande. Clicar no expandido → fecha.
+   */
   function formSessoes_abrirFichas(idSessao) {
-    sessaoAtualId = idSessao;
-    fichaAtualId = '';
+    const panel    = document.getElementById('sessExpansionPanel');
+    const novoCard = document.querySelector(`.collection-item-sessao[data-sessao-id="${idSessao}"]`);
+    const cardAtivo = document.querySelector('.collection-item-sessao.expandido');
+    const listWrapper = document.querySelector('.list-wrapper');
+
+    // Toggle: clicar no mesmo card fecha
+    if (cardAtivo === novoCard) {
+      formSessoes_fecharFichas();
+      return;
+    }
+
+    // Fecha o card anteriormente expandido sem recarregar a lista
+    if (cardAtivo) {
+      cardAtivo.classList.remove('expandido');
+      cardAtivo.style.height = '';
+    }
+
+    // Configura o estado global
+    sessaoAtualId    = idSessao;
+    fichaAtualId     = '';
     fichaAtualIdProc = '';
-    pdfSelecionado = null;
+    pdfSelecionado   = null;
+    fichasDaSessao   = [];
 
-    const sessao = baseSessoes.find(s => s.id === idSessao);
-    document.getElementById('fichasModalTitulo').textContent = 'Fichas de Votação';
-    document.getElementById('fichasModalSubtitulo').textContent =
-      sessao ? `${sessao.orgao} · ${sessao.datasessao}` : '';
-
+    // Reseta a área de fichas e votos
     _fichasPainelVazio();
-
+    formSessoes_fecharNovoVoto();
     document.getElementById('fichasListaProcessos').innerHTML = `
-      <div style="text-align:center; padding: 30px;">
+      <div class="center-align" style="padding: 30px;">
         <div class="preloader-wrapper small active">
           <div class="spinner-layer spinner-blue-only">
             <div class="circle-clipper left"><div class="circle"></div></div>
@@ -386,8 +360,45 @@ function _handleInlineAutocomplete(e, lista) {
         </div>
       </div>`;
 
-    _abrirModal('modalFichas');
+    // Move o painel para dentro do card e expande
+    novoCard.classList.add('expandido');
+    novoCard.appendChild(panel);
+    panel.style.display = 'flex';
+    panel.style.flexDirection = 'column';
 
+    // Troca o ícone de fichas por 'close' para fechar o card
+    const iconeFichas = novoCard.querySelector('.c-fichas');
+    if (iconeFichas) {
+      iconeFichas.textContent = 'close';
+      iconeFichas.title = 'Recolher';
+      iconeFichas.style.color = 'rgba(255,255,255,0.75)';
+    }
+
+    // Esconde o FAB e bloqueia scroll
+    document.body.classList.add('fichas-abertas');
+    document.body.style.overflow = 'hidden';
+
+    // ── Cálculo de altura dinâmica ──────────────────────────────────────
+    // Mede a altura disponível da janela descontando a barra de busca sticky
+    const searchBar = document.querySelector('.search-header-container');
+    const searchH   = searchBar ? searchBar.offsetHeight : 0;
+    const margemInferior = 16; // respiro mínimo abaixo do card
+    const alturaDisponivel = window.innerHeight - searchH - margemInferior;
+    novoCard.style.height = alturaDisponivel + 'px';
+
+    // ── Posiciona o card totalmente visível ─────────────────────────────
+    // Após aplicar a altura, desloca o scroll para que o card fique
+    // logo abaixo da barra de busca, sem cortes.
+    requestAnimationFrame(() => {
+      const cardTop = novoCard.getBoundingClientRect().top + window.pageYOffset;
+      const alvoScroll = cardTop - searchH - 8; // 8px de folga acima
+      window.scrollTo({ top: alvoScroll, behavior: 'smooth' });
+    });
+
+    // ── Bloqueia o scroll da lista externa ──────────────────────────────
+    if (listWrapper) listWrapper.classList.add('scroll-bloqueado');
+
+    // Carrega a lista de fichas do servidor
     google.script.run
       .withSuccessHandler(function (res) {
         if (!res.sucesso) {
@@ -405,6 +416,47 @@ function _handleInlineAutocomplete(e, lista) {
       .formSessoes_buscarFichas(idSessao);
   }
 
+  /**
+   * Fecha o painel de fichas: remove a classe do card e devolve o painel ao body.
+   */
+  function formSessoes_fecharFichas() {
+    const card = document.querySelector('.collection-item-sessao.expandido');
+    if (!card) return;
+
+    // Restaura o ícone de fichas
+    const iconeFichas = card.querySelector('.c-fichas');
+    if (iconeFichas) {
+      iconeFichas.textContent = 'ballot';
+      iconeFichas.title = 'Fichas de Votação';
+      iconeFichas.style.color = '';
+    }
+
+    card.classList.remove('expandido');
+    card.style.height = '';
+
+    const panel = document.getElementById('sessExpansionPanel');
+    document.body.appendChild(panel);
+    panel.style.display = 'none';
+
+    // Libera o scroll e restaura o FAB
+    const listWrapper = document.querySelector('.list-wrapper');
+    if (listWrapper) listWrapper.classList.remove('scroll-bloqueado');
+    document.body.classList.remove('fichas-abertas');
+    document.body.style.overflow = '';
+
+    fichaAtualId     = '';
+    fichaAtualIdProc = '';
+    fichasDaSessao   = [];
+    sessaoAtualId    = '';
+    fichaSelecionadaOriginal = null;
+    _fichasPainelVazio();
+    formSessoes_fecharNovoVoto();
+  }
+
+  // ============================================================
+  // LISTA DE FICHAS
+  // ============================================================
+
   function _renderizarListaFichas(fichas) {
     const container = document.getElementById('fichasListaProcessos');
     document.getElementById('fichasContagem').textContent = fichas.length;
@@ -419,8 +471,8 @@ function _handleInlineAutocomplete(e, lista) {
     }
 
     fichas.sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
-
     container.innerHTML = '';
+
     fichas.forEach(f => {
       const item = document.createElement('div');
       item.className = 'ficha-proc-item';
@@ -430,15 +482,14 @@ function _handleInlineAutocomplete(e, lista) {
       const reqShort = (f.proc.requerente || '').substring(0, 55);
       const statusCfg = _statusCor(f.proc.status);
 
-      // AQUI ADICIONAMOS O ÍCONE DA LIXEIRA
       item.innerHTML = `
         <span class="ficha-proc-num">
-          <span style="color: #a68945; font-weight: bold; margin-right: 4px;">#${f.ordem}</span> 
+          <span style="color: #a68945; font-weight: bold; margin-right: 4px;">#${f.ordem}</span>
           ${f.proc.numero || 'S/N'}
         </span>
         <span class="ficha-proc-req-short" title="${_esc(f.proc.requerente)}">${reqShort || 'Requerente não informado'}</span>
         ${f.proc.status ? `<span class="ficha-proc-status-mini ${statusCfg}">${f.proc.status}</span>` : ''}
-        <i class="material-icons delete-ficha-icon" 
+        <i class="material-icons delete-ficha-icon"
           onclick="event.stopPropagation(); formSessoes_confirmarExclusaoFicha('${f.id}', '${_esc(f.proc.numero)}')"
           title="Excluir ficha">delete</i>
       `;
@@ -452,86 +503,58 @@ function _handleInlineAutocomplete(e, lista) {
       container.appendChild(item);
     });
 
-    // Inicializa Sortable para drag and drop
     if (sortableInstance) sortableInstance.destroy();
     sortableInstance = new Sortable(container, {
       animation: 150,
       handle: '.ficha-proc-item',
       draggable: '.ficha-proc-item',
-      onEnd: function(evt) {
-        const novaOrdemIds = Array.from(container.children).map(child => child.getAttribute('data-ficha-id'));
+      onEnd: function () {
+        const novaOrdemIds = Array.from(container.children).map(c => c.getAttribute('data-ficha-id'));
         formSessoes_salvarNovaOrdemFichas(sessaoAtualId, novaOrdemIds);
       }
     });
   }
 
-  // Variável global para controle de alteração
-  let fichaSelecionadaOriginal = null; 
-
-  /**
-   * Carrega os dados da ficha no painel lateral direito
-   * Une a limpeza de estado de ontem com a lógica de ordem de hoje.
-   */
   function _carregarPainelFicha(ficha) {
-      // 1. Definição de IDs globais
-      fichaAtualId = ficha.id;
-      fichaAtualIdProc = ficha.idprocesso;
-      
-      // 2. Limpeza de estado (Crucial para que o sistema não trave ao trocar de ficha)
-      pdfSelecionado = null; 
-      
-      // 3. Armazena a ficha completa como original para comparações de Ordem futuras
-      fichaSelecionadaOriginal = JSON.parse(JSON.stringify(ficha)); 
+    fichaAtualId     = ficha.id;
+    fichaAtualIdProc = ficha.idprocesso;
+    pdfSelecionado   = null;
+    fichaSelecionadaOriginal = JSON.parse(JSON.stringify(ficha));
 
-      // 4. Preenchimento da interface (Cabeçalho azul)
-      document.getElementById('fichaNumProc').textContent = `Processo nº ${ficha.proc.numero || 'S/N'}`;
-      document.getElementById('fichaReqProc').textContent = ficha.proc.requerente || 'Requerente não informado';
-      document.getElementById('fichaLocalProc').textContent = ficha.proc.local || '';
+    document.getElementById('ficha_f_Id').value          = ficha.id;
+    document.getElementById('ficha_f_IdProcesso').value  = ficha.idprocesso;
+    document.getElementById('ficha_f_Ordem').value       = ficha.ordem || '';
+    document.getElementById('ficha_f_Relator').value     = ficha.relator || '';
+    document.getElementById('ficha_f_Expediente').value  = ficha.expediente || '';
 
-      const chip = document.getElementById('fichaStatusChip');
-      chip.textContent = ficha.proc.status || '';
-      chip.style.display = ficha.proc.status ? 'inline-block' : 'none';
+    M.Autocomplete.init(document.getElementById('ficha_f_Relator'), {
+      data: baseMembros, minLength: 2, limit: 7
+    });
+    M.updateTextFields();
+    M.textareaAutoResize(document.getElementById('ficha_f_Expediente'));
 
-      // 5. Preenchimento dos campos do formulário
-      document.getElementById('ficha_f_Id').value = ficha.id;
-      document.getElementById('ficha_f_IdProcesso').value = ficha.idprocesso;
-      document.getElementById('ficha_f_Ordem').value = ficha.ordem || '';
-      document.getElementById('ficha_f_Relator').value = ficha.relator || '';
-      document.getElementById('ficha_f_Expediente').value = ficha.expediente || '';
-
-      // 6. Inicialização de componentes Materialize
-      M.Autocomplete.init(document.getElementById('ficha_f_Relator'), {
-        data: baseMembros, 
-        minLength: 2, 
-        limit: 7
-      });
-      M.updateTextFields();
-      M.textareaAutoResize(document.getElementById('ficha_f_Expediente'));
-
-      // 7. Reset de interface
-      formSessoes_fecharNovoVoto(); // Fecha o formulário de "Novo Voto" se estiver aberto
-      _fichasExibirConteudo();      // Esconde a mensagem "Selecione um processo" e mostra a ficha
-
-      // 8. CARREGAMENTO DOS VOTOS
-      // Certifique-se de que no seu HTML só existe UM elemento com id="fichasListaVotos"
-      _carregarVotos(ficha.id);
+    formSessoes_fecharNovoVoto();
+    _fichasExibirConteudo();
+    _carregarVotos(ficha.id);
   }
 
   function _fichasPainelVazio() {
-    document.getElementById('fichasVazio').style.display = 'flex';
+    document.getElementById('fichasVazio').style.display    = 'flex';
     document.getElementById('fichasConteudo').style.display = 'none';
   }
 
   function _fichasExibirConteudo() {
-    document.getElementById('fichasVazio').style.display = 'none';
+    document.getElementById('fichasVazio').style.display    = 'none';
     document.getElementById('fichasConteudo').style.display = 'flex';
   }
 
+  // ============================================================
+  // REORDENAÇÃO DE FICHAS
+  // ============================================================
+
   function formSessoes_salvarNovaOrdemFichas(idSessao, novaOrdemIds) {
     if (!idSessao || !novaOrdemIds.length) return;
-    
     M.toast({ html: 'Atualizando ordem...', classes: 'blue' });
-    
     google.script.run
       .withSuccessHandler(function (res) {
         if (res.sucesso) {
@@ -539,17 +562,13 @@ function _handleInlineAutocomplete(e, lista) {
           if (res.fichas) {
             fichasDaSessao = res.fichas;
             _renderizarListaFichas(fichasDaSessao);
-            
-            // Re-seleciona a ficha atual, se existir
             if (fichaAtualId) {
               setTimeout(() => {
                 const item = document.querySelector(`.ficha-proc-item[data-ficha-id="${fichaAtualId}"]`);
                 if (item) {
                   item.classList.add('selecionado');
                   const fichaAtualizada = fichasDaSessao.find(f => f.id === fichaAtualId);
-                  if (fichaAtualizada) {
-                    fichaSelecionadaOriginal = JSON.parse(JSON.stringify(fichaAtualizada));
-                  }
+                  if (fichaAtualizada) fichaSelecionadaOriginal = JSON.parse(JSON.stringify(fichaAtualizada));
                 }
               }, 200);
             }
@@ -563,17 +582,16 @@ function _handleInlineAutocomplete(e, lista) {
   }
 
   // ============================================================
-  // EXCLUSÃO DE FICHA (PAUTA)
+  // EXCLUSÃO DE FICHA
   // ============================================================
 
   function formSessoes_confirmarExclusaoFicha(idFicha, numeroProcesso) {
-    // Reaproveita o mesmo modal de confirmação
     document.getElementById('iconConfirmacao').innerHTML = 'delete_forever';
     document.getElementById('iconConfirmacao').className = 'material-icons large red-text text-darken-2';
     document.getElementById('tituloConfirmacao').innerText = 'Excluir ficha';
     document.getElementById('msgConfirmacao').innerText =
       `Deseja realmente excluir a ficha do processo ${numeroProcesso}?\n\n` +
-      `Se houver votos vinculados, a exclusão será bloqueada para preservar o histórico.`;
+      `Se houver votos vinculados, a exclusão será bloqueada.`;
 
     const btnConf = document.getElementById('btnConfirmarAcao');
     const novoBtn = btnConf.cloneNode(true);
@@ -583,14 +601,11 @@ function _handleInlineAutocomplete(e, lista) {
     novoBtn.onclick = function () {
       novoBtn.disabled = true;
       novoBtn.innerHTML = 'Processando...';
-
       google.script.run
-        .withSuccessHandler(function (res) {
+        .withSuccessHandler(function () {
           M.toast({ html: 'Ficha excluída com sucesso.', classes: 'green darken-2' });
           M.Modal.getInstance(document.getElementById('modalConfirmacao')).close();
-
-          // Recarrega a lista de fichas da sessão atual
-          formSessoes_abrirFichas(sessaoAtualId);
+          formSessoes_abrirFichas(sessaoAtualId); // recarrega as fichas
         })
         .withFailureHandler(function (err) {
           novoBtn.disabled = false;
@@ -604,39 +619,29 @@ function _handleInlineAutocomplete(e, lista) {
         })
         .formSessoes_excluirFicha(idFicha);
     };
-
     _abrirModal('modalConfirmacao');
   }
 
   // ============================================================
-  // SALVAR FICHA (RELATOR + EXPEDIENTE)
+  // SALVAR FICHA
   // ============================================================
 
-  /**
-   * Função principal de salvamento. 
-   * Decide se chama a reordenação ou apenas o salvamento simples.
-   */
   function formSessoes_salvarFicha() {
     const id = document.getElementById('ficha_f_Id').value;
-    const novaOrdem = parseInt(document.getElementById('ficha_f_Ordem').value);
-    const ordemAntiga = parseInt(fichaSelecionadaOriginal.ordem);
-    const idSessao = fichaSelecionadaOriginal.idsessao;
+    if (!id || !fichaSelecionadaOriginal) return M.toast({ html: 'Nenhuma ficha selecionada.', classes: 'orange darken-3' });
 
-    if (!id) return M.toast({ html: 'Nenhuma ficha selecionada.', classes: 'orange darken-3' });
+    const novaOrdem  = parseInt(document.getElementById('ficha_f_Ordem').value);
+    const ordemAntiga = parseInt(fichaSelecionadaOriginal.ordem);
+    const idSessao   = fichaSelecionadaOriginal.idsessao;
 
     M.toast({ html: 'Processando alterações...', classes: 'blue' });
 
-    const ordemAlterada = (novaOrdem !== ordemAntiga);
-
-    if (ordemAlterada) {
-      // Fluxo com reordenação
+    if (novaOrdem !== ordemAntiga) {
       google.script.run
         .withSuccessHandler(function (res) {
           if (res.sucesso) {
-            // Atualiza a lista local com as fichas retornadas
             fichasDaSessao = res.fichas || [];
             _renderizarListaFichas(fichasDaSessao);
-            // Mantém a ficha atual selecionada
             setTimeout(() => {
               const item = document.querySelector(`.ficha-proc-item[data-ficha-id="${id}"]`);
               if (item) item.classList.add('selecionado');
@@ -649,55 +654,41 @@ function _handleInlineAutocomplete(e, lista) {
         .withFailureHandler(err => M.toast({ html: 'Erro na reordenação: ' + err.message, classes: 'red' }))
         .formSessoes_atualizarOrdemFichas(idSessao, id, novaOrdem, ordemAntiga);
     } else {
-      // Fluxo simples (apenas texto)
-      executarSalvarSimples(id);
+      const dados = {
+        id: id,
+        relator: document.getElementById('ficha_f_Relator').value,
+        expediente: document.getElementById('ficha_f_Expediente').value
+      };
+      google.script.run
+        .withSuccessHandler(function () {
+          M.toast({ html: 'Ficha salva com sucesso!', classes: 'green' });
+          if (fichaSelecionadaOriginal) {
+            fichaSelecionadaOriginal.relator    = dados.relator;
+            fichaSelecionadaOriginal.expediente = dados.expediente;
+          }
+          const idx = fichasDaSessao.findIndex(f => f.id === id);
+          if (idx !== -1) {
+            fichasDaSessao[idx].relator    = dados.relator;
+            fichasDaSessao[idx].expediente = dados.expediente;
+          }
+        })
+        .withFailureHandler(err => M.toast({ html: 'Erro ao salvar: ' + err.message, classes: 'red' }))
+        .formSessoes_salvarFicha(dados);
     }
   }
 
-  /**
-   * Função auxiliar para salvar Relator e Expediente
-   * @param {string} id
-   * @param {boolean} recarregarTudo Se true, recarrega a lista de fichas completa
-   */
-  function executarSalvarSimples(id) {
-    const dados = {
-      id: id,
-      relator: document.getElementById('ficha_f_Relator').value,
-      expediente: document.getElementById('ficha_f_Expediente').value
-    };
-
-    google.script.run
-      .withSuccessHandler(function () {
-        M.toast({ html: 'Ficha salva com sucesso!', classes: 'green' });
-        if (fichaSelecionadaOriginal) {
-          fichaSelecionadaOriginal.relator = dados.relator;
-          fichaSelecionadaOriginal.expediente = dados.expediente;
-        }
-        const idx = fichasDaSessao.findIndex(f => f.id === id);
-        if (idx !== -1) {
-          fichasDaSessao[idx].relator = dados.relator;
-          fichasDaSessao[idx].expediente = dados.expediente;
-        }
-      })
-      .withFailureHandler(err => M.toast({ html: 'Erro ao salvar: ' + err.message, classes: 'red' }))
-      .formSessoes_salvarFicha(dados);
-  }
-
   // ============================================================
-  // FAB INTERNO
+  // NOVO VOTO
   // ============================================================
 
-  // Ação 1: Abrir formulário de novo voto (rola para ele)
   function formSessoes_abrirNovoVoto() {
-
     if (!fichaAtualId) return M.toast({ html: 'Selecione um processo primeiro.', classes: 'orange darken-3' });
 
     const painel = document.getElementById('painelNovoVoto');
     painel.style.display = 'block';
-
-    // Reseta o formulário
     document.getElementById('voto_f_Id').value = '';
     pdfSelecionado = null;
+
     const uploadArea = document.getElementById('uploadAreaVoto');
     uploadArea.className = 'upload-area';
     uploadArea.innerHTML = `
@@ -705,14 +696,12 @@ function _handleInlineAutocomplete(e, lista) {
       <p><strong>Clique para anexar o relatório em PDF</strong><br>Opcional · máx. 15 MB</p>`;
 
     M.FormSelect.init(document.querySelectorAll('#painelNovoVoto select'));
-    M.Autocomplete.init(document.getElementById('voto_f_Relator'), {
-      data: baseMembros, minLength: 2, limit: 7
-    });
+    M.Autocomplete.init(document.getElementById('voto_f_Relator'), { data: baseMembros, minLength: 2, limit: 7 });
     M.updateTextFields();
 
-    // Rola para o formulário
     setTimeout(() => {
-      painel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const scrollArea = document.querySelector('.fichas-dir-scroll');
+      if (scrollArea) scrollArea.scrollTo({ top: 0, behavior: 'smooth' });
     }, 60);
   }
 
@@ -728,204 +717,157 @@ function _handleInlineAutocomplete(e, lista) {
 
   function _carregarVotos(idFicha) {
     const container = document.getElementById('fichasListaVotos');
-    if (!container) {
-        return;
-    }
-
-    // Exibe loader
+    if (!container) return;
     container.innerHTML = `
-        <div class="votos-vazio">
-            <div class="preloader-wrapper small active">
-                <div class="spinner-layer spinner-blue-only">
-                    <div class="circle-clipper left"><div class="circle"></div></div>
-                    <div class="gap-patch"><div class="circle"></div></div>
-                    <div class="circle-clipper right"><div class="circle"></div></div>
-                </div>
-            </div>
-        </div>`;
+      <div class="votos-vazio">
+        <div class="preloader-wrapper small active">
+          <div class="spinner-layer spinner-blue-only">
+            <div class="circle-clipper left"><div class="circle"></div></div>
+            <div class="gap-patch"><div class="circle"></div></div>
+            <div class="circle-clipper right"><div class="circle"></div></div>
+          </div>
+        </div>
+      </div>`;
 
     google.script.run
-        .withSuccessHandler(function (res) {
-            if (!res.sucesso) {
-                console.error('Erro retornado pelo servidor:', res.erro);
-                container.innerHTML = `<div class="votos-vazio">Erro: ${res.erro || 'desconhecido'}</div>`;
-                return;
-            }
-            _renderizarVotos(res.votos || []);
-        })
-        .withFailureHandler(function (err) {
-            console.error('Falha na comunicação com o servidor:', err);
-            container.innerHTML = `<div class="votos-vazio">Falha na comunicação.</div>`;
-        })
-        .formSessoes_buscarVotos(idFicha);
+      .withSuccessHandler(function (res) {
+        if (!res.sucesso) {
+          container.innerHTML = `<div class="votos-vazio">Erro: ${res.erro || 'desconhecido'}</div>`;
+          return;
+        }
+        _renderizarVotos(res.votos || []);
+      })
+      .withFailureHandler(function (err) {
+        container.innerHTML = `<div class="votos-vazio">Falha na comunicação.</div>`;
+      })
+      .formSessoes_buscarVotos(idFicha);
   }
 
   function _renderizarVotos(votos) {
     const container = document.getElementById('fichasListaVotos');
-    if (!container) {
-        return;
-    }
+    if (!container) return;
 
-    // Atualiza contador de votos
     const totalSpan = document.getElementById('fichaVotosTotal');
-    if (totalSpan) {
-        totalSpan.textContent = `${votos.length} voto${votos.length !== 1 ? 's' : ''}`;
-    } else {
-        console.warn('Elemento #fichaVotosTotal não encontrado');
-    }
+    if (totalSpan) totalSpan.textContent = `${votos.length} voto${votos.length !== 1 ? 's' : ''}`;
 
-    // Se não há votos, exibe mensagem vazia
     if (!votos || votos.length === 0) {
-        container.innerHTML = `
-            <div class="votos-vazio">
-                <i class="material-icons" style="font-size:32px; display:block; margin-bottom:8px; color:#ddd;">how_to_vote</i>
-                Nenhum voto registrado. Use o botão + para adicionar.
-            </div>`;
-        return;
+      container.innerHTML = `
+        <div class="votos-vazio">
+          <i class="material-icons" style="font-size:32px; display:block; margin-bottom:8px; color:#ddd;">how_to_vote</i>
+          Nenhum voto registrado. Use o botão + para adicionar.
+        </div>`;
+      return;
     }
 
-    // Limpa o container antes de renderizar
     container.innerHTML = '';
-
     const tipoOpcoes = ['Voto do relator', 'Voto divergente'];
 
-    votos.forEach((v, index) => {
-        const tipoClass = _votoTipoClasse(v.tipovoto);
-        const idSafe = _esc(v.id);
+    votos.forEach(v => {
+      const tipoClass = _votoTipoClasse(v.tipovoto);
+      const idSafe    = _esc(v.id);
+      const linkRel   = v.urlvoto || '';
+      const resultadoExibe = (v.resultado !== '' && v.resultado !== null && v.resultado !== undefined) ? v.resultado : '—';
 
-        // Tenta encontrar a URL em todas as variações possíveis vindas do backend
-        const linkRelatorio = v.urlvoto || v.urlRelatorio || v['URL Relatório'] || v.url_voto || '';
-
-        const resultadoExibe = (v.resultado !== '' && v.resultado !== null && v.resultado !== undefined)
-            ? v.resultado : '—';
-
-        // Define a seção do PDF
-        const secaoRelatorio = linkRelatorio
-            ? `<div class="voto-campo-grupo" style="margin-top: 4px;">
-                <label class="voto-campo-label">Relatório</label>
-                <div class="voto-pdf-container">
-                    <a href="${_esc(linkRelatorio)}" target="_blank" class="voto-pdf-link">
-                        <i class="material-icons">picture_as_pdf</i>Abrir relatório
-                    </a>
-                    <button class="btn-pdf-excluir tooltipped" data-tooltip="Excluir arquivo"
-                        onclick="formSessoes_removerRelatorio('${idSafe}', '${_esc(linkRelatorio)}')">
-                        <i class="material-icons" style="font-size:16px;">delete</i>
-                    </button>
-                </div>
-            </div>`
-            : `<div class="voto-campo-grupo" style="margin-top: 4px;">
-                <label class="voto-campo-label">Relatório</label>
-                <button class="btn-pdf-adicionar" onclick="formSessoes_adicionarRelatorioDireto('${idSafe}')">
-                    <i class="material-icons" style="font-size:16px;">add_circle_outline</i>Anexar PDF
-                </button>
-            </div>`;
-
-        const acc = document.createElement('div');
-        acc.className = 'voto-accordion';
-        acc.setAttribute('data-voto-id', v.id);
-
-        const opsTipo = tipoOpcoes.map(o =>
-            `<option value="${o}" ${v.tipovoto === o ? 'selected' : ''}>${o}</option>`).join('');
-
-        // Usando _escTexto para campos textuais (exceto onde o HTML é necessário)
-        acc.innerHTML = `
-            <div class="voto-accordion-header" onclick="formSessoes_toggleVoto(this)">
-                <span class="voto-tipo-chip ${tipoClass}">${_escTexto(v.tipovoto) || '—'}</span>
-                <div class="voto-header-info">
-                    <span class="voto-header-votante">${_escTexto(v.relator) || 'Relator não informado'}</span>
-                </div>
-                <span class="voto-resultado-placar" title="Resultado">${_escTexto(resultadoExibe)}</span>
-                <i class="material-icons voto-chevron">expand_more</i>
+      const secaoRelatorio = linkRel
+        ? `<div class="voto-campo-grupo" style="margin-top: 4px;">
+            <label class="voto-campo-label">Relatório</label>
+            <div class="voto-pdf-container">
+              <a href="${_esc(linkRel)}" target="_blank" class="voto-pdf-link">
+                <i class="material-icons">picture_as_pdf</i>Abrir relatório
+              </a>
+              <button class="btn-pdf-excluir tooltipped" data-tooltip="Excluir arquivo"
+                onclick="formSessoes_removerRelatorio('${idSafe}', '${_esc(linkRel)}')">
+                <i class="material-icons" style="font-size:16px;">delete</i>
+              </button>
             </div>
+           </div>`
+        : `<div class="voto-campo-grupo" style="margin-top: 4px;">
+            <label class="voto-campo-label">Relatório</label>
+            <button class="btn-pdf-adicionar" onclick="formSessoes_adicionarRelatorioDireto('${idSafe}')">
+              <i class="material-icons" style="font-size:16px;">add_circle_outline</i>Anexar PDF
+            </button>
+           </div>`;
 
-            <div class="voto-accordion-body">
-                <div class="voto-campo-grupo">
-                    <label class="voto-campo-label">TipoVoto</label>
-                    <div class="input-field voto-campo-input">
-                        <select id="ve_TipoVoto_${idSafe}">${opsTipo}</select>
-                    </div>
-                </div>
+      const opsTipo = tipoOpcoes.map(o =>
+        `<option value="${o}" ${v.tipovoto === o ? 'selected' : ''}>${o}</option>`).join('');
 
-                <div class="voto-campo-grupo">
-                    <label class="voto-campo-label">Relator</label>
-                    <div class="input-field voto-campo-input">
-                        <input id="ve_Relator_${idSafe}" type="text"
-                            value="${_escTexto(v.relator)}" class="autocomplete">
-                    </div>
-                </div>
+      const acc = document.createElement('div');
+      acc.className = 'voto-accordion';
+      acc.setAttribute('data-voto-id', v.id);
 
-                <div class="voto-campo-grupo voto-campo-grupo-voto">
-                    <label class="voto-campo-label" style="margin-top: 10px;">Voto</label>
-                    <div class="input-field voto-campo-input">
-                        <textarea id="ve_Voto_${idSafe}"
-                            class="materialize-textarea voto-textarea">${_escTexto(v.voto)}</textarea>
-                    </div>
-                </div>
+      acc.innerHTML = `
+        <div class="voto-accordion-header" onclick="formSessoes_toggleVoto(this)">
+          <span class="voto-tipo-chip ${tipoClass}">${_escTexto(v.tipovoto) || '—'}</span>
+          <div class="voto-header-info">
+            <span class="voto-header-votante">${_escTexto(v.relator) || 'Relator não informado'}</span>
+          </div>
+          <span class="voto-resultado-placar" title="Resultado">${_escTexto(resultadoExibe)}</span>
+          <i class="material-icons voto-chevron">expand_more</i>
+        </div>
 
-                <div class="voto-campo-grupo">
-                    <label class="voto-campo-label">Resultado</label>
-                    <span class="voto-resultado-placar voto-resultado-readonly">${_escTexto(resultadoExibe)}</span>
-                </div>
-
-                ${secaoRelatorio}
-
-                <div class="voto-accordion-footer">
-                    <button class="btn-voto-del"
-                        onclick="formSessoes_excluirVoto('${idSafe}')">
-                        <i class="material-icons" style="font-size:14px;">delete_outline</i>Excluir
-                    </button>
-                    <button class="btn-voto-salvar"
-                        onclick="formSessoes_salvarVotoEdicao('${idSafe}')">
-                        <i class="material-icons" style="font-size:14px;">save</i>Salvar alterações
-                    </button>
-                </div>
+        <div class="voto-accordion-body">
+          <div class="voto-campo-grupo">
+            <label class="voto-campo-label">TipoVoto</label>
+            <div class="input-field voto-campo-input">
+              <select id="ve_TipoVoto_${idSafe}">${opsTipo}</select>
             </div>
-        `;
+          </div>
+          <div class="voto-campo-grupo">
+            <label class="voto-campo-label">Relator</label>
+            <div class="input-field voto-campo-input">
+              <input id="ve_Relator_${idSafe}" type="text" value="${_escTexto(v.relator)}" class="autocomplete">
+            </div>
+          </div>
+          <div class="voto-campo-grupo voto-campo-grupo-voto">
+            <label class="voto-campo-label" style="margin-top: 10px;">Voto</label>
+            <div class="input-field voto-campo-input">
+              <textarea id="ve_Voto_${idSafe}" class="materialize-textarea voto-textarea">${_escTexto(v.voto)}</textarea>
+            </div>
+          </div>
+          <div class="voto-campo-grupo">
+            <label class="voto-campo-label">Resultado</label>
+            <span class="voto-resultado-placar voto-resultado-readonly">${_escTexto(resultadoExibe)}</span>
+          </div>
+          ${secaoRelatorio}
+          <div class="voto-accordion-footer">
+            <button class="btn-voto-del" onclick="formSessoes_excluirVoto('${idSafe}')">
+              <i class="material-icons" style="font-size:14px;">delete_outline</i>Excluir
+            </button>
+            <button class="btn-voto-salvar" onclick="formSessoes_salvarVotoEdicao('${idSafe}')">
+              <i class="material-icons" style="font-size:14px;">save</i>Salvar alterações
+            </button>
+          </div>
+        </div>
+      `;
 
-        container.appendChild(acc);
-
-        // Reinicializa os componentes do Materialize para o novo elemento
-        M.FormSelect.init(acc.querySelectorAll('select'));
-        M.Autocomplete.init(acc.querySelector(`#ve_Relator_${idSafe}`), {
-            data: baseMembros, minLength: 2, limit: 7
-        });
-        M.textareaAutoResize(acc.querySelector(`#ve_Voto_${idSafe}`));
-        M.Tooltip.init(acc.querySelectorAll('.tooltipped'));
+      container.appendChild(acc);
+      M.FormSelect.init(acc.querySelectorAll('select'));
+      M.Autocomplete.init(acc.querySelector(`#ve_Relator_${idSafe}`), { data: baseMembros, minLength: 2, limit: 7 });
+      M.textareaAutoResize(acc.querySelector(`#ve_Voto_${idSafe}`));
+      M.Tooltip.init(acc.querySelectorAll('.tooltipped'));
     });
-
-}
+  }
 
   function formSessoes_toggleVoto(header) {
     const acc = header.closest('.voto-accordion');
     const estaAberto = acc.classList.contains('aberto');
-    // Fecha todos
     document.querySelectorAll('.voto-accordion.aberto').forEach(el => el.classList.remove('aberto'));
-    // Abre o clicado (se estava fechado)
     if (!estaAberto) acc.classList.add('aberto');
   }
 
-  /**
-   * Salva as edições feitas nos campos de um voto já existente (dentro do accordion).
-   * Não atualiza Resultado — esse campo é somente leitura no card.
-   */
   function formSessoes_salvarVotoEdicao(id) {
-    const selTipo = document.getElementById(`ve_TipoVoto_${id}`);
+    const selTipo    = document.getElementById(`ve_TipoVoto_${id}`);
     const inpRelator = document.getElementById(`ve_Relator_${id}`);
-    const taVoto = document.getElementById(`ve_Voto_${id}`);
+    const taVoto     = document.getElementById(`ve_Voto_${id}`);
 
-    if (!selTipo || !inpRelator || !taVoto) {
+    if (!selTipo || !inpRelator || !taVoto)
       return M.toast({ html: 'Campos do voto não encontrados.', classes: 'orange darken-3' });
-    }
 
     const tipovoto = selTipo.value;
-    const relator = inpRelator.value;
-    const voto = taVoto.value.trim();
-
-    if (!tipovoto) {
+    if (!tipovoto)
       return M.toast({ html: 'TipoVoto é obrigatório.', classes: 'orange darken-3' });
-    }
 
-    const acc = document.querySelector(`.voto-accordion[data-voto-id="${id}"]`);
+    const acc    = document.querySelector(`.voto-accordion[data-voto-id="${id}"]`);
     const urlvoto = acc && acc.querySelector('.voto-pdf-link')
       ? acc.querySelector('.voto-pdf-link').href : '';
 
@@ -938,14 +880,9 @@ function _handleInlineAutocomplete(e, lista) {
         M.toast({ html: 'Erro ao salvar: ' + err.message, classes: 'red darken-2' });
       })
       .formSessoes_salvarVoto({
-        id: id,
-        idfichavotacao: fichaAtualId,
-        idprocesso: fichaAtualIdProc,
-        tipovoto: tipovoto,
-        relator: relator,
-        voto: voto,
-        resultado: '', // preservado no backend — não sobrescreve
-        urlvoto: urlvoto
+        id, idfichavotacao: fichaAtualId, idprocesso: fichaAtualIdProc,
+        tipovoto, relator: inpRelator.value, voto: taVoto.value.trim(),
+        resultado: '', urlvoto
       });
   }
 
@@ -954,43 +891,37 @@ function _handleInlineAutocomplete(e, lista) {
 
     const tipo = document.getElementById('voto_f_Tipo').value;
     const voto = document.getElementById('voto_f_Voto').value.trim();
-
-    if (!tipo) {
-      return M.toast({ html: 'TipoVoto é obrigatório.', classes: 'orange darken-3' });
-    }
+    if (!tipo) return M.toast({ html: 'TipoVoto é obrigatório.', classes: 'orange darken-3' });
 
     const obj = {
-      id: document.getElementById('voto_f_Id').value || '',
+      id:             document.getElementById('voto_f_Id').value || '',
       idfichavotacao: fichaAtualId,
-      idprocesso: fichaAtualIdProc,
-      tipovoto: tipo,
-      relator: document.getElementById('voto_f_Relator').value,
-      voto: voto,
-      resultado: document.getElementById('voto_f_Resultado').value,
-      urlvoto: ''
+      idprocesso:     fichaAtualIdProc,
+      tipovoto:       tipo,
+      relator:        document.getElementById('voto_f_Relator').value,
+      voto:           voto,
+      resultado:      document.getElementById('voto_f_Resultado').value,
+      urlvoto:        ''
     };
 
     M.toast({ html: 'Salvando voto...', classes: 'blue darken-2' });
 
     google.script.run
       .withSuccessHandler(function (res) {
-        const idVoto = res.id;
-
-        // Se tem PDF selecionado, faz o upload agora
         if (pdfSelecionado && pdfSelecionado.base64) {
           M.toast({ html: 'Enviando PDF para o Drive...', classes: 'blue darken-2' });
           google.script.run
             .withSuccessHandler(function () {
-              M.toast({ html: 'Voto e PDF salvos com sucesso!', classes: 'green darken-2' });
+              M.toast({ html: 'Voto e PDF salvos!', classes: 'green darken-2' });
               formSessoes_fecharNovoVoto();
               _carregarVotos(fichaAtualId);
             })
             .withFailureHandler(function (err) {
-              M.toast({ html: 'Voto salvo, mas erro no upload do PDF: ' + err.message, classes: 'orange darken-3' });
+              M.toast({ html: 'Voto salvo, erro no PDF: ' + err.message, classes: 'orange darken-3' });
               formSessoes_fecharNovoVoto();
               _carregarVotos(fichaAtualId);
             })
-            .formSessoes_uploadRelatorio(idVoto, pdfSelecionado.base64, pdfSelecionado.nome);
+            .formSessoes_uploadRelatorio(res.id, pdfSelecionado.base64, pdfSelecionado.nome);
         } else {
           M.toast({ html: 'Voto salvo!', classes: 'green darken-2' });
           formSessoes_fecharNovoVoto();
@@ -1005,7 +936,6 @@ function _handleInlineAutocomplete(e, lista) {
 
   function formSessoes_excluirVoto(idVoto) {
     if (!confirm('Remover este voto permanentemente?')) return;
-
     google.script.run
       .withSuccessHandler(function () {
         M.toast({ html: 'Voto removido.', classes: 'blue-grey darken-2' });
@@ -1018,107 +948,66 @@ function _handleInlineAutocomplete(e, lista) {
   }
 
   // ============================================================
-  // SELEÇÃO E UPLOAD DE PDF
+  // UPLOAD DE PDF
   // ============================================================
 
-  /**
-   * Chamado quando o usuário seleciona um PDF no input do formulário de novo voto.
-   * Apenas armazena o arquivo em memória — o upload acontece ao salvar o voto.
-   */
   function formSessoes_selecionarPDF(input) {
     const file = input.files[0];
     if (!file) return;
-
-    if (file.type !== 'application/pdf') {
-      return M.toast({ html: 'Selecione um arquivo PDF válido.', classes: 'red darken-2' });
-    }
-    if (file.size > 15 * 1024 * 1024) {
-      return M.toast({ html: 'Arquivo muito grande. Limite: 15 MB.', classes: 'red darken-2' });
-    }
+    if (file.type !== 'application/pdf') return M.toast({ html: 'Selecione um PDF válido.', classes: 'red darken-2' });
+    if (file.size > 15 * 1024 * 1024) return M.toast({ html: 'Arquivo muito grande. Limite: 15 MB.', classes: 'red darken-2' });
 
     const reader = new FileReader();
     reader.onload = function (e) {
-      pdfSelecionado = {
-        base64: e.target.result.split(',')[1],
-        nome: file.name
-      };
-
-      // Atualiza a aparência da área de upload
+      pdfSelecionado = { base64: e.target.result.split(',')[1], nome: file.name };
       const uploadArea = document.getElementById('uploadAreaVoto');
       uploadArea.className = 'upload-area selecionado';
       uploadArea.innerHTML = `
         <i class="material-icons">check_circle</i>
         <p><strong>${file.name}</strong><br>${(file.size / 1024).toFixed(0)} KB selecionado</p>`;
-
       M.toast({ html: 'PDF pronto para envio.', classes: 'blue darken-2' });
     };
     reader.readAsDataURL(file);
-    input.value = ''; // reseta para permitir selecionar o mesmo arquivo novamente
+    input.value = '';
   }
 
-  /**
-   * Dispara o seletor de arquivos para um voto específico que não possui PDF
-   */
   function formSessoes_adicionarRelatorioDireto(idVoto) {
     const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'application/pdf';
+    input.type = 'file'; input.accept = 'application/pdf';
     input.onchange = e => {
       const file = e.target.files[0];
       if (!file) return;
-
-      // Validações básicas
       if (file.size > 15 * 1024 * 1024) return M.toast({ html: 'Limite de 15MB excedido', classes: 'red' });
-
-      M.toast({ html: 'Fazendo upload do relatório...', classes: 'blue' });
-
+      M.toast({ html: 'Fazendo upload...', classes: 'blue' });
       const reader = new FileReader();
       reader.onload = function (evt) {
-        const base64Data = evt.target.result.split(',')[1];
-
         google.script.run
           .withSuccessHandler(function () {
             M.toast({ html: 'Relatório anexado!', classes: 'green' });
-            _carregarVotos(fichaAtualId); // Recarrega a lista para mostrar o botão 'Abrir'
+            _carregarVotos(fichaAtualId);
           })
           .withFailureHandler(err => M.toast({ html: err.message, classes: 'red' }))
-          .formSessoes_uploadRelatorio(idVoto, base64Data, file.name);
+          .formSessoes_uploadRelatorio(idVoto, evt.target.result.split(',')[1], file.name);
       };
       reader.readAsDataURL(file);
     };
     input.click();
   }
 
-  /**
-   * Solicita a exclusão do arquivo do Drive e limpa o link na planilha
-   */
   function formSessoes_removerRelatorio(idVoto, urlArquivo) {
     if (!confirm('Deseja realmente excluir este arquivo PDF permanentemente do Drive?')) return;
-
     M.toast({ html: 'Excluindo arquivo...', classes: 'amber darken-3' });
-
     google.script.run
       .withSuccessHandler(function () {
-        M.toast({ html: 'Arquivo removido com sucesso.', classes: 'blue-grey' });
-        _carregarVotos(fichaAtualId); // Recarrega para mostrar o botão de 'Anexar'
+        M.toast({ html: 'Arquivo removido.', classes: 'blue-grey' });
+        _carregarVotos(fichaAtualId);
       })
       .withFailureHandler(err => M.toast({ html: err.message, classes: 'red' }))
       .formSessoes_excluirRelatorio(idVoto, urlArquivo);
   }
 
   // ============================================================
-  // FUNCIONALIDADES EM DESENVOLVIMENTO
-  // ============================================================
-
-  function formSessoes_emBreve(funcionalidade) {
-    M.toast({
-      html: `<i class="material-icons left" style="line-height:inherit">construction</i>${funcionalidade} em desenvolvimento...`,
-      classes: 'amber darken-4'
-    });
-  }
-
-  // ============================================================
-  // PINCEL MÁGICO PARA ADICIONAR PROCESSOS À PAUTA
+  // PINCEL MÁGICO
   // ============================================================
 
   function formSessoes_abrirPincelMagico(idSessao, orgao) {
@@ -1131,18 +1020,12 @@ function _handleInlineAutocomplete(e, lista) {
 
   function formSessoes_executarPincelMagico() {
     const idSessao = document.getElementById('pm_idSessao').value;
-    const orgao = document.getElementById('pm_orgaoSessao').value;
-    const texto = document.getElementById('pm_textoBruto').value;
+    const orgao    = document.getElementById('pm_orgaoSessao').value;
+    const texto    = document.getElementById('pm_textoBruto').value;
+    if (!texto.trim()) return M.toast({ html: 'Cole algum texto primeiro.', classes: 'orange' });
 
-    if (!texto.trim()) return M.toast({html: 'Cole algum texto primeiro.', classes:'orange'});
-
-    const regex = /(20\d{7})/g;
-    const encontrados = texto.match(regex) || [];
-    const processosUnicos = [...new Set(encontrados)];
-
-    if (processosUnicos.length === 0) {
-      return M.toast({html: 'Nenhum processo válido identificado.', classes:'red'});
-    }
+    const processosUnicos = [...new Set((texto.match(/(20\d{7})/g) || []))];
+    if (!processosUnicos.length) return M.toast({ html: 'Nenhum processo válido identificado.', classes: 'red' });
 
     const btn = event.target.closest('button');
     btn.disabled = true;
@@ -1150,25 +1033,32 @@ function _handleInlineAutocomplete(e, lista) {
     btn.innerHTML = 'Processando...';
 
     google.script.run
-      .withSuccessHandler(function(res) {
-        btn.disabled = false;
-        btn.innerHTML = originalHtml;
-        
-        if(res.sucesso) {
-          let statusMsg = `${res.adicionados} fichas criadas.`;
-          if (res.avisos) statusMsg += ` (${res.avisos})`;
-          
-          M.toast({html: statusMsg, classes: res.adicionados > 0 ? 'green' : 'orange', displayLength: 5000});
-          
+      .withSuccessHandler(function (res) {
+        btn.disabled = false; btn.innerHTML = originalHtml;
+        if (res.sucesso) {
+          let msg = `${res.adicionados} fichas criadas.`;
+          if (res.avisos) msg += ` (${res.avisos})`;
+          M.toast({ html: msg, classes: res.adicionados > 0 ? 'green' : 'orange', displayLength: 5000 });
           if (res.adicionados > 0) {
-             M.Modal.getInstance(document.getElementById('modalPincelMagico')).close();
-             formSessoes_carregar();
+            M.Modal.getInstance(document.getElementById('modalPincelMagico')).close();
+            formSessoes_carregar();
           }
         } else {
-          M.toast({html: 'Erro: ' + res.erro, classes:'red'});
+          M.toast({ html: 'Erro: ' + res.erro, classes: 'red' });
         }
       })
       .formSessoes_importarProcessosEmMassa(idSessao, processosUnicos, orgao);
+  }
+
+  // ============================================================
+  // FUNCIONALIDADES EM DESENVOLVIMENTO
+  // ============================================================
+
+  function formSessoes_emBreve(funcionalidade) {
+    M.toast({
+      html: `<i class="material-icons left" style="line-height:inherit">construction</i>${funcionalidade} em desenvolvimento...`,
+      classes: 'amber darken-4'
+    });
   }
 
   // ============================================================
@@ -1188,7 +1078,6 @@ function _handleInlineAutocomplete(e, lista) {
       .replace(/"/g, '&quot;');
   }
 
-  // Para conteúdo de textarea — escapa só os caracteres HTML sem quebrar o texto
   function _escTexto(str) {
     return (str || '').toString()
       .replace(/&/g, '&amp;')
@@ -1199,32 +1088,30 @@ function _handleInlineAutocomplete(e, lista) {
   function _i18nPtBR() {
     return {
       cancel: 'Cancelar', clear: 'Limpar', done: 'OK',
-      months: ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'],
-      monthsShort: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'],
-      weekdays: ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'],
-      weekdaysShort: ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'],
-      weekdaysAbbrev: ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']
+      months: ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'],
+      monthsShort: ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'],
+      weekdays: ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'],
+      weekdaysShort: ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'],
+      weekdaysAbbrev: ['D','S','T','Q','Q','S','S']
     };
   }
 
   function _statusCor(status) {
     const mapa = {
       'Em tramitação': 's-tramitacao', 'Arquivado': 's-arquivado',
-      'Deferido': 's-deferido', 'Indeferido': 's-indeferido',
-      'Em recurso': 's-recurso', 'Em diligência': 's-diligencia',
-      'Concluso': 's-concluso', 'Na secretaria': 's-secretaria'
+      'Deferido': 's-deferido',        'Indeferido': 's-indeferido',
+      'Em recurso': 's-recurso',       'Em diligência': 's-diligencia',
+      'Concluso': 's-concluso',        'Na secretaria': 's-secretaria'
     };
     return mapa[status] || 's-vazio';
   }
 
   function _votoTipoClasse(tipo) {
     const t = (tipo || '').toLowerCase();
-    if (t.includes('relator')) return 'voto-tipo-relator';
-    if (t.includes('membro')) return 'voto-tipo-membro';
-    if (t.includes('minerva')) return 'voto-tipo-minerva';
-    if (t.includes('vogal')) return 'voto-tipo-vogal';
+    if (t.includes('relator'))  return 'voto-tipo-relator';
+    if (t.includes('membro'))   return 'voto-tipo-membro';
+    if (t.includes('minerva'))  return 'voto-tipo-minerva';
+    if (t.includes('vogal'))    return 'voto-tipo-vogal';
     return 'voto-tipo-default';
   }
-
 </script>
