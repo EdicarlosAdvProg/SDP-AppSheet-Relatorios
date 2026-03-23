@@ -224,6 +224,33 @@
     overflow: hidden !important;
   }
 
+  /* Chips de participantes e procuradores */
+  .participante-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #004480;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 50px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: background 0.2s;
+  }
+
+  .participante-chip .chip-remove {
+    cursor: pointer;
+    font-size: 18px;
+    margin-left: 4px;
+    opacity: 0.7;
+    transition: opacity 0.2s, transform 0.1s;
+  }
+
+  .participante-chip .chip-remove:hover {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+
   /* =====================================================
      4. BOTÕES DE AÇÃO DOS CARDS
   ===================================================== */

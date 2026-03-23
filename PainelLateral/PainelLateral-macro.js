@@ -155,6 +155,7 @@ function PainelLateral_carregarPauta(sessaoId) {
     const iFOrdem    = (mF['ordem']      || 4) - 1;
     const iFRelator  = (mF['relator']    || 5) - 1;
     const iFExpediente = (mF['expediente'] || 6) - 1;
+    const iFMembros  = (mF['membros']    ? mF['membros'] - 1 : null); // ← NOVO
 
     const fichas = dadosFichas.slice(1)
       .filter(r => r[iFSessao] == idBusca)
@@ -170,6 +171,7 @@ function PainelLateral_carregarPauta(sessaoId) {
           ordem:          r[iFOrdem]   || '',
           relator:        r[iFRelator] || '',
           expediente:     r[iFExpediente] || '',
+          membros:        iFMembros !== null ? (r[iFMembros] || '') : null, // ← string original, sem parse
 
           // tabProcessos — campos completos para o documento
           processo:       linhaProc ? linhaProc[(mP['processo']   || 2) - 1] : 'N/D',
@@ -393,6 +395,46 @@ function PainelLateral_obterVotosDaSessao(sessaoId) {
   }
 }
 
+/**
+ * Salva a lista de membros participantes diretamente na ficha selecionada.
+ * @param {string|number} fichaId
+ * @param {Array<string>} listaMembros
+ */
+function PainelLateral_salvarMembrosNaFicha(fichaId, listaMembros) {
+  try {
+    const ss = PainelLateral_getPlanilha();
+    const sheetFichas = ss.getSheetByName('tabFichas');
+    if (!sheetFichas) throw new Error('Aba tabFichas não encontrada.');
+
+    const mapa = getMapaColunas(sheetFichas);
+    const dados = sheetFichas.getDataRange().getValues();
+    
+    const iId = (mapa['id'] || 1) - 1;
+    const iMembros = mapa['membros']; // Certifique-se que existe a coluna [membros] na tabFichas
+    
+    if (!iMembros) throw new Error('Coluna "membros" não encontrada na tabFichas.');
+
+    // Localiza a linha da ficha
+    let linhaFicha = -1;
+    for (let i = 1; i < dados.length; i++) {
+      if (dados[i][iId] == fichaId) {
+        linhaFicha = i + 1;
+        break;
+      }
+    }
+
+    if (linhaFicha === -1) throw new Error('Ficha não encontrada para salvar membros.');
+
+    // Salva concatenado por vírgula conforme solicitado
+    const listaTexto = listaMembros.join(', ');
+    sheetFichas.getRange(linhaFicha, iMembros).setValue(listaTexto);
+
+    return { sucesso: true, listaFormatada: listaTexto };
+  } catch (err) {
+    throw new Error('Erro ao salvar membros na ficha: ' + err.message);
+  }
+}
+
 // =================================================================================
 // [BLOCO] CONFIGURAÇÃO DE TEMPLATES E CONSTANTES
 // =================================================================================
@@ -464,6 +506,90 @@ function preencherDocumentoComSubs(subs) {
 function gerarDocumentoParaFicha(subs, templateId) {
   copiarDocumentoParaAtivo(templateId);
   return preencherDocumentoComSubs(subs);
+}
+
+/**
+ * Atualiza a lista de membros no documento ativo preservando toda a formatação.
+ * @param {string} novaLista - String com os nomes dos membros separados por vírgula e espaço.
+ */
+function atualizarMembrosNoDocumento(novaLista) {
+  try {
+    const body = DocumentApp.getActiveDocument().getBody();
+    const padroes = [
+      /Membros participantes:\s*/i,
+      /com participação dos demais membros:\s*/i
+    ];
+
+    let encontrado = false;
+    for (let i = 0; i < body.getNumChildren(); i++) {
+      const child = body.getChild(i);
+      if (child.getType() === DocumentApp.ElementType.PARAGRAPH) {
+        const paragraph = child.asParagraph();
+        const textElement = paragraph.editAsText();
+        const texto = textElement.getText();
+        
+        for (let padrao of padroes) {
+          const match = padrao.exec(texto);
+          if (match) {
+            const startPos = match.index + match[0].length; // posição após os dois pontos
+            const endPos = texto.length;
+            
+            // Captura a formatação do primeiro caractere do texto antigo (se existir)
+            let fontFamily = null;
+            let fontSize = null;
+            let isBold = null;
+            let isItalic = null;
+            
+            if (endPos > startPos) {
+              // Pega a formatação do primeiro caractere da lista antiga
+              const oldStart = startPos;
+              fontFamily = textElement.getFontFamily(oldStart);
+              fontSize = textElement.getFontSize(oldStart);
+              isBold = textElement.isBold(oldStart);
+              isItalic = textElement.isItalic(oldStart);
+              
+              // Remove o texto antigo
+              textElement.deleteText(oldStart, endPos - 1);
+            }
+            
+            // Insere o novo texto
+            const newStart = startPos;
+            textElement.insertText(newStart, novaLista);
+            const newEnd = newStart + novaLista.length - 1;
+            
+            // Aplica a formatação capturada (ou usa fallback do caractere anterior)
+            if (fontFamily) textElement.setFontFamily(newStart, newEnd, fontFamily);
+            if (fontSize) textElement.setFontSize(newStart, newEnd, fontSize);
+            if (isBold !== null) textElement.setBold(newStart, newEnd, isBold);
+            if (isItalic !== null) textElement.setItalic(newStart, newEnd, isItalic);
+            
+            // Se não havia texto antigo (primeira vez), copia do caractere anterior
+            if (fontFamily === null && newStart > 0) {
+              const prevChar = newStart - 1;
+              const fallbackFont = textElement.getFontFamily(prevChar);
+              const fallbackSize = textElement.getFontSize(prevChar);
+              const fallbackBold = textElement.isBold(prevChar);
+              const fallbackItalic = textElement.isItalic(prevChar);
+              if (fallbackFont) textElement.setFontFamily(newStart, newEnd, fallbackFont);
+              if (fallbackSize) textElement.setFontSize(newStart, newEnd, fallbackSize);
+              if (fallbackBold !== null) textElement.setBold(newStart, newEnd, fallbackBold);
+              if (fallbackItalic !== null) textElement.setItalic(newStart, newEnd, fallbackItalic);
+            }
+            
+            encontrado = true;
+            break;
+          }
+        }
+        if (encontrado) break;
+      }
+    }
+    if (!encontrado) {
+      throw new Error('Não foi possível localizar o local da lista de membros no documento.');
+    }
+    return true;
+  } catch (err) {
+    throw new Error('Erro ao atualizar membros: ' + err.message);
+  }
 }
 
 // =================================================================================

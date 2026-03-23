@@ -111,20 +111,20 @@
 
           <div class="fichas-dir-scroll">
 
+            <div class="ficha-secao-votos" style="margin-top: 0;">
+              <span>INFORMAÇÕES DA FICHA DE VOTAÇÃO</span>
+            </div>
+
             <div class="ficha-campos">
               <input type="hidden" id="ficha_f_Id">
               <input type="hidden" id="ficha_f_IdProcesso">
 
               <div class="row" style="margin-bottom: 0; margin-top: 8px;">
-                <div class="input-field col s12 m2">
-                  <input id="ficha_f_Ordem" type="number" min="1">
-                  <label for="ficha_f_Ordem">Ordem</label>
-                </div>
                 <div class="input-field col s12 m6">
                   <input id="ficha_f_Relator" type="text" class="autocomplete">
                   <label for="ficha_f_Relator">Relator(a)</label>
                 </div>
-                <div class="col s12 m4" style="padding-top: 18px; text-align:right;">
+                <div class="col s12 m6" style="padding-top: 18px; text-align:right;">
                   <button class="btn btn-small btn-oab-gold waves-effect waves-light"
                     onclick="formSessoes_salvarFicha()">
                     <i class="material-icons left" style="font-size:15px;">save</i>Salvar
@@ -218,6 +218,58 @@
             </div><!-- /painelNovoVoto -->
 
             <div id="fichasListaVotos" class="votos-lista"></div>
+
+            <!-- Seção Participantes -->
+            <div class="ficha-secao-votos" style="margin-top: 12px;">
+              <span>PARTICIPANTES</span>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <button class="btn-floating btn-small waves-effect waves-light btn-oab-blue"
+                        onclick="formSessoes_mostrarCampoAdicionar('membro')"
+                        title="Adicionar membro">
+                  <i class="material-icons">add</i>
+                </button>
+              </div>
+            </div>
+            <div id="participantesContainer" class="participantes-container"
+                style="padding: 0 20px 8px 20px; display: flex; flex-wrap: wrap; gap: 8px;"></div>
+            <div id="campoAdicionarMembro" style="display: none; padding: 0 20px 12px 20px;">
+              <div class="row" style="margin-bottom: 0;">
+                <div class="input-field col s10">
+                  <input type="text" id="novoMembroInput" placeholder="Digite o nome do membro" class="autocomplete">
+                  <label for="novoMembroInput">Nome do membro</label>
+                </div>
+                <div class="col s2" style="padding-top: 8px;">
+                  <button class="btn btn-small waves-effect" onclick="formSessoes_adicionarParticipante('membro')">Adicionar</button>
+                </div>
+              </div>
+            </div>
+
+            <!--
+            <!-- Seção Procuradores 
+            <div class="ficha-secao-votos" style="margin-top: 12px;">
+              <span>PROCURADORES</span>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <button class="btn-floating btn-small waves-effect waves-light btn-oab-blue"
+                        onclick="formSessoes_mostrarCampoAdicionar('procurador')"
+                        title="Adicionar procurador">
+                  <i class="material-icons">add</i>
+                </button>
+              </div>
+            </div>
+            <div id="procuradoresContainer" class="participantes-container"
+                style="padding: 0 20px 8px 20px; display: flex; flex-wrap: wrap; gap: 8px;"></div>
+            <div id="campoAdicionarProcurador" style="display: none; padding: 0 20px 12px 20px;">
+              <div class="row" style="margin-bottom: 0;">
+                <div class="input-field col s10">
+                  <input type="text" id="novoProcuradorInput" placeholder="Digite o nome do procurador" class="autocomplete">
+                  <label for="novoProcuradorInput">Nome do procurador</label>
+                </div>
+                <div class="col s2" style="padding-top: 8px;">
+                  <button class="btn btn-small waves-effect" onclick="formSessoes_adicionarParticipante('procurador')">Adicionar</button>
+                </div>
+              </div>
+            </div>
+            -->
 
           </div><!-- /fichas-dir-scroll -->
 

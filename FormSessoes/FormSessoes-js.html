@@ -18,6 +18,8 @@
   let fichasDaSessao = [];
   let sortableInstance = null;
   let fichaSelecionadaOriginal = null;
+  let participantesAtuais = [];
+  //let procuradoresAtuais = [];
 
   const MESES_PT = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
@@ -213,6 +215,13 @@
       }
     });
     if (valorExibido) { el.value = valorExibido; M.updateTextFields(); }
+  }
+
+  function _initInlineAutocomplete(input, listaNomes) {
+    if (!input) return;
+    // Remove qualquer listener anterior
+    input.removeEventListener('input', _handleInlineAutocomplete);
+    input.addEventListener('input', (e) => _handleInlineAutocomplete(e, listaNomes));
   }
 
   function _autocompleteMembrosSessao() {
@@ -523,19 +532,22 @@
 
     document.getElementById('ficha_f_Id').value          = ficha.id;
     document.getElementById('ficha_f_IdProcesso').value  = ficha.idprocesso;
-    document.getElementById('ficha_f_Ordem').value       = ficha.ordem || '';
     document.getElementById('ficha_f_Relator').value     = ficha.relator || '';
     document.getElementById('ficha_f_Expediente').value  = ficha.expediente || '';
 
-    M.Autocomplete.init(document.getElementById('ficha_f_Relator'), {
-      data: baseMembros, minLength: 2, limit: 7
-    });
+    _initInlineAutocomplete(document.getElementById('ficha_f_Relator'), Object.keys(baseMembros));
+
     M.updateTextFields();
     M.textareaAutoResize(document.getElementById('ficha_f_Expediente'));
 
     formSessoes_fecharNovoVoto();
     _fichasExibirConteudo();
     _carregarVotos(ficha.id);
+    // Carrega participantes e procuradores
+    participantesAtuais = (ficha.membros || '').split(',').map(s => s.trim()).filter(s => s);
+    //procuradoresAtuais = (ficha.procuradores || '').split(',').map(s => s.trim()).filter(s => s);
+    _renderizarParticipantes();
+    //_renderizarProcuradores();
   }
 
   function _fichasPainelVazio() {
@@ -630,51 +642,36 @@
     const id = document.getElementById('ficha_f_Id').value;
     if (!id || !fichaSelecionadaOriginal) return M.toast({ html: 'Nenhuma ficha selecionada.', classes: 'orange darken-3' });
 
-    const novaOrdem  = parseInt(document.getElementById('ficha_f_Ordem').value);
-    const ordemAntiga = parseInt(fichaSelecionadaOriginal.ordem);
-    const idSessao   = fichaSelecionadaOriginal.idsessao;
+    // Remove a parte de ordem, pois o campo foi removido
+    M.toast({ html: 'Salvando alterações...', classes: 'blue' });
 
-    M.toast({ html: 'Processando alterações...', classes: 'blue' });
+    const dados = {
+      id: id,
+      relator: document.getElementById('ficha_f_Relator').value,
+      expediente: document.getElementById('ficha_f_Expediente').value,
+      membros: participantesAtuais.join(', '),
+      //procuradores: procuradoresAtuais.join(', ')
+    };
 
-    if (novaOrdem !== ordemAntiga) {
-      google.script.run
-        .withSuccessHandler(function (res) {
-          if (res.sucesso) {
-            fichasDaSessao = res.fichas || [];
-            _renderizarListaFichas(fichasDaSessao);
-            setTimeout(() => {
-              const item = document.querySelector(`.ficha-proc-item[data-ficha-id="${id}"]`);
-              if (item) item.classList.add('selecionado');
-            }, 200);
-            M.toast({ html: 'Ordem atualizada com sucesso!', classes: 'green' });
-          } else {
-            M.toast({ html: 'Erro na reordenação: ' + res.erro, classes: 'red' });
-          }
-        })
-        .withFailureHandler(err => M.toast({ html: 'Erro na reordenação: ' + err.message, classes: 'red' }))
-        .formSessoes_atualizarOrdemFichas(idSessao, id, novaOrdem, ordemAntiga);
-    } else {
-      const dados = {
-        id: id,
-        relator: document.getElementById('ficha_f_Relator').value,
-        expediente: document.getElementById('ficha_f_Expediente').value
-      };
-      google.script.run
-        .withSuccessHandler(function () {
-          M.toast({ html: 'Ficha salva com sucesso!', classes: 'green' });
-          if (fichaSelecionadaOriginal) {
-            fichaSelecionadaOriginal.relator    = dados.relator;
-            fichaSelecionadaOriginal.expediente = dados.expediente;
-          }
-          const idx = fichasDaSessao.findIndex(f => f.id === id);
-          if (idx !== -1) {
-            fichasDaSessao[idx].relator    = dados.relator;
-            fichasDaSessao[idx].expediente = dados.expediente;
-          }
-        })
-        .withFailureHandler(err => M.toast({ html: 'Erro ao salvar: ' + err.message, classes: 'red' }))
-        .formSessoes_salvarFicha(dados);
-    }
+    google.script.run
+      .withSuccessHandler(function () {
+        M.toast({ html: 'Ficha salva com sucesso!', classes: 'green' });
+        if (fichaSelecionadaOriginal) {
+          fichaSelecionadaOriginal.relator    = dados.relator;
+          fichaSelecionadaOriginal.expediente = dados.expediente;
+          fichaSelecionadaOriginal.membros    = dados.membros;
+          //fichaSelecionadaOriginal.procuradores = dados.procuradores;
+        }
+        const idx = fichasDaSessao.findIndex(f => f.id === id);
+        if (idx !== -1) {
+          fichasDaSessao[idx].relator    = dados.relator;
+          fichasDaSessao[idx].expediente = dados.expediente;
+          fichasDaSessao[idx].membros    = dados.membros;
+          //fichasDaSessao[idx].procuradores = dados.procuradores;
+        }
+      })
+      .withFailureHandler(err => M.toast({ html: 'Erro ao salvar: ' + err.message, classes: 'red' }))
+      .formSessoes_salvarFicha(dados);
   }
 
   // ============================================================
@@ -696,7 +693,7 @@
       <p><strong>Clique para anexar o relatório em PDF</strong><br>Opcional · máx. 15 MB</p>`;
 
     M.FormSelect.init(document.querySelectorAll('#painelNovoVoto select'));
-    M.Autocomplete.init(document.getElementById('voto_f_Relator'), { data: baseMembros, minLength: 2, limit: 7 });
+    _initInlineAutocomplete(document.getElementById('voto_f_Relator'), Object.keys(baseMembros));
     M.updateTextFields();
 
     setTimeout(() => {
@@ -842,7 +839,7 @@
 
       container.appendChild(acc);
       M.FormSelect.init(acc.querySelectorAll('select'));
-      M.Autocomplete.init(acc.querySelector(`#ve_Relator_${idSafe}`), { data: baseMembros, minLength: 2, limit: 7 });
+      _initInlineAutocomplete(acc.querySelector(`#ve_Relator_${idSafe}`), Object.keys(baseMembros));
       M.textareaAutoResize(acc.querySelector(`#ve_Voto_${idSafe}`));
       M.Tooltip.init(acc.querySelectorAll('.tooltipped'));
     });
@@ -1004,6 +1001,92 @@
       })
       .withFailureHandler(err => M.toast({ html: err.message, classes: 'red' }))
       .formSessoes_excluirRelatorio(idVoto, urlArquivo);
+  }
+  // ============================================================
+  // LISTA DE PARTICIPANTES E PROCURADORES
+  // ============================================================
+
+  function _renderizarParticipantes() {
+    const container = document.getElementById('participantesContainer');
+    if (!container) return;
+    container.innerHTML = '';
+    participantesAtuais.forEach(nome => {
+      const chip = document.createElement('div');
+      chip.className = 'participante-chip';
+      chip.innerHTML = `
+        <i class="material-icons" style="font-size: 16px;">person</i>
+        <span>${_escTexto(nome)}</span>
+        <i class="material-icons chip-remove" onclick="formSessoes_removerParticipante('membro', '${_esc(nome)}')">close</i>
+      `;
+      container.appendChild(chip);
+    });
+  }
+
+  /*
+  function _renderizarProcuradores() {
+    const container = document.getElementById('procuradoresContainer');
+    if (!container) return;
+    container.innerHTML = '';
+    procuradoresAtuais.forEach(nome => {
+      const chip = document.createElement('div');
+      chip.className = 'participante-chip';
+      chip.innerHTML = `
+        <i class="material-icons" style="font-size: 16px;">person</i>
+        <span>${_escTexto(nome)}</span>
+        <i class="material-icons chip-remove" onclick="formSessoes_removerParticipante('procurador', '${_esc(nome)}')">close</i>
+      `;
+      container.appendChild(chip);
+    });
+  }
+  */
+
+  function formSessoes_mostrarCampoAdicionar(tipo) {
+    const campoId = tipo === 'membro' ? 'campoAdicionarMembro' : 'campoAdicionarProcurador';
+    const campo = document.getElementById(campoId);
+    campo.style.display = campo.style.display === 'none' ? 'block' : 'none';
+    if (campo.style.display === 'block') {
+      const inputId = tipo === 'membro' ? 'novoMembroInput' : 'novoProcuradorInput';
+      const input = document.getElementById(inputId);
+      // Inicializa autocomplete com a lista de membros (baseMembros)
+      _initInlineAutocomplete(input, Object.keys(baseMembros));
+      input.focus();
+    }
+  }
+
+  function formSessoes_adicionarParticipante(tipo) {
+    const inputId = tipo === 'membro' ? 'novoMembroInput' : 'novoProcuradorInput';
+    const nome = document.getElementById(inputId).value.trim();
+    if (!nome) return;
+
+    if (tipo === 'membro') {
+      if (!participantesAtuais.includes(nome)) {
+        participantesAtuais.push(nome);
+        _renderizarParticipantes();
+      }
+    } else {
+      if (!procuradoresAtuais.includes(nome)) {
+        procuradoresAtuais.push(nome);
+        _renderizarProcuradores();
+      }
+    }
+
+    formSessoes_salvarFicha();
+
+    document.getElementById(inputId).value = '';
+    const campoId = tipo === 'membro' ? 'campoAdicionarMembro' : 'campoAdicionarProcurador';
+    document.getElementById(campoId).style.display = 'none';
+  }
+
+  function formSessoes_removerParticipante(tipo, nome) {
+    if (tipo === 'membro') {
+      participantesAtuais = participantesAtuais.filter(n => n !== nome);
+      _renderizarParticipantes();
+    } else {
+      procuradoresAtuais = procuradoresAtuais.filter(n => n !== nome);
+      _renderizarProcuradores();
+    }
+
+    formSessoes_salvarFicha();
   }
 
   // ============================================================

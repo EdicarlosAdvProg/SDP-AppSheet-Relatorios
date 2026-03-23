@@ -303,6 +303,9 @@ function formSessoes_buscarFichas(idSessao) {
     const chaveRelator = _encontrarChave(mapaF, ['relator']);
     const chaveExped = _encontrarChave(mapaF, ['expediente']);
 
+    const chaveMembrosF = _encontrarChave(mapaF, ['membros']);
+    //const chaveProcsF   = _encontrarChave(mapaF, ['procuradores']);
+
     const fichas = dadosF
       .filter(f => String(f[mapaF['idsessao'] - 1]).trim() === String(idSessao).trim())
       .map(f => {
@@ -313,11 +316,14 @@ function formSessoes_buscarFichas(idSessao) {
 
         return {
           id: idFicha,
-          idsessao: String(f[mapaF['idsessao'] - 1] || ''), // ESSENCIAL: Adicionado para o Front-end
+          idsessao: String(f[mapaF['idsessao'] - 1] || ''),
           idprocesso: idProc,
           ordem: isNaN(numOrdem) ? 0 : numOrdem,
           relator: chaveRelator ? String(f[mapaF[chaveRelator] - 1] || '') : '',
           expediente: chaveExped ? String(f[mapaF[chaveExped] - 1] || '') : '',
+          // Incluir membros e procuradores
+          membros: chaveMembrosF ? String(f[mapaF[chaveMembrosF] - 1] || '') : '',
+          //procuradores: chaveProcsF ? String(f[mapaF[chaveProcsF] - 1] || '') : '',
           proc: proc
         };
       });
@@ -392,11 +398,15 @@ function formSessoes_salvarFicha(obj) {
 
     const chaveRelator = _encontrarChave(mapa, ['relator']);
     const chaveExped = _encontrarChave(mapa, ['expediente']);
+    const chaveMembrosF = _encontrarChave(mapa, ['membros']);
+    //const chaveProcsF   = _encontrarChave(mapa, ['procuradores']);
 
     for (let i = 1; i < dados.length; i++) {
       if (String(dados[i][mapa['id'] - 1]).trim() === String(obj.id).trim()) {
         if (chaveRelator) sheet.getRange(i + 1, mapa[chaveRelator]).setValue(obj.relator || '');
         if (chaveExped)   sheet.getRange(i + 1, mapa[chaveExped]).setValue(obj.expediente || '');
+        if (chaveMembrosF) sheet.getRange(i + 1, mapa[chaveMembrosF]).setValue(obj.membros || '');
+        //if (chaveProcsF)   sheet.getRange(i + 1, mapa[chaveProcsF]).setValue(obj.procuradores || '');
         return { sucesso: true };
       }
     }
