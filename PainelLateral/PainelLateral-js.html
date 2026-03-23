@@ -15,7 +15,8 @@
     secretario: "",
     templateInicializado: false,  // indica se o template já foi copiado para a sessão atual
     templateIdAtual: null,        // ID do template usado na última inicialização
-    ultimaFichaId: null
+    ultimaFichaId: null,
+    dataSessaoAtual: null
   };
 
   // ================================================================
@@ -155,6 +156,7 @@
     PL_estado.sessaoAtualId  = dados.sessao.id;
     PL_estado.membros        = dados.membros       || [];
     PL_estado.procuradores   = dados.procuradores  || [];
+    PL_estado.dataSessaoAtual = dados.sessao.data; // formato "dd/MM/yyyy"
     
     // 1. Lógica do Pleno do SDP (Ocultar Procuradores)
     var ePleno = (dados.sessao.orgao && dados.sessao.orgao.indexOf("Pleno") !== -1);
@@ -446,6 +448,44 @@
   // ================================================================
 
   /**
+   * Salva a ficha e solicita a conversão do documento ativo para PDF
+   */
+  function PL_JS_gerarPdfFicha() {
+    // 1. Salva os dados conforme solicitado
+    PL_JS_salvarFicha();
+    
+    const sessaoId = PL_estado.sessaoAtualId;
+    const pauta = PL_estado.pautasCarregadas[sessaoId];
+    
+    if (!pauta) {
+      PL_JS_toast("Erro: Selecione uma ficha na pauta antes de gerar o PDF.", "erro");
+      return;
+    }
+
+    // Precisamos identificar qual ficha está "ativa". 
+    // Se você não tiver um ID de ficha selecionada global, 
+    // vamos usar a lógica do orgao que já está no display do painel.
+    const orgao = document.getElementById('displayOrgao').textContent;
+    const dataSessao = document.getElementById('displayData').textContent;
+
+    PL_JS_toast("Convertendo para PDF...", "ok");
+
+    google.script.run
+      .withSuccessHandler(function(url) {
+        PL_JS_toast("PDF gerado com sucesso!", "ok");
+        // Opcional: abrir o PDF em nova aba
+        // window.open(url, '_blank'); 
+      })
+      .withFailureHandler(function(err) {
+        PL_JS_toast("Erro ao gerar PDF: " + err.message, "erro");
+      })
+      .PainelLateral_salvarDocumentoComoPDF({
+        orgao: orgao,
+        data: dataSessao
+      });
+  }
+
+  /**
    * Abre o modal ou interface para modificar os votantes da ficha atual
    */
   function PL_JS_modificarVotantes() {
@@ -571,12 +611,25 @@
     const templateId = ePleno ? '1IkcUTLayOYuu4IKbiROgTygLk4y3Xs_ELV-KqvXGIr0'
                               : '14K8XDmy92dpSOKRRi14G4dNSPl6cPkSNA19RCJg1--U';
 
-    // Data por extenso
+    // --- Data por extenso (usando a data da sessão, armazenada no estado) ---
     const meses = ['janeiro','fevereiro','março','abril','maio','junho',
                   'julho','agosto','setembro','outubro','novembro','dezembro'];
-    const hoje  = new Date();
-    const dataExtenso = 'Goiânia, ' + hoje.getDate() + ' de ' +
-                        meses[hoje.getMonth()] + ' de ' + hoje.getFullYear();
+
+    // Pega a data da sessão armazenada no estado (criaremos essa variável)
+    let dataSessaoStr = PL_estado.dataSessaoAtual; // será preenchida quando a pauta for carregada
+    let dataExtenso = '';
+
+    if (dataSessaoStr && dataSessaoStr !== '--/--/----') {
+      const partes = dataSessaoStr.split('/'); // ["18", "03", "2026"]
+      const dia = parseInt(partes[0], 10);
+      const mes = parseInt(partes[1], 10) - 1; // mês 0-indexado
+      const ano = partes[2];
+      dataExtenso = `Goiânia, ${dia} de ${meses[mes]} de ${ano}`;
+    } else {
+      // Fallback: data atual
+      const hoje = new Date();
+      dataExtenso = `Goiânia, ${hoje.getDate()} de ${meses[hoje.getMonth()]} de ${hoje.getFullYear()}`;
+    }
 
     // --- Funções auxiliares de flexão (definidas dentro para usar o mapaGeneros) ---
     function pluralizarPalavra(palavra, valor) {

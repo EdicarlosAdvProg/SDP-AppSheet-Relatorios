@@ -592,3 +592,49 @@ function PainelLateral_salvarFicha(fichaId) {
     return { sucesso: false, erro: err.message };
   }
 }
+
+/**
+ * Converte o documento ativo em PDF e salva na pasta correspondente.
+ */
+function PainelLateral_salvarDocumentoComoPDF(contexto) {
+  try {
+    const doc = DocumentApp.getActiveDocument();
+    const docFile = DriveApp.getFileById(doc.getId());
+    const paiFolder = docFile.getParents().next(); // Pasta onde o projeto está
+    
+    // 1. Identifica o Órgão e define nomes
+    const ePleno = contexto.orgao.toLowerCase().includes("pleno");
+    const nomePastaAlvo = ePleno ? "Fichas pleno" : "Fichas deliberativo";
+    const sufixoNome = ePleno ? "ficha_pleno" : "ficha_deliberativo";
+    
+    // 2. Busca a pasta
+    let pastaAlvo;
+    const folders = paiFolder.getFoldersByName(nomePastaAlvo);
+    
+    if (folders.hasNext()) {
+      pastaAlvo = folders.next();
+    } else {
+      // Se a pasta foi renomeada ou não existe, lança erro para o usuário decidir
+      throw new Error("A pasta '" + nomePastaAlvo + "' não foi encontrada. Verifique o nome na mesma pasta deste projeto.");
+    }
+
+    // 3. Formata o nome do arquivo (Ex: 202612345_ficha_deliberativo_23mar26)
+    // Extraímos o número do processo do conteúdo do documento (primeira ocorrência)
+    const corpo = doc.getBody().getText();
+    const matchProcesso = corpo.match(/\d{9,}/); // Procura sequência de números do processo
+    const numProcesso = matchProcesso ? matchProcesso : "000000000";
+    
+    // Formata data para o nome do arquivo (ex: 23mar26)
+    const dataRef = contexto.data.replace(/\//g, ""); // simplificação
+    const nomeArquivo = `${numProcesso}_${sufixoNome}_${dataRef}`;
+
+    // 4. Gera o PDF
+    const pdfBlob = docFile.getAs('application/pdf');
+    const novoPdf = pastaAlvo.createFile(pdfBlob).setName(nomeArquivo);
+
+    return novoPdf.getUrl();
+
+  } catch (err) {
+    throw new Error(err.message);
+  }
+}
