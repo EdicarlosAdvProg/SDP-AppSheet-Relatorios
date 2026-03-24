@@ -73,3 +73,31 @@ function gerarProximoIdIncremental(ultimoId) {
 
   return prefixoAno + novoCorpoMs;
 }
+
+function _formatarDataRelatorio(dataStr) {
+  if (!dataStr) return 'data_invalida';
+  let dia, mesNum, ano;
+  if (dataStr.includes('-')) {
+    // formato ISO: yyyy-mm-dd
+    const partes = dataStr.split('-');
+    if (partes.length !== 3) return 'data_invalida';
+    ano = parseInt(partes[0], 10);
+    mesNum = parseInt(partes[1], 10);
+    dia = parseInt(partes[2], 10);
+  } else if (dataStr.includes('/')) {
+    // formato brasileiro: dd/mm/yyyy
+    const partes = dataStr.split('/');
+    if (partes.length !== 3) return 'data_invalida';
+    dia = parseInt(partes[0], 10);
+    mesNum = parseInt(partes[1], 10);
+    ano = parseInt(partes[2], 10);
+  } else {
+    return 'data_invalida';
+  }
+
+  const meses = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+  const mesAbreviado = meses[mesNum - 1] || '???';
+  const diaStr = dia.toString().padStart(2, '0');
+  const anoStr = (ano % 100).toString().padStart(2, '0');
+  return `${diaStr}${mesAbreviado}${anoStr}`;
+}

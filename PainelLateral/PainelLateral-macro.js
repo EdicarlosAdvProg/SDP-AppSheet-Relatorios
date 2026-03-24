@@ -841,39 +841,35 @@ function PainelLateral_salvarDocumentoComoPDF(contexto) {
     const doc = DocumentApp.getActiveDocument();
     const docFile = DriveApp.getFileById(doc.getId());
     const paiFolder = docFile.getParents().next(); // Pasta onde o projeto está
-    
+
     // 1. Identifica o Órgão e define nomes
     const ePleno = contexto.orgao.toLowerCase().includes("pleno");
     const nomePastaAlvo = ePleno ? "Fichas pleno" : "Fichas deliberativo";
     const sufixoNome = ePleno ? "ficha_pleno" : "ficha_deliberativo";
-    
+
     // 2. Busca a pasta
     let pastaAlvo;
     const folders = paiFolder.getFoldersByName(nomePastaAlvo);
-    
     if (folders.hasNext()) {
       pastaAlvo = folders.next();
     } else {
-      // Se a pasta foi renomeada ou não existe, lança erro para o usuário decidir
       throw new Error("A pasta '" + nomePastaAlvo + "' não foi encontrada. Verifique o nome na mesma pasta deste projeto.");
     }
 
-    // 3. Formata o nome do arquivo (Ex: 202612345_ficha_deliberativo_23mar26)
-    // Extraímos o número do processo do conteúdo do documento (primeira ocorrência)
+    // 3. Extrai o número do processo do conteúdo do documento (primeira ocorrência)
     const corpo = doc.getBody().getText();
-    const matchProcesso = corpo.match(/\d{9,}/); // Procura sequência de números do processo
-    const numProcesso = matchProcesso ? matchProcesso : "000000000";
-    
-    // Formata data para o nome do arquivo (ex: 23mar26)
-    const dataRef = contexto.data.replace(/\//g, ""); // simplificação
-    const nomeArquivo = `${numProcesso}_${sufixoNome}_${dataRef}`;
+    const matchProcesso = corpo.match(/\d{9,}/);
+    const numProcesso = matchProcesso ? matchProcesso[0] : "000000000";
 
-    // 4. Gera o PDF
+    // 4. Formata a data para o nome do arquivo usando a função auxiliar
+    const dataFormatada = _formatarDataRelatorio(contexto.data);
+    const nomeArquivo = `${numProcesso}_${sufixoNome}_${dataFormatada}`;
+
+    // 5. Gera o PDF
     const pdfBlob = docFile.getAs('application/pdf');
     const novoPdf = pastaAlvo.createFile(pdfBlob).setName(nomeArquivo);
 
     return novoPdf.getUrl();
-
   } catch (err) {
     throw new Error(err.message);
   }

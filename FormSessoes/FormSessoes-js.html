@@ -906,6 +906,15 @@
     google.script.run
       .withSuccessHandler(function (res) {
         if (pdfSelecionado && pdfSelecionado.base64) {
+          // --- Dados robustos para o upload ---
+          const numeroProcesso = (fichaSelecionadaOriginal?.proc?.numero) ||
+                                (fichasDaSessao.find(f => f.id === fichaAtualId)?.proc?.numero) ||
+                                'sem_numero';
+          const nomeRelator = document.getElementById('voto_f_Relator').value || 'sem_relator';
+          const sessao = baseSessoes.find(s => s.id === sessaoAtualId);
+          const dataSessaoStr = sessao?.datasessao || '';   // formato "dd/MM/yyyy"
+          const orgao = sessao?.orgao || '';
+
           M.toast({ html: 'Enviando PDF para o Drive...', classes: 'blue darken-2' });
           google.script.run
             .withSuccessHandler(function () {
@@ -918,15 +927,12 @@
               formSessoes_fecharNovoVoto();
               _carregarVotos(fichaAtualId);
             })
-            .formSessoes_uploadRelatorio(res.id, pdfSelecionado.base64, pdfSelecionado.nome);
+            .formSessoes_uploadRelatorio(res.id, pdfSelecionado.base64, pdfSelecionado.nome, numeroProcesso, nomeRelator, dataSessaoStr, orgao);
         } else {
           M.toast({ html: 'Voto salvo!', classes: 'green darken-2' });
           formSessoes_fecharNovoVoto();
           _carregarVotos(fichaAtualId);
         }
-      })
-      .withFailureHandler(function (err) {
-        M.toast({ html: 'Erro ao salvar voto: ' + err.message, classes: 'red darken-2' });
       })
       .formSessoes_salvarVoto(obj);
   }
@@ -970,23 +976,41 @@
 
   function formSessoes_adicionarRelatorioDireto(idVoto) {
     const input = document.createElement('input');
-    input.type = 'file'; input.accept = 'application/pdf';
+    input.type = 'file';
+    input.accept = 'application/pdf';
     input.onchange = e => {
       const file = e.target.files[0];
       if (!file) return;
       if (file.size > 15 * 1024 * 1024) return M.toast({ html: 'Limite de 15MB excedido', classes: 'red' });
       M.toast({ html: 'Fazendo upload...', classes: 'blue' });
+
       const reader = new FileReader();
       reader.onload = function (evt) {
+        // Coleta dados adicionais da ficha atual
+        const numeroProcesso = fichaSelecionadaOriginal?.proc?.numero || 'sem_numero';
+        const nomeRelator = fichaSelecionadaOriginal?.relator || 'sem_relator';
+        const sessao = baseSessoes.find(s => s.id === sessaoAtualId);
+        const dataSessaoISO = sessao?.dataiso || '';
+        const orgao = sessao?.orgao || '';
+
         google.script.run
           .withSuccessHandler(function () {
             M.toast({ html: 'Relatório anexado!', classes: 'green' });
             _carregarVotos(fichaAtualId);
           })
           .withFailureHandler(err => M.toast({ html: err.message, classes: 'red' }))
-          .formSessoes_uploadRelatorio(idVoto, evt.target.result.split(',')[1], file.name);
-      };
-      reader.readAsDataURL(file);
+          .formSessoes_uploadRelatorio(
+            idVoto,
+            evt.target.result.split(',')[1],
+            file.name,
+            (fichaSelecionadaOriginal?.proc?.numero) || (fichasDaSessao.find(f => f.id === fichaAtualId)?.proc?.numero) || 'sem_numero',
+            fichaSelecionadaOriginal?.relator || 'sem_relator',
+            (baseSessoes.find(s => s.id === sessaoAtualId)?.datasessao) || '',
+            (baseSessoes.find(s => s.id === sessaoAtualId)?.orgao) || ''
+          );
+      };  // Fecha corretamente o reader.onload
+
+      reader.readAsDataURL(file); // AGORA FORA DO ONLOAD
     };
     input.click();
   }
@@ -1197,4 +1221,5 @@
     if (t.includes('vogal'))    return 'voto-tipo-vogal';
     return 'voto-tipo-default';
   }
+
 </script>

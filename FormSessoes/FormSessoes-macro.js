@@ -683,10 +683,6 @@ function formSessoes_buscarVotos(idFicha) {
   }
 }
 
-/**
- * Salva um novo voto ou atualiza um existente.
- * @param {Object} obj  { id?, idfichavotacao, idprocesso, tipovoto, relator, voto, resultado }
- */
 function formSessoes_salvarVoto(obj) {
   try {
     const ss    = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
@@ -696,8 +692,7 @@ function formSessoes_salvarVoto(obj) {
     const mapa    = getMapaColunas(sheet);
     const dados   = sheet.getDataRange().getValues();
     const numCols = Object.keys(mapa).length;
-
-    const chaveUrl = _encontrarChave(mapa, ['url voto', 'urlvoto', 'url_voto']);
+    const chaveUrl = _encontrarChave(mapa, ['url voto', 'urlvoto', 'url_voto', 'url relatório']);
 
     if (!obj.id) obj.id = novoIdTimeStamp();
 
@@ -760,52 +755,60 @@ function formSessoes_excluirVoto(id) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// UPLOAD E GESTÃO DE RELATÓRIO EM PDF (AJUSTADO)
+// UPLOAD E GESTÃO DE RELATÓRIO EM PDF
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Faz upload de um PDF para a pasta "Relatórios" no mesmo diretório do documento.
- * Salva a URL no campo URL Voto da tabVotos.
+ * Faz upload de um PDF para a pasta específica (Fichas deliberativo ou Fichas pleno)
+ * e renomeia conforme padrão: "numeroProcesso_relatório_nomeAbreviado_data.pdf"
+ *
+ * @param {string} idVoto - ID do registro na tabVotos
+ * @param {string} base64Data - PDF em base64
+ * @param {string} fileName - Nome original do arquivo (não usado no destino final)
+ * @param {string} numeroProcesso - Número do processo (ex: "202612345")
+ * @param {string} nomeRelator - Nome completo do relator (ex: "Luiz Carlos")
+ * @param {string} dataSessaoISO - Data da sessão no formato yyyy-mm-dd
+ * @param {string} orgao - "Pleno do SDP" ou "Órgão Deliberativo do SDP"
  */
-function formSessoes_uploadRelatorio(idVoto, base64Data, fileName) {
+function formSessoes_uploadRelatorio(idVoto, base64Data, fileName, numeroProcesso, nomeRelator, dataSessaoISO, orgao) {
   try {
+    console.log('dataSessaoISO recebida:', dataSessaoISO);
     const ss = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
-    
-    // Localiza a pasta pai da planilha de dados (Documento Mestre)
+
     const planilhaFile = DriveApp.getFileById(ss.getId());
     const parentIter = planilhaFile.getParents();
     if (!parentIter.hasNext()) throw new Error('Não foi possível localizar a pasta do documento mestre.');
     const parentFolder = parentIter.next();
 
-    // Localiza ou cria a pasta "Relatórios"
-    let relFolder;
-    const folderIter = parentFolder.getFoldersByName('Relatórios');
-    relFolder = folderIter.hasNext() ? folderIter.next() : parentFolder.createFolder('Relatórios');
+    const nomePasta = (orgao === "Pleno do SDP") ? "Fichas pleno" : "Fichas deliberativo";
+    let targetFolder;
+    const folderIter = parentFolder.getFoldersByName(nomePasta);
+    targetFolder = folderIter.hasNext() ? folderIter.next() : parentFolder.createFolder(nomePasta);
 
-    // Converte Base64 para Blob e cria o arquivo
-    // Tratamento para remover o prefixo data:application/pdf;base64, se existir
+    const nomeAbreviado = _abreviarNome(nomeRelator);
+    const nomeRelatorLimpo = nomeAbreviado
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-zA-Z0-9_]/g, '')
+      .replace(/_+/g, '_');
+
+    const dataFormatada = _formatarDataRelatorio(dataSessaoISO);
+    const novoNome = `${numeroProcesso}_relatório_${nomeRelatorLimpo}_${dataFormatada}.pdf`;
+
     const cleanBase64 = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
     const bytes = Utilities.base64Decode(cleanBase64);
-    const blob = Utilities.newBlob(bytes, 'application/pdf', fileName);
-    const file = relFolder.createFile(blob);
-    
-    // Define permissão de visualização para quem tem o link
+    const blob = Utilities.newBlob(bytes, 'application/pdf', novoNome);
+    const file = targetFolder.createFile(blob);
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-
     const fileUrl = file.getUrl();
 
-    // Atualiza a URL no registro de voto correspondente na tabVotos
     const sheet = ss.getSheetByName('tabVotos');
     if (!sheet) throw new Error("Aba 'tabVotos' não encontrada.");
-    
     const mapa = getMapaColunas(sheet);
     const chaveUrl = _encontrarChave(mapa, ['url voto', 'urlvoto', 'url_voto', 'url relatório']);
-    
     if (!chaveUrl) throw new Error("Coluna de URL do relatório não encontrada na tabVotos.");
 
     const dados = sheet.getDataRange().getValues();
     let atualizou = false;
-
     for (let i = 1; i < dados.length; i++) {
       if (String(dados[i][mapa['id'] - 1]).trim() === String(idVoto).trim()) {
         sheet.getRange(i + 1, mapa[chaveUrl]).setValue(fileUrl);
@@ -813,11 +816,9 @@ function formSessoes_uploadRelatorio(idVoto, base64Data, fileName) {
         break;
       }
     }
-
     if (!atualizou) throw new Error("ID do voto não encontrado para vincular o relatório.");
 
-    return { sucesso: true, url: fileUrl, nome: fileName };
-
+    return { sucesso: true, url: fileUrl, nome: novoNome };
   } catch (e) {
     console.error('Erro em formSessoes_uploadRelatorio: ' + e.message);
     throw new Error('Erro no upload do relatório: ' + e.message);
@@ -889,3 +890,45 @@ function _encontrarChave(mapa, candidatos) {
   }
   return null;
 }
+
+function _abreviarNome(nomeCompleto) {
+    if (!nomeCompleto) return 'sem_nome';
+
+    // Lista completa de preposições e partículas de sobrenome
+    const particulas = new Set([
+      'de', 'da', 'do', 'das', 'dos',
+      'di', 'della', 'del', 'delle',
+      'von', 'van', 'der', 'den', 'zum',
+      'e', 'y', 'el', 'la', 'lo', 'los', 'las',
+      'a', 'ao', 'aos', 'à', 'às',
+      'em', 'na', 'no', 'nas', 'nos',
+      'pelo', 'pela', 'pelos', 'pelas',
+      'com', 'por', 'per', 'et', 'le'
+    ]);
+
+    const palavras = nomeCompleto.trim().split(/\s+/).filter(p => p.length > 0);
+    if (palavras.length === 0) return 'sem_nome';
+
+    const primeiro = palavras[0];
+    // Se o primeiro nome tem 5 ou mais letras, retorna só ele
+    if (primeiro.length >= 5) return primeiro;
+
+    // Se só tem uma palavra, retorna ela
+    if (palavras.length === 1) return primeiro;
+
+    const segunda = palavras[1];
+    const segundaLower = segunda.toLowerCase();
+
+    // Se a segunda palavra NÃO é partícula, retorna as duas primeiras
+    if (!particulas.has(segundaLower)) {
+      return palavras.slice(0, 2).join('_');
+    }
+
+    // Se a segunda é partícula e existe terceira, retorna as três primeiras
+    if (palavras.length >= 3) {
+      return palavras.slice(0, 3).join('_');
+    }
+
+    // Caso especial: duas palavras e a segunda é partícula → retorna só o primeiro nome
+    return primeiro;
+  }
