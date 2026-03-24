@@ -544,8 +544,8 @@
     _fichasExibirConteudo();
     _carregarVotos(ficha.id);
     // Carrega participantes e procuradores
-    participantesAtuais = (ficha.membros || '').split(',').map(s => s.trim()).filter(s => s);
-    //procuradoresAtuais = (ficha.procuradores || '').split(',').map(s => s.trim()).filter(s => s);
+    participantesAtuais = (ficha.membros || '').split(';').map(s => s.trim()).filter(s => s);
+    //procuradoresAtuais = (ficha.procuradores || '').split(';').map(s => s.trim()).filter(s => s);
     _renderizarParticipantes();
     //_renderizarProcuradores();
   }
@@ -649,8 +649,8 @@
       id: id,
       relator: document.getElementById('ficha_f_Relator').value,
       expediente: document.getElementById('ficha_f_Expediente').value,
-      membros: participantesAtuais.join(', '),
-      //procuradores: procuradoresAtuais.join(', ')
+      membros: participantesAtuais.join('; '),
+      //procuradores: procuradoresAtuais.join('; ')
     };
 
     google.script.run

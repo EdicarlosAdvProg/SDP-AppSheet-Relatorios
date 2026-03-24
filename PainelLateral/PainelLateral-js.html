@@ -65,15 +65,17 @@
    * Re-renderiza os chips e persiste as alterações.
    */
   function PL_JS_syncMembersList() {
+    // Aplica o filtro (remove cargos) e ordena
     const cleaned = PL_JS_getCleanMemberList();
-    // Se houve mudança (tamanho ou ordem), atualiza o estado
-    if (JSON.stringify(cleaned) !== JSON.stringify(PL_estado.membros)) {
-      PL_estado.membros = cleaned;
-      PL_JS_renderizarChips('listaMembros', 'badgeMembros', PL_estado.membros, 'PL_JS_removerMembro');
-      PL_JS_persistirMembros();
-    }
+    // Atualiza o estado com a lista limpa e ordenada
+    PL_estado.membros = cleaned;
+    // Re-renderiza os chips
+    PL_JS_renderizarChips('listaMembros', 'badgeMembros', PL_estado.membros, 'PL_JS_removerMembro');
+    // Persiste na ficha e atualiza o documento
+    PL_JS_persistirMembros();
   }
 
+  
   // ================================================================
   // PONTO DE ENTRADA ÚNICO
   // Chamado no final do layout.
@@ -154,8 +156,10 @@
    */
   function PL_JS_selecionarSessao(id) {
     PL_estado.sessaoAtualId = id;
-     PL_estado.templateInicializado = false;
+    PL_estado.templateInicializado = false;
     PL_estado.templateIdAtual = null;
+    PL_estado.ultimaFichaId = null;
+    PL_estado.membros = [];
     
     // Fecha dropdown
     document.getElementById('listaSessoesDropdown').classList.add('hidden');
@@ -215,7 +219,6 @@
   function PL_JS_onPautaCarregada(dados) {
     PL_estado.pautasCarregadas[dados.sessao.id] = dados;
     PL_estado.sessaoAtualId  = dados.sessao.id;
-    PL_estado.membros        = dados.membros       || [];
     PL_estado.procuradores   = dados.procuradores  || [];
     PL_estado.dataSessaoAtual = dados.sessao.data; // formato "dd/MM/yyyy"
     
@@ -239,6 +242,24 @@
     M.updateTextFields(); // Resolve sobreposição da Mesa
     M.textareaAutoResize(campoExpediente); // Agora a variável existe e o valor já está lá!
 
+    // Se existe uma ficha selecionada, recarregar seus membros
+    if (PL_estado.ultimaFichaId) {
+      const novaFicha = dados.fichas.find(f => f.id == PL_estado.ultimaFichaId);
+      if (novaFicha) {
+        if (novaFicha.membros && novaFicha.membros.trim() !== '') {
+          const membrosDaFicha = novaFicha.membros.split(/[;,]/).map(s => s.trim()).filter(s => s !== '');
+          PL_estado.membros = membrosDaFicha;
+        } else {
+          PL_estado.membros = [];
+        }
+        PL_JS_refreshMemberDisplay(); // ordena, filtra (cargos) e renderiza
+      }
+    } else {
+      // Nenhuma ficha selecionada → lista vazia
+      PL_estado.membros = [];
+      PL_JS_renderizarChips('listaMembros', 'badgeMembros', PL_estado.membros, 'PL_JS_removerMembro');
+    }
+
     // 6. Renderizar listas
     PL_JS_renderizarFichas(dados.fichas || []);
     PL_JS_renderizarChips('listaMembros', 'badgeMembros', PL_estado.membros, 'PL_JS_removerMembro');
@@ -246,9 +267,6 @@
     if (!ePleno) {
       PL_JS_renderizarChips('listaProcuradores', 'badgeProcuradores', PL_estado.procuradores, 'PL_JS_removerProcurador');
     }
-    
-    // Re-inicializa autocompletes
-    PL_JS_configurarAutocompletesMesa();
     
     PL_JS_mostrarLoading(false);
     document.getElementById('pautaContainer').classList.remove('hidden');
@@ -262,27 +280,6 @@
     google.script.run
       .withSuccessHandler(function() { PL_JS_toast('Mesa atualizada.', 'ok'); })
       .PainelLateral_salvarMesa(PL_estado.sessaoAtualId, pres, sec);
-  }
-
-  /** Configura autocompletes específicos para a mesa */
-  function PL_JS_configurarAutocompletesMesa() {
-    var data = {};
-    PL_estado.cacheMembros.forEach(function(n) { data[n] = null; });
-    
-    //M.Autocomplete.init(document.getElementById('inputPresidente'), { data: data, limit: 5 });
-    //M.Autocomplete.init(document.getElementById('inputSecretario'), { data: data, limit: 5 });
-
-    // Adiciona eventos para sincronizar a lista quando presidente/secretário mudarem
-    const inputPres = document.getElementById('inputPresidente');
-    const inputSec = document.getElementById('inputSecretario');
-    if (inputPres) {
-      inputPres.addEventListener('change', function() { PL_JS_syncMembersList(); });
-      inputPres.addEventListener('blur', function() { PL_JS_syncMembersList(); });
-    }
-    if (inputSec) {
-      inputSec.addEventListener('change', function() { PL_JS_syncMembersList(); });
-      inputSec.addEventListener('blur', function() { PL_JS_syncMembersList(); });
-    }
   }
 
   // ================================================================
@@ -366,17 +363,15 @@
   // ================================================================
   function PL_JS_adicionarMembro() {
     var input = document.getElementById('inputNovoMembro');
-    var nome  = input.value.trim();
+    var nome = input.value.trim();
     if (!nome) return;
 
-    // Verifica duplicata
     if (PL_estado.membros.indexOf(nome) !== -1) {
       PL_JS_toast('Este membro já está na lista.', 'erro');
       input.value = '';
       return;
     }
 
-    // Verifica se o nome pertence a um dos cargos (relator, presidente, secretário)
     const roleNames = PL_JS_getRoleNames();
     if (roleNames.includes(nome)) {
       PL_JS_toast('O nome do relator, presidente ou secretário não pode ser adicionado como participante.', 'erro');
@@ -384,16 +379,14 @@
       return;
     }
 
-    // Adiciona, ordena e sincroniza
     PL_estado.membros.push(nome);
-    PL_JS_syncMembersList(); // Isso já ordena, renderiza e persiste
-
+    PL_JS_refreshMemberDisplay(); // apenas atualiza a interface
     input.value = '';
   }
 
   function PL_JS_removerMembro(indice) {
     PL_estado.membros.splice(indice, 1);
-    PL_JS_syncMembersList(); // Reordena e sincroniza
+    PL_JS_refreshMemberDisplay(); // apenas atualiza a interface
   }
 
   /**
@@ -408,7 +401,7 @@
 
     // Obtém a lista já filtrada e ordenada (exclui relator, presidente, secretário)
     const membrosFiltrados = PL_JS_getCleanMemberList();
-    const listaFormatada = membrosFiltrados.join(', ');
+    const listaFormatada = membrosFiltrados.join('; ');
 
     // 1. Atualiza o documento aberto imediatamente
     google.script.run
@@ -427,6 +420,23 @@
         PL_JS_toast('Erro ao salvar: ' + e.message, 'erro'); 
       })
       .PainelLateral_salvarMembrosNaFicha(fichaId, membrosFiltrados);
+  }
+
+  /**
+   * Filtra, ordena e renderiza a lista de membros no painel.
+   * Não persiste na planilha nem atualiza o documento.
+   * Usado ao carregar uma ficha ou quando os cargos (presidente/secretário) mudam.
+   */
+  function PL_JS_refreshMemberDisplay() {
+    const roleNames = PL_JS_getRoleNames();
+    // Filtra os nomes que são dos cargos
+    const membrosFiltrados = PL_estado.membros.filter(m => !roleNames.includes(m));
+    // Ordena alfabeticamente
+    membrosFiltrados.sort((a, b) => a.localeCompare(b));
+    // Atualiza o estado global com a lista limpa
+    PL_estado.membros = membrosFiltrados;
+    // Re-renderiza os chips
+    PL_JS_renderizarChips('listaMembros', 'badgeMembros', PL_estado.membros, 'PL_JS_removerMembro');
   }
 
   // ================================================================
@@ -613,34 +623,39 @@
    */
   // Função do botão Salvar Ficha
   function PL_JS_salvarFicha() {
-  if (!PL_estado.ultimaFichaId) {
-    PL_JS_toast('Nenhuma ficha selecionada. Clique em uma ficha primeiro.', 'erro');
-    return;
-  }
-  PL_JS_toast('Salvando ficha...', 'ok');
-  google.script.run
-    .withSuccessHandler(function(res) {
-      if (res.sucesso) {
-        // Atualiza o cache local com os novos valores
-        var sessaoId = PL_estado.sessaoAtualId;
-        var pauta = PL_estado.pautasCarregadas[sessaoId];
-        if (pauta) {
-          var ficha = pauta.fichas.find(f => f.id == res.fichaId);
-          if (ficha) {
-            ficha.expediente = res.expediente;   // atualiza expediente
-            ficha.voto = res.voto;                // atualiza voto
+    if (!PL_estado.ultimaFichaId) {
+      PL_JS_toast('Nenhuma ficha selecionada. Clique em uma ficha primeiro.', 'erro');
+      return;
+    }
+    PL_JS_toast('Salvando ficha...', 'ok');
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (res.sucesso) {
+          // Atualiza o cache local
+          var sessaoId = PL_estado.sessaoAtualId;
+          var pauta = PL_estado.pautasCarregadas[sessaoId];
+          if (pauta) {
+            var ficha = pauta.fichas.find(f => f.id == res.fichaId);
+            if (ficha) {
+              ficha.expediente = res.expediente;
+              ficha.voto = res.voto;
+              ficha.membros = res.membros; // atualiza membros da ficha no cache
+            }
+            // Atualiza membros consolidados da sessão no cache (se houver)
+            if (res.membrosConsolidados && Array.isArray(res.membrosConsolidados)) {
+              pauta.membros = res.membrosConsolidados;
+            }
           }
+          PL_JS_toast('Ficha salva com sucesso!', 'ok');
+        } else {
+          PL_JS_toast('Erro: ' + res.erro, 'erro');
         }
-        PL_JS_toast('Ficha salva com sucesso!', 'ok');
-      } else {
-        PL_JS_toast('Erro: ' + res.erro, 'erro');
-      }
-    })
-    .withFailureHandler(function(err) {
-      PL_JS_toast('Erro: ' + err.message, 'erro');
-    })
-    .PainelLateral_salvarFicha(PL_estado.ultimaFichaId);
-}
+      })
+      .withFailureHandler(function(err) {
+        PL_JS_toast('Erro: ' + err.message, 'erro');
+      })
+      .PainelLateral_salvarFichaCompleta(PL_estado.ultimaFichaId);
+  }
 
   /**
    * Executa a lógica de apuração de votos
@@ -720,63 +735,65 @@
 
     PL_estado.ultimaFichaId = idFicha;
 
-    // Sincroniza a lista de membros (remove relator, presidente, secretário e ordena)
-    PL_JS_syncMembersList();
+    // ========== CARREGAR MEMBROS DA FICHA ==========
+    if (ficha.membros && ficha.membros.trim() !== '') {
+      const membrosDaFicha = ficha.membros.split(/[;,]/).map(s => s.trim()).filter(s => s !== '');
+      PL_estado.membros = membrosDaFicha;
+    } else {
+      PL_estado.membros = [];   // vazio
+    }
 
-    // --- Determina a lista de membros para o documento (prioriza ficha) ---
+    // Filtra (exclui relator, presidente, secretário), ordena e renderiza – sem persistir ainda
+    PL_JS_refreshMemberDisplay();
+
+    // ========== PREPARAR LISTA PARA O DOCUMENTO ==========
+    // Se a ficha tem membros, usa a lista já limpa e ordenada; senão, vazio
     const membrosParaDocumento = (ficha.membros && ficha.membros.trim() !== '')
-        ? ficha.membros
-        : PL_estado.membros.join(', ');
+        ? PL_estado.membros.join('; ')
+        : '';
 
     const orgao     = document.getElementById('displayOrgao').textContent || '';
     const ePleno    = orgao.indexOf('Pleno') !== -1;
     const templateId = ePleno ? '1IkcUTLayOYuu4IKbiROgTygLk4y3Xs_ELV-KqvXGIr0'
                               : '14K8XDmy92dpSOKRRi14G4dNSPl6cPkSNA19RCJg1--U';
 
-    // --- Data por extenso (usando a data da sessão, armazenada no estado) ---
+    // --- Data por extenso (usando a data da sessão) ---
     const meses = ['janeiro','fevereiro','março','abril','maio','junho',
                   'julho','agosto','setembro','outubro','novembro','dezembro'];
 
-    // Pega a data da sessão armazenada no estado (criaremos essa variável)
-    let dataSessaoStr = PL_estado.dataSessaoAtual; // será preenchida quando a pauta for carregada
+    let dataSessaoStr = PL_estado.dataSessaoAtual;
     let dataExtenso = '';
 
     if (dataSessaoStr && dataSessaoStr !== '--/--/----') {
-      const partes = dataSessaoStr.split('/'); // ["18", "03", "2026"]
+      const partes = dataSessaoStr.split('/');
       const dia = parseInt(partes[0], 10);
-      const mes = parseInt(partes[1], 10) - 1; // mês 0-indexado
+      const mes = parseInt(partes[1], 10) - 1;
       const ano = partes[2];
       dataExtenso = `Goiânia, ${dia} de ${meses[mes]} de ${ano}`;
     } else {
-      // Fallback: data atual
       const hoje = new Date();
       dataExtenso = `Goiânia, ${hoje.getDate()} de ${meses[hoje.getMonth()]} de ${hoje.getFullYear()}`;
     }
 
     // --- Gerenciamento visual do card clicado ---
-    // Obtém o elemento clicado (o card) a partir do evento, mas como o onclick
-    // foi definido no próprio card, podemos usar event.currentTarget.
-    // Como a função é chamada diretamente pelo onclick, podemos obter o elemento pelo id:
     const cards = document.querySelectorAll('.ficha-card');
     let cardClicado = null;
     for (let i = 0; i < cards.length; i++) {
-        if (cards[i].getAttribute('onclick') && cards[i].getAttribute('onclick').includes(idFicha)) {
-            cardClicado = cards[i];
-            break;
-        }
+      if (cards[i].getAttribute('onclick') && cards[i].getAttribute('onclick').includes(idFicha)) {
+        cardClicado = cards[i];
+        break;
+      }
     }
 
     if (cardClicado) {
-        // Remove a classe do card anterior, se existir
-        if (PL_estado.ultimoCardSelecionado) {
-            PL_estado.ultimoCardSelecionado.classList.remove('ficha-card-selecionada');
-        }
-        // Adiciona a classe no novo card
-        cardClicado.classList.add('ficha-card-selecionada');
-        PL_estado.ultimoCardSelecionado = cardClicado;
+      if (PL_estado.ultimoCardSelecionado) {
+        PL_estado.ultimoCardSelecionado.classList.remove('ficha-card-selecionada');
+      }
+      cardClicado.classList.add('ficha-card-selecionada');
+      PL_estado.ultimoCardSelecionado = cardClicado;
     }
 
-    // --- Funções auxiliares de flexão (definidas dentro para usar o mapaGeneros) ---
+    // --- Funções auxiliares de flexão ---
     function pluralizarPalavra(palavra, valor) {
       if (!valor) return palavra;
       if (valor.includes(';')) return palavra + 's';
@@ -814,35 +831,34 @@
 
     // Mapa de substituição completo
     const subs = {
-    // Dados da ficha
-    'tabProcessos.Processo':   ficha.processo    || '',
-    'tabProcessos.Requerente': ficha.requerente  || '',
-    'tabProcessos.Requerido':  ficha.requerido   || '',
-    'tabProcessos.Procurador': ficha.procurador  || '',
-    'tabProcessos.Ementa':     ficha.ementa      || '',
-    'tabVotos.Voto':           ficha.voto        || '',
-    'tabVotos.Resultado':      ficha.resultado   || '',
-    'tabFichas.Relator':       ficha.relator     || '',
-    'tabFichas.Membros':       membrosParaDocumento, // ← modificado
-    'tabFichas.Expediente':    ficha.expediente || '', 
-    'tabSessoes.DataSessao':   dataExtenso,
-    'tabSessoes.Presidente':   document.getElementById('inputPresidente').value  || '',
-    'tabSessoes.Secretário':   secretarioNome,
-    'tabSessoes.Órgão':        orgao,
-    'Placar.Relator':          String(ficha.votosRelator  || '0'),
-    'Placar.Divergência1':     '0',
-    'Placar.Divergência2':     '0',
-    'Placar.Total':            String(ficha.totalVotantes || '0'),
+      'tabProcessos.Processo':   ficha.processo    || '',
+      'tabProcessos.Requerente': ficha.requerente  || '',
+      'tabProcessos.Requerido':  ficha.requerido   || '',
+      'tabProcessos.Procurador': ficha.procurador  || '',
+      'tabProcessos.Ementa':     ficha.ementa      || '',
+      'tabVotos.Voto':           ficha.voto        || '',
+      'tabVotos.Resultado':      ficha.resultado   || '',
+      'tabFichas.Relator':       ficha.relator     || '',
+      'tabFichas.Membros':       membrosParaDocumento,
+      'tabFichas.Expediente':    ficha.expediente || '', 
+      'tabSessoes.DataSessao':   dataExtenso,
+      'tabSessoes.Presidente':   document.getElementById('inputPresidente').value  || '',
+      'tabSessoes.Secretário':   secretarioNome,
+      'tabSessoes.Órgão':        orgao,
+      'Placar.Relator':          String(ficha.votosRelator  || '0'),
+      'Placar.Divergência1':     '0',
+      'Placar.Divergência2':     '0',
+      'Placar.Total':            String(ficha.totalVotantes || '0'),
 
-    // Rótulos flexionados
-    'Requerente': requerenteLabel,
-    'Requerido':  requeridoLabel,
-    'Relator':    relatorLabel,
-    'relator':    relatorLabelMin,
-    'secretário': secretarioLabel,
-    'o':          artigoRelator,
-    'do':         preposicaoSecretario
-  };
+      // Rótulos flexionados
+      'Requerente': requerenteLabel,
+      'Requerido':  requeridoLabel,
+      'Relator':    relatorLabel,
+      'relator':    relatorLabelMin,
+      'secretário': secretarioLabel,
+      'o':          artigoRelator,
+      'do':         preposicaoSecretario
+    };
 
     PL_JS_toast('Gerando documento...', 'ok');
     google.script.run
@@ -905,6 +921,26 @@
       google.script.run
         .withSuccessHandler(msg => PL_JS_toast(msg, "ok"))
         .PainelLateral_gerarDocumentoAta(PL_estado.sessaoAtualId);
+  }
+
+  /**
+   * Envia a lista atual de participantes do painel para o documento.
+   */
+  function PL_JS_enviarMembrosParaDocumento() {
+    const listaFormatada = PL_estado.membros.join('; ');
+    // Não bloqueia quando lista está vazia; envia string vazia para limpar o documento
+    google.script.run
+      .withSuccessHandler(function() {
+        if (listaFormatada === '') {
+          PL_JS_toast('Lista de membros limpa no documento.', 'ok');
+        } else {
+          PL_JS_toast('Lista enviada para o documento.', 'ok');
+        }
+      })
+      .withFailureHandler(function(err) {
+        PL_JS_toast('Erro: ' + err.message, 'erro');
+      })
+      .atualizarMembrosNoDocumento(listaFormatada);
   }
   
 </script>

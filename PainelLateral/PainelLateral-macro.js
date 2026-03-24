@@ -400,6 +400,11 @@ function PainelLateral_obterVotosDaSessao(sessaoId) {
  * @param {string|number} fichaId
  * @param {Array<string>} listaMembros
  */
+/**
+ * Salva a lista de membros participantes diretamente na ficha selecionada.
+ * @param {string|number} fichaId
+ * @param {Array<string>} listaMembros
+ */
 function PainelLateral_salvarMembrosNaFicha(fichaId, listaMembros) {
   try {
     const ss = PainelLateral_getPlanilha();
@@ -425,8 +430,8 @@ function PainelLateral_salvarMembrosNaFicha(fichaId, listaMembros) {
 
     if (linhaFicha === -1) throw new Error('Ficha não encontrada para salvar membros.');
 
-    // Salva concatenado por vírgula conforme solicitado
-    const listaTexto = listaMembros.join(', ');
+    // Salva concatenado por ponto e vírgula (padronizado)
+    const listaTexto = listaMembros.join(';');
     sheetFichas.getRange(linhaFicha, iMembros).setValue(listaTexto);
 
     return { sucesso: true, listaFormatada: listaTexto };
@@ -533,7 +538,7 @@ function atualizarMembrosNoDocumento(novaLista) {
           if (match) {
             const startPos = match.index + match[0].length; // posição após os dois pontos
             const endPos = texto.length;
-            
+
             // Captura a formatação do primeiro caractere do texto antigo (se existir)
             let fontFamily = null;
             let fontSize = null;
@@ -552,28 +557,33 @@ function atualizarMembrosNoDocumento(novaLista) {
               textElement.deleteText(oldStart, endPos - 1);
             }
             
-            // Insere o novo texto
+            // Insere o novo texto (pode ser vazio)
             const newStart = startPos;
-            textElement.insertText(newStart, novaLista);
-            const newEnd = newStart + novaLista.length - 1;
-            
-            // Aplica a formatação capturada (ou usa fallback do caractere anterior)
-            if (fontFamily) textElement.setFontFamily(newStart, newEnd, fontFamily);
-            if (fontSize) textElement.setFontSize(newStart, newEnd, fontSize);
-            if (isBold !== null) textElement.setBold(newStart, newEnd, isBold);
-            if (isItalic !== null) textElement.setItalic(newStart, newEnd, isItalic);
-            
-            // Se não havia texto antigo (primeira vez), copia do caractere anterior
-            if (fontFamily === null && newStart > 0) {
-              const prevChar = newStart - 1;
-              const fallbackFont = textElement.getFontFamily(prevChar);
-              const fallbackSize = textElement.getFontSize(prevChar);
-              const fallbackBold = textElement.isBold(prevChar);
-              const fallbackItalic = textElement.isItalic(prevChar);
-              if (fallbackFont) textElement.setFontFamily(newStart, newEnd, fallbackFont);
-              if (fallbackSize) textElement.setFontSize(newStart, newEnd, fallbackSize);
-              if (fallbackBold !== null) textElement.setBold(newStart, newEnd, fallbackBold);
-              if (fallbackItalic !== null) textElement.setItalic(newStart, newEnd, fallbackItalic);
+            if (novaLista !== '') {
+              textElement.insertText(newStart, novaLista);
+              const newEnd = newStart + novaLista.length - 1;
+              
+              // Aplica a formatação capturada (ou usa fallback do caractere anterior)
+              if (fontFamily) textElement.setFontFamily(newStart, newEnd, fontFamily);
+              if (fontSize) textElement.setFontSize(newStart, newEnd, fontSize);
+              if (isBold !== null) textElement.setBold(newStart, newEnd, isBold);
+              if (isItalic !== null) textElement.setItalic(newStart, newEnd, isItalic);
+              
+              // Se não havia texto antigo (primeira vez), copia do caractere anterior
+              if (fontFamily === null && newStart > 0) {
+                const prevChar = newStart - 1;
+                const fallbackFont = textElement.getFontFamily(prevChar);
+                const fallbackSize = textElement.getFontSize(prevChar);
+                const fallbackBold = textElement.isBold(prevChar);
+                const fallbackItalic = textElement.isItalic(prevChar);
+                if (fallbackFont) textElement.setFontFamily(newStart, newEnd, fallbackFont);
+                if (fallbackSize) textElement.setFontSize(newStart, newEnd, fallbackSize);
+                if (fallbackBold !== null) textElement.setBold(newStart, newEnd, fallbackBold);
+                if (fallbackItalic !== null) textElement.setItalic(newStart, newEnd, fallbackItalic);
+              }
+            } else {
+              // Se a nova lista é vazia, não inserimos nada; o campo permanece vazio
+              // A formatação já foi preservada com a remoção
             }
             
             encontrado = true;
@@ -638,26 +648,57 @@ function extrairVotoDoDocumento() {
 }
 
 /**
- * Salva a ficha atual: atualiza Expediente em tabFichas e Voto em tabVotos.
- * @param {string|number} fichaId
+ * Extrai a lista de membros do documento ativo.
+ * @returns {string} Texto após "Membros participantes:" ou "com participação dos demais membros:".
  */
-function PainelLateral_salvarFicha(fichaId) {
+function extrairMembrosDoDocumento() {
+  const body = DocumentApp.getActiveDocument().getBody();
+  const padroes = [
+    /Membros participantes:\s*/i,
+    /com participação dos demais membros:\s*/i
+  ];
+  for (let i = 0; i < body.getNumChildren(); i++) {
+    const child = body.getChild(i);
+    if (child.getType() === DocumentApp.ElementType.PARAGRAPH) {
+      const texto = child.asParagraph().getText();
+      for (let padrao of padroes) {
+        const match = padrao.exec(texto);
+        if (match) {
+          const startPos = match.index + match[0].length;
+          return texto.substring(startPos).trim();
+        }
+      }
+    }
+  }
+  return '';
+}
+
+/**
+ * Salva a ficha atual: Expediente, Voto e Membros, e consolida os membros da sessão.
+ * @param {string|number} fichaId
+ * @returns {Object} Status da operação.
+ */
+function PainelLateral_salvarFichaCompleta(fichaId) {
   try {
-    const ss = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
-    
-    // Extrair dados do documento
+    // Extrai dados do documento
     const expediente = extrairExpedienteDoDocumento();
     const voto = extrairVotoDoDocumento();
-    
-    // Atualizar tabFichas (campo Expediente)
+    const membrosTexto = extrairMembrosDoDocumento();
+
+    const ss = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
     const sheetFichas = ss.getSheetByName('tabFichas');
     if (!sheetFichas) throw new Error('Aba tabFichas não encontrada.');
     const mapaF = getMapaColunas(sheetFichas);
     const dadosF = sheetFichas.getDataRange().getValues();
     const iFId = (mapaF['id'] || 1) - 1;
     const iFExpediente = mapaF['expediente'];
+    const iFMembros = mapaF['membros'];
+    const iFSessao = mapaF['idsessao'] || 2;
+
     if (!iFExpediente) throw new Error('Coluna "expediente" não encontrada em tabFichas.');
-    
+    if (!iFMembros) throw new Error('Coluna "membros" não encontrada em tabFichas.');
+
+    // Localiza a linha da ficha
     let linhaFicha = -1;
     for (let i = 1; i < dadosF.length; i++) {
       if (dadosF[i][iFId] == fichaId) {
@@ -666,13 +707,12 @@ function PainelLateral_salvarFicha(fichaId) {
       }
     }
     if (linhaFicha === -1) throw new Error('Ficha ID ' + fichaId + ' não encontrada.');
+
+    // Atualiza Expediente e Membros
     sheetFichas.getRange(linhaFicha, iFExpediente).setValue(expediente);
-    
-    // Obter o relator da ficha (para o voto)
-    const iFRelator = mapaF['relator'] || 5;
-    const relator = dadosF[linhaFicha - 1][iFRelator - 1] || '';
-    
-    // Atualizar tabVotos
+    sheetFichas.getRange(linhaFicha, iFMembros).setValue(membrosTexto);
+
+    // Salva o Voto em tabVotos
     const sheetVotos = ss.getSheetByName('tabVotos');
     if (!sheetVotos) throw new Error('Aba tabVotos não encontrada.');
     const mapaV = getMapaColunas(sheetVotos);
@@ -681,8 +721,10 @@ function PainelLateral_salvarFicha(fichaId) {
     const iVVoto = mapaV['voto'] || 6;
     const iVTipoVoto = mapaV['tipovoto'];
     const iVRelator = mapaV['relator'];
-    
-    // Procurar se já existe um voto para esta ficha
+
+    const iFRelator = mapaF['relator'] || 5;
+    const relator = dadosF[linhaFicha - 1][iFRelator - 1] || '';
+
     let linhaVoto = -1;
     for (let i = 1; i < dadosV.length; i++) {
       if (dadosV[i][iVIdFicha - 1] == fichaId) {
@@ -690,15 +732,11 @@ function PainelLateral_salvarFicha(fichaId) {
         break;
       }
     }
-    
     if (linhaVoto !== -1) {
-      // Atualiza existente
       sheetVotos.getRange(linhaVoto, iVVoto).setValue(voto);
       if (iVTipoVoto) sheetVotos.getRange(linhaVoto, iVTipoVoto).setValue('Voto do relator');
       if (iVRelator) sheetVotos.getRange(linhaVoto, iVRelator).setValue(relator);
     } else {
-      // Criar novo registro
-      // Determinar o número máximo de colunas
       const maxCol = Math.max(...Object.values(mapaV));
       const novaLinha = new Array(maxCol).fill('');
       novaLinha[iVIdFicha - 1] = fichaId;
@@ -707,14 +745,90 @@ function PainelLateral_salvarFicha(fichaId) {
       if (iVRelator) novaLinha[iVRelator - 1] = relator;
       sheetVotos.appendRow(novaLinha);
     }
-    
-    return { 
-      sucesso: true, 
+
+    // Consolida os membros da sessão
+    const sessaoId = dadosF[linhaFicha - 1][iFSessao - 1];
+    const consolidacao = PainelLateral_consolidarMembrosSessao(sessaoId);
+    let membrosConsolidados = [];
+    if (consolidacao.sucesso) {
+      membrosConsolidados = consolidacao.membros ? consolidacao.membros.split(';') : [];
+    } else {
+      Logger.log('Consolidação falhou: ' + consolidacao.erro);
+    }
+
+    return {
+      sucesso: true,
       fichaId: fichaId,
       expediente: expediente,
-      voto: voto
+      voto: voto,
+      membros: membrosTexto,
+      membrosConsolidados: membrosConsolidados
     };
   } catch (err) {
+    return { sucesso: false, erro: err.message };
+  }
+}
+
+/**
+ * Consolida os membros de todas as fichas de uma sessão,
+ * atualizando o campo [Membros] da sessão em tabSessoes.
+ * @param {string|number} sessaoId
+ * @returns {Object} status da operação
+ */
+function PainelLateral_consolidarMembrosSessao(sessaoId) {
+  try {
+    const ss = PainelLateral_getPlanilha();
+    const idBusca = isNaN(sessaoId) ? String(sessaoId) : Number(sessaoId);
+
+    // 1. Obter todas as fichas da sessão
+    const sheetFichas = ss.getSheetByName('tabFichas');
+    if (!sheetFichas) throw new Error('Aba tabFichas não encontrada.');
+    const mapaF = getMapaColunas(sheetFichas);
+    const dadosF = sheetFichas.getDataRange().getValues();
+
+    const iFSessao = (mapaF['idsessao'] || 2) - 1;
+    const iFMembros = mapaF['membros']; // coluna membros (se existir)
+    if (!iFMembros) throw new Error('Coluna "membros" não encontrada em tabFichas.');
+
+    const membrosSet = new Set();
+    for (let i = 1; i < dadosF.length; i++) {
+      const linha = dadosF[i];
+      if (linha[iFSessao] == idBusca) {
+        const membrosStr = linha[iFMembros - 1] || '';
+        if (membrosStr.trim() !== '') {
+          // Divide por ponto e vírgula ou vírgula (compatibilidade)
+          const nomes = membrosStr.split(/[;,]/).map(n => n.trim()).filter(n => n !== '');
+          nomes.forEach(n => membrosSet.add(n));
+        }
+      }
+    }
+
+    // 2. Ordenar alfabeticamente
+    const membrosConsolidados = Array.from(membrosSet).sort((a, b) => a.localeCompare(b));
+    const membrosTexto = membrosConsolidados.join(';'); // sem espaços
+
+    // 3. Atualizar a sessão em tabSessoes
+    const sheetSessoes = ss.getSheetByName('tabSessoes');
+    if (!sheetSessoes) throw new Error('Aba tabSessoes não encontrada.');
+    const mapaS = getMapaColunas(sheetSessoes);
+    const iSId = (mapaS['id'] || mapaS['id sessão'] || 1) - 1;
+    const iSMembros = mapaS['membros'];
+    if (!iSMembros) throw new Error('Coluna "membros" não encontrada em tabSessoes.');
+
+    const dadosS = sheetSessoes.getDataRange().getValues();
+    let linhaSessao = -1;
+    for (let i = 1; i < dadosS.length; i++) {
+      if (dadosS[i][iSId] == idBusca) {
+        linhaSessao = i + 1;
+        break;
+      }
+    }
+    if (linhaSessao === -1) throw new Error('Sessão não encontrada para atualização.');
+
+    sheetSessoes.getRange(linhaSessao, iSMembros).setValue(membrosTexto);
+    return { sucesso: true, membros: membrosTexto };
+  } catch (err) {
+    Logger.log('Erro ao consolidar membros da sessão: ' + err.message);
     return { sucesso: false, erro: err.message };
   }
 }
