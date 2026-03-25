@@ -670,6 +670,10 @@
       .PainelLateral_processarApuracao(PL_estado.sessaoAtualId);
   }
 
+  function PL_JS_abrirExpediente() {
+    google.script.run.modalExpediente_abrir();
+  }
+
   // ================================================================
   // UTILITÁRIOS DE UI
   // ================================================================
@@ -737,10 +741,12 @@
 
     // ========== CARREGAR MEMBROS DA FICHA ==========
     if (ficha.membros && ficha.membros.trim() !== '') {
+      // Divide por ponto e vírgula ou vírgula (compatibilidade)
       const membrosDaFicha = ficha.membros.split(/[;,]/).map(s => s.trim()).filter(s => s !== '');
       PL_estado.membros = membrosDaFicha;
     } else {
-      PL_estado.membros = [];   // vazio
+      // Se a ficha não tem membros próprios, mantém a lista da última ficha
+      // Não faz nada (PL_estado.membros permanece inalterado)
     }
 
     // Filtra (exclui relator, presidente, secretário), ordena e renderiza – sem persistir ainda
