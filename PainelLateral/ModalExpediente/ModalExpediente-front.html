@@ -471,6 +471,7 @@ body {
   from { opacity: 0; transform: translateY(-6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
 </style>
 </head>
 
@@ -512,6 +513,14 @@ body {
         <label for="exp_membro_vistas">Para quem foi dado vista?</label>
       </div>
     </div>
+
+    <div class="exp-checkbox">
+      <label>
+        <input type="checkbox" id="exp_checkbox_desagravo">
+        <span>O caso envolve pedido de desagravo público?</span>
+      </label>
+    </div>
+
   </div><!-- /expPainelSelecao -->
 
   <!-- ─── PAINEL EDITAR ───────────────────────────────────────── -->
@@ -939,32 +948,36 @@ function exp_flexionar(textoBase, relatorNome, vistasNome, divergenteNome) {
 // INSERIR NO DOCUMENTO
 // ════════════════════════════════════════════════════════════════════════
 function exp_inserirExpediente() {
-  if (EXP.indexSel === -1) return exp_toast('Selecione um expediente.', true);
+  if (EXP.indexSel === -1) return exp_toast('Selecione um modelo.', true);
   
   const cfg = EXP.configs[EXP.indexSel];
-  const chave = cfg.chave.toLowerCase();
-  const isVistas = chave.indexOf('vista') !== -1;
-  const isDivergente = chave.indexOf('divergente') !== -1;
-  const valorCampo = document.getElementById('exp_membro_vistas').value.trim();
-
-  // Validações específicas
-  if ((isVistas || isDivergente) && !valorCampo) {
-    const msg = isVistas ? 'Informe para quem foi dado vista.' : 'Informe o nome do relator do voto divergente.';
-    return exp_toast(msg, true);
+  const isVista = cfg.chave.toLowerCase().includes('vista');
+  const vistasNome = document.getElementById('exp_membro_vistas').value.trim();
+  
+  if (isVista && !vistasNome) {
+    return exp_toast('Informe para quem foi dado vista.', true);
   }
 
-  if (!EXP.relatorDocumento) {
-    exp_toast('Relator não identificado no documento. A flexão usará gênero masculino.', false);
+  // 1. Obter o texto base já flexionado
+  let textoFinal = exp_flexionar(cfg.valor, EXP.relatorDocumento || '', vistasNome);
+
+  // 2. Verificar checkbox de desagravo
+  const chkDesagravo = document.getElementById('exp_checkbox_desagravo');
+  if (chkDesagravo && chkDesagravo.checked) {
+    // Buscar o texto da configuração "Expediente desagravo público"
+    const desagravoConfig = EXP.configs.find(c => c.chave === 'Expediente desagravo público');
+    if (desagravoConfig && desagravoConfig.valor) {
+      // Flexiona o texto do desagravo (pode conter placeholders como {{órgão}})
+      const textoDesagravo = exp_flexionar(desagravoConfig.valor, EXP.relatorDocumento || '', '');
+      // Adiciona uma quebra de linha e o texto
+      textoFinal += '\n' + textoDesagravo;
+    } else {
+      // Se a configuração não existir, apenas avisa (opcional)
+      console.warn('Configuração "Expediente desagravo público" não encontrada.');
+    }
   }
 
-  // Chama a flexão com os parâmetros adequados
-  const textoFinal = exp_flexionar(
-    cfg.valor,
-    EXP.relatorDocumento,
-    isVistas ? valorCampo : null,      // vistasNome
-    isDivergente ? valorCampo : null   // divergenteNome
-  );
-
+  // 3. Enviar para o servidor
   exp_setBtnCarregando('Inserindo...');
   google.script.run
     .withSuccessHandler(exp_aposInsercao)
