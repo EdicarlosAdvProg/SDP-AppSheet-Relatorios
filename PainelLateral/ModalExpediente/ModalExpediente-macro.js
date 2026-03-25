@@ -15,10 +15,16 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Abre o modal de expediente predefinido.
+ * Abre o modal de expediente predefinido, recebendo os dados da ficha atual.
+ * @param {string} fichaId  ID da ficha selecionada no painel lateral.
+ * @param {string} sessaoId ID da sessão selecionada.
+ * @param {string} orgao    Órgão da sessão (ex: "Pleno", "1ª Turma", etc).
  */
-function modalExpediente_abrir() {
+function modalExpediente_abrir(fichaId, sessaoId, orgao) {
   const template = HtmlService.createTemplateFromFile('ModalExpediente-front');
+  template.fichaId = fichaId || '';
+  template.sessaoId = sessaoId || '';
+  template.orgao = orgao || '';
   const html = template.evaluate()
     .setTitle('Expedientes Predefinidos')
     .setWidth(500)

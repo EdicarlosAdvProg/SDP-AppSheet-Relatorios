@@ -874,3 +874,14 @@ function PainelLateral_salvarDocumentoComoPDF(contexto) {
     throw new Error(err.message);
   }
 }
+
+/**
+ * Exibe um alerta com os IDs da ficha e da sessão.
+ * @param {string|number} fichaId
+ * @param {string|number} sessaoId
+ */
+function PainelLateral_mostrarModalVotantes(fichaId, sessaoId) {
+  const ui = DocumentApp.getUi();
+  const mensagem = `ID da Ficha: ${fichaId}\nID da Sessão: ${sessaoId}`;
+  ui.alert('Modificar Votantes', mensagem, ui.ButtonSet.OK);
+}

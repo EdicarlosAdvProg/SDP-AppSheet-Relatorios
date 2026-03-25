@@ -599,7 +599,11 @@ var EXP = {
   membros: [],
   mapaGeneros: {},
   relatorDocumento: '',
-  indexSel: -1
+  indexSel: -1,
+  fichaId: <?!= JSON.stringify(fichaId) ?>,
+  sessaoId: <?!= JSON.stringify(sessaoId) ?>,
+  orgao: <?!= JSON.stringify(orgao) ?>,
+  tipoCampo: null   // 'vistas', 'divergente' ou null
 };
 
 // ════════════════════════════════════════════════════════════════════════
@@ -707,18 +711,32 @@ function exp_selecionarCard(idx) {
     el.classList.toggle('active', parseInt(el.getAttribute('data-idx')) === idx);
   });
 
-  // Exibe campo de vistas se necessário
+  // --- Identifica o tipo do expediente ---
   var chave = (cfg.chave || '').toLowerCase();
   var isVistas = chave.indexOf('vista') !== -1;
-  var campoV = document.getElementById('expCampoVistas');
+  var isDivergente = chave.indexOf('divergente') !== -1;
+  var campoTexto = document.getElementById('expCampoVistas');
+  var labelCampo = document.querySelector('#expCampoVistas label');
+  var inputCampo = document.getElementById('exp_membro_vistas');
 
-  if (isVistas) {
-    campoV.classList.remove('hidden');
-    M.updateTextFields();
+  if (isVistas || isDivergente) {
+    campoTexto.classList.remove('hidden');
+    // Define o label conforme o tipo
+    if (isVistas) {
+      labelCampo.textContent = 'Para quem foi dado vista?';
+      inputCampo.placeholder = 'Digite o nome do membro...';
+    } else if (isDivergente) {
+      labelCampo.textContent = 'Informe o nome do relator do voto divergente';
+      inputCampo.placeholder = 'Nome do relator divergente...';
+    }
+    M.updateTextFields(); // força atualização do label flutuante
   } else {
-    campoV.classList.add('hidden');
-    document.getElementById('exp_membro_vistas').value = '';
+    campoTexto.classList.add('hidden');
+    inputCampo.value = '';
   }
+
+  // Armazena o tipo no estado global para uso na inserção
+  EXP.tipoCampo = isDivergente ? 'divergente' : (isVistas ? 'vistas' : null);
 
   // Mostra o botão Editar (se estiver no estado seleção)
   if (EXP.estado === 'selecao') {
@@ -846,7 +864,7 @@ function exp_salvarEdicao() {
 }
 
 // ════════════════════════════════════════════════════════════════════════
-// SALVAR NOVO
+// SALVAR
 // ════════════════════════════════════════════════════════════════════════
 function exp_salvarNovo() {
   var sufixo = document.getElementById('exp_chave_sufixo').value.trim();
@@ -884,19 +902,36 @@ function exp_salvarNovo() {
 // ════════════════════════════════════════════════════════════════════════
 // FLEXÃO DE PLACEHOLDERS
 // ════════════════════════════════════════════════════════════════════════
-function exp_flexionar(textoBase, relatorNome, vistasNome) {
+function exp_flexionar(textoBase, relatorNome, vistasNome, divergenteNome) {
   let resultado = textoBase;
   const generoRelator = EXP.mapaGeneros[relatorNome] || 'Masculino';
   
+  // Substituições do relator (já existentes)
   resultado = resultado.replace(/\{\{relator\}\}/g, generoRelator === 'Feminino' ? 'relatora' : 'relator');
   resultado = resultado.replace(/\{\{do\}\}/g, generoRelator === 'Feminino' ? 'da' : 'do');
   
+  // Substituições do campo "vistas"
   if (vistasNome) {
     const generoVistas = EXP.mapaGeneros[vistasNome] || 'Masculino';
     resultado = resultado.replace(/\{\{tabMembros\.Nome\}\}/g, vistasNome);
     resultado = resultado.replace(/\{\{ao\}\}/g, generoVistas === 'Feminino' ? 'à' : 'ao');
     resultado = resultado.replace(/\{\{Dr\.\}\}/g, generoVistas === 'Feminino' ? 'Dra.' : 'Dr.');
   }
+  
+  // Substituições do campo "divergente"
+  if (divergenteNome) {
+    const generoDivergente = EXP.mapaGeneros[divergenteNome] || 'Masculino';
+    // {{pelo}} – flexiona conforme gênero
+    resultado = resultado.replace(/\{\{pelo\}\}/g, generoDivergente === 'Feminino' ? 'pela' : 'pelo');
+    // {{Dr.}} – flexiona conforme gênero
+    resultado = resultado.replace(/\{\{Dr\.\}\}/g, generoDivergente === 'Feminino' ? 'Dra.' : 'Dr.');
+    // {{tabMembros.Nome}} – substitui pelo nome do divergente
+    resultado = resultado.replace(/\{\{tabMembros\.Nome\}\}/g, divergenteNome);
+  }
+
+  // Substitui o placeholder do órgão
+  resultado = resultado.replace(/\{\{órgão\}\}/g, EXP.orgao || '');
+
   return resultado;
 }
 
@@ -907,18 +942,28 @@ function exp_inserirExpediente() {
   if (EXP.indexSel === -1) return exp_toast('Selecione um expediente.', true);
   
   const cfg = EXP.configs[EXP.indexSel];
-  const vistasNome = document.getElementById('exp_membro_vistas').value.trim();
-  const isVistas = cfg.chave.toLowerCase().includes('vista');
-  
-  if (isVistas && !vistasNome) {
-    return exp_toast('Informe para quem foi dado vista.', true);
+  const chave = cfg.chave.toLowerCase();
+  const isVistas = chave.indexOf('vista') !== -1;
+  const isDivergente = chave.indexOf('divergente') !== -1;
+  const valorCampo = document.getElementById('exp_membro_vistas').value.trim();
+
+  // Validações específicas
+  if ((isVistas || isDivergente) && !valorCampo) {
+    const msg = isVistas ? 'Informe para quem foi dado vista.' : 'Informe o nome do relator do voto divergente.';
+    return exp_toast(msg, true);
   }
 
   if (!EXP.relatorDocumento) {
     exp_toast('Relator não identificado no documento. A flexão usará gênero masculino.', false);
   }
 
-  const textoFinal = exp_flexionar(cfg.valor, EXP.relatorDocumento, isVistas ? vistasNome : null);
+  // Chama a flexão com os parâmetros adequados
+  const textoFinal = exp_flexionar(
+    cfg.valor,
+    EXP.relatorDocumento,
+    isVistas ? valorCampo : null,      // vistasNome
+    isDivergente ? valorCampo : null   // divergenteNome
+  );
 
   exp_setBtnCarregando('Inserindo...');
   google.script.run

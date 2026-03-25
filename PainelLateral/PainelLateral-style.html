@@ -303,8 +303,8 @@
 
   /* =====================================================
      6. CARDS DE FICHA (COLLECTION)
-     Cards com borda lateral vermelha e efeito de 
-     elevação com destaque em azul ao passar o mouse.
+     Cards com borda lateral vermelha e efeito visual 
+     aprimorado: hover com zoom + contorno azul.
    ===================================================== */
   .fichas-lista {
     display: flex;
@@ -324,19 +324,30 @@
     border-bottom: 1px solid transparent;
     
     box-shadow: 0 1px 4px rgba(0,0,0,0.07);
-    /* Transição suave para o efeito de levante e cor da borda */
-    transition: box-shadow 0.25s ease, transform 0.25s ease, border-color 0.25s ease;
+    /* Transição suave para todos os efeitos */
+    transition: all 0.25s ease;
     position: relative;
   }
 
+  /* Efeito ao passar o mouse */
   .ficha-card:hover {
-    /* Movimento para cima e sombra mais profunda */
-    transform: translateY(-4px);
+    transform: translateY(-2px) scale(1.02);
     box-shadow: 0 8px 20px rgba(0,0,0,0.15);
-    /* Aplica a borda azul nas laterais restantes */
+    /* Contorno azul em todas as laterais */
     border-right-color: var(--oab-azul);
     border-top-color: var(--oab-azul);
     border-bottom-color: var(--oab-azul);
+    border-left-color: var(--oab-azul); /* adiciona também na esquerda? O hover sobrepõe a cor original */
+  }
+
+  /* Card selecionado: mantém o mesmo efeito do hover e borda esquerda azul escuro */
+  .ficha-card-selecionada {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    border-right-color: var(--oab-azul);
+    border-top-color: var(--oab-azul);
+    border-bottom-color: var(--oab-azul);
+    border-left: 4px solid var(--oab-azul-escuro) !important; /* garante a cor da borda esquerda */
   }
 
   .ficha-nivel1 {
@@ -381,11 +392,6 @@
 
   .ficha-valor { 
     color: #263238; 
-  }
-
-  .ficha-card-selecionada {
-    border-left: 4px solid var(--oab-azul-escuro) !important;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
   }
 
   /* =====================================================

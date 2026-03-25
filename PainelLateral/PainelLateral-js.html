@@ -613,9 +613,19 @@
    * Abre o modal ou interface para modificar os votantes da ficha atual
    */
   function PL_JS_modificarVotantes() {
-    // Exemplo: Chamar uma função no servidor ou abrir um modal
-    console.log("Ação: Modificar Votantes");
-    google.script.run.PainelLateral_abrirModalVotantes(PL_estado.sessaoAtualId);
+    const fichaId = PL_estado.ultimaFichaId;
+    const sessaoId = PL_estado.sessaoAtualId;
+
+    if (!fichaId || !sessaoId) {
+      PL_JS_toast('Nenhuma ficha selecionada.', 'erro');
+      return;
+    }
+
+    google.script.run
+      .withFailureHandler(function(err) {
+        PL_JS_toast('Erro: ' + err.message, 'erro');
+      })
+      .PainelLateral_mostrarModalVotantes(fichaId, sessaoId);
   }
 
   /**
@@ -671,7 +681,22 @@
   }
 
   function PL_JS_abrirExpediente() {
-    google.script.run.modalExpediente_abrir();
+    // Captura os dados da ficha e sessão atuais
+    const fichaId = PL_estado.ultimaFichaId;
+    const sessaoId = PL_estado.sessaoAtualId;
+    let orgao = '';
+
+    // Tenta obter o órgão do cache
+    if (sessaoId && PL_estado.pautasCarregadas[sessaoId]) {
+      orgao = PL_estado.pautasCarregadas[sessaoId].sessao.orgao || '';
+    }
+    // Fallback: busca no elemento HTML
+    if (!orgao) {
+      orgao = document.getElementById('displayOrgao')?.textContent || '';
+    }
+
+    // Chama o backend passando os três parâmetros
+    google.script.run.modalExpediente_abrir(fichaId, sessaoId, orgao);
   }
 
   // ================================================================
