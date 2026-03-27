@@ -286,6 +286,7 @@ function formSessoes_buscarFichas(idSessao) {
       const dadosP = sheetProc.getDataRange().getValues();
       dadosP.shift();
       const chaveLocal = _encontrarChave(mapaP, ['local da ocorrência', 'local']);
+      const chaveProcurador = _encontrarChave(mapaP, ['procurador', 'procurador(a)', 'advogado']);
       dadosP.forEach(p => {
         const pid = String(p[mapaP['id'] - 1] || '').trim();
         if (pid) {
@@ -294,10 +295,12 @@ function formSessoes_buscarFichas(idSessao) {
             requerente: String(p[mapaP['requerente'] - 1] || ''),
             requerido: String(p[mapaP['requerido'] - 1] || ''),
             status: mapaP['status'] ? String(p[mapaP['status'] - 1] || '') : '',
-            local: chaveLocal ? String(p[mapaP[chaveLocal] - 1] || '') : ''
+            local: chaveLocal ? String(p[mapaP[chaveLocal] - 1] || '') : '',
+            procurador: chaveProcurador ? String(p[mapaP[chaveProcurador] - 1] || '') : ''   // <-- novo
           };
         }
       });
+
     }
 
     const chaveRelator = _encontrarChave(mapaF, ['relator']);

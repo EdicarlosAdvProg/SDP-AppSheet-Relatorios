@@ -121,18 +121,12 @@
             <span class="sess-metrica-label">Processo${s.totalFichas !== 1 ? 's' : ''}<br>pautado${s.totalFichas !== 1 ? 's' : ''}</span>
           </div>
           <div class="sess-col-actions">
-            <i class="material-icons act-btn c-magic tooltipped"
-              data-tooltip="Pincel Mágico"
-              onclick="formSessoes_abrirPincelMagico('${idSafe}', '${_esc(s.orgao)}')">auto_fix_high</i>
-            <i class="material-icons act-btn c-fichas tooltipped"
-              data-tooltip="Fichas de Votação"
-              onclick="formSessoes_abrirFichas('${idSafe}')">ballot</i>
-            <i class="material-icons act-btn c-edit tooltipped"
-              data-tooltip="Editar Sessão"
-              onclick="formSessoes_abrirEditar('${idSafe}')">edit</i>
-            <i class="material-icons act-btn c-del tooltipped"
-              data-tooltip="Excluir Sessão"
-              onclick="formSessoes_confirmarExclusao('${idSafe}', '${_esc(s.datasessao)}')">delete</i>
+            <i class="material-icons act-btn c-pauta tooltipped" data-tooltip="Criar Pauta" onclick="formSessoes_gerarPauta('${idSafe}')">assignment</i>
+            <i class="material-icons act-btn c-ata tooltipped" data-tooltip="Criar Ata (em breve)" onclick="formSessoes_emBreve('Criar Ata')">description</i>
+            <i class="material-icons act-btn c-magic tooltipped" data-tooltip="Pincel Mágico" onclick="formSessoes_abrirPincelMagico('${idSafe}', '${_esc(s.orgao)}')">auto_fix_high</i>
+            <i class="material-icons act-btn c-fichas tooltipped" data-tooltip="Fichas de Votação" onclick="formSessoes_abrirFichas('${idSafe}')">ballot</i>
+            <i class="material-icons act-btn c-edit tooltipped" data-tooltip="Editar Sessão" onclick="formSessoes_abrirEditar('${idSafe}')">edit</i>
+            <i class="material-icons act-btn c-del tooltipped" data-tooltip="Excluir Sessão" onclick="formSessoes_confirmarExclusao('${idSafe}', '${_esc(s.datasessao)}')">delete</i>
           </div>
         </div>
       `;
@@ -1166,6 +1160,74 @@
       html: `<i class="material-icons left" style="line-height:inherit">construction</i>${funcionalidade} em desenvolvimento...`,
       classes: 'amber darken-4'
     });
+  }
+
+  function formSessoes_gerarPauta(idSessao) {
+    const sessao = baseSessoes.find(s => s.id === idSessao);
+    if (!sessao) {
+      M.toast({ html: 'Sessão não encontrada.', classes: 'red' });
+      return;
+    }
+
+    // Se as fichas já estão em cache e correspondem à sessão, usa; senão, busca
+    if (fichasDaSessao && fichasDaSessao.length > 0 && fichasDaSessao[0]?.idsessao === idSessao) {
+      _exibirPauta(sessao, fichasDaSessao);
+    } else {
+      M.toast({ html: 'Carregando processos da sessão...', classes: 'blue' });
+      google.script.run
+        .withSuccessHandler(function (res) {
+          if (res.sucesso) {
+            fichasDaSessao = res.fichas;
+            _exibirPauta(sessao, fichasDaSessao);
+          } else {
+            M.toast({ html: 'Erro ao carregar fichas: ' + res.erro, classes: 'red' });
+          }
+        })
+        .withFailureHandler(err => M.toast({ html: 'Falha na comunicação: ' + err.message, classes: 'red' }))
+        .formSessoes_buscarFichas(idSessao);
+    }
+  }
+
+  function _exibirPauta(sessao, fichas) {
+    const fichasOrdenadas = [...fichas].sort((a,b) => (a.ordem || 0) - (b.ordem || 0));
+
+    // Procurador: prioriza o campo da sessão, senão usa o procurador do primeiro processo
+    let procuradorExibido = sessao.procuradores || '';
+    if (!procuradorExibido && fichasOrdenadas.length > 0) {
+      procuradorExibido = fichasOrdenadas[0].proc?.procurador || 'Não informado';
+    }
+
+    // Formatação do órgão
+    let orgao = sessao.orgao || 'Órgão Deliberativo';
+    if (orgao === 'Órgão Deliberativo do SDP') orgao = 'Órgão Deliberativo';
+
+    // Monta o texto
+    let texto = `PAUTA DE JULGAMENTO - OAB/GO\n${orgao} - Sistema de Defesa das Prerrogativas\n\n`;
+    texto += `Data: ${sessao.datasessao || 'Data não informada'}\n`;
+    if (sessao.local) texto += `Local: ${sessao.local}\n`;
+    texto += `==================================================\n\n`;
+
+    fichasOrdenadas.forEach((f, idx) => {
+      const numero = f.proc.numero || 'S/N';
+      const relator = f.relator || 'Não informado';
+      texto += `${idx+1}º - Processo: ${numero}\n`;
+      texto += `Procurador: ${procuradorExibido}\n`;
+      texto += `Relator: ${relator}\n\n`;
+    });
+
+    texto += `==================================================\n`;
+    texto += `Total de processos: ${fichasOrdenadas.length}`;
+
+    document.getElementById('pautaTexto').value = texto;
+    _abrirModal('modalPauta');
+  }
+
+  function formSessoes_copiarPauta() {
+    const textarea = document.getElementById('pautaTexto');
+    textarea.select();
+    textarea.setSelectionRange(0, 99999);
+    document.execCommand('copy');
+    M.toast({ html: 'Texto copiado para a área de transferência!', classes: 'green' });
   }
 
   // ============================================================

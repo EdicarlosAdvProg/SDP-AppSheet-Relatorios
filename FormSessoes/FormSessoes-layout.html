@@ -46,20 +46,6 @@
       <ul>
         <li>
           <a class="btn-floating btn-oab-red tooltipped btn-hover-zoom"
-             data-position="left" data-tooltip="Criar Pauta (em breve)"
-             onclick="formSessoes_emBreve('Criação de Pauta')">
-            <i class="material-icons">assignment</i>
-          </a>
-        </li>
-        <li>
-          <a class="btn-floating btn-oab-red tooltipped btn-hover-zoom"
-             data-position="left" data-tooltip="Criar Ata (em breve)"
-             onclick="formSessoes_emBreve('Geração de Ata')">
-            <i class="material-icons">description</i>
-          </a>
-        </li>
-        <li>
-          <a class="btn-floating btn-oab-red tooltipped btn-hover-zoom"
              data-position="left" data-tooltip="Nova Sessão"
              onclick="formSessoes_abrirNova()">
             <i class="material-icons">add</i>
@@ -323,6 +309,20 @@
       <button class="modal-close waves-effect waves-grey btn-flat grey-text text-darken-1" style="margin-right: 10px;">Cancelar</button>
       <button id="sessBtnSalvar" class="waves-effect waves-light btn btn-salvar-modal" onclick="formSessoes_salvar()">
         <i class="material-icons left">save</i>Salvar
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL: PAUTA -->
+  <div id="modalPauta" class="modal modal-pauta">
+    <div class="modal-content">
+      <h5><i class="material-icons left">assignment</i>Pauta de Julgamento</h5>
+      <textarea id="pautaTexto" style="width:100%; height:400px; font-family: monospace; font-size: 0.9rem; border: 1px solid #ddd; padding: 10px;"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-close waves-effect waves-grey btn-flat">Fechar</button>
+      <button class="waves-effect waves-light btn btn-oab-blue" onclick="formSessoes_copiarPauta()">
+        <i class="material-icons left">content_copy</i>Copiar
       </button>
     </div>
   </div>
