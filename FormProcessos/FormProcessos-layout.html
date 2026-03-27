@@ -145,13 +145,81 @@
             <label for="proc_f_Provas">Provas (links ou descrição)</label>
           </div>
         </div>
+
+        <div id="secaoIA" style="display: none; margin-top: 30px; border: 1px solid #d1e3ff; padding: 20px; border-radius: 12px; background: #f8fbff; box-shadow: inset 0 0 10px rgba(0,68,128,0.05);">
+          
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
+            <div style="display: flex; align-items: center;">
+              <i class="material-icons" style="color: #004480; margin-right: 10px;">auto_fix_high</i>
+              <span style="font-weight: 800; color: #004480; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.5px;">Assistente Digital Gemini</span>
+            </div>
+            <div style="display: flex; align-items: center; background: white; padding: 4px 12px; border-radius: 20px; border: 1px solid #e0e0e0;">
+              <span style="font-size: 0.7rem; font-weight: 700; background: linear-gradient(45deg, #4285F4, #9b72cb); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Google AI</span>
+            </div>
+          </div>
+
+          <div style="background: #ffffff; padding: 12px; border-radius: 8px; border-left: 4px solid #004480; margin-bottom: 20px;">
+            <p style="font-size: 0.85rem; color: #333; margin: 0; line-height: 1.4;">
+              <strong>Instruções:</strong> Copie o texto integral da <b>Petição do Requerente</b> ou da <b>Portaria de Abertura</b> (caso o requerimento tenha sido aberto de ofício) e cole no campo abaixo.
+            </p>
+            <p style="font-size: 0.8rem; color: #666; margin-top: 5px;">
+              O Gemini irá analisar os fatos para extrair automaticamente o requerido, a cidade, a ementa e o resumo jurídico.
+            </p>
+          </div>
+
+          <div class="input-field" style="margin-top: 0;">
+            <textarea id="ia_input_peticao" class="materialize-textarea" style="background: white; border-radius: 4px; padding: 15px !important; min-height: 150px; border: 1px solid #cfd8dc;"></textarea>
+            <label for="ia_input_peticao">Cole aqui o texto da Petição ou Portaria</label>
+          </div>
+
+          <div style="text-align: right; margin-top: 15px;">
+            <button type="button" id="btnIAExtrair" class="btn waves-effect waves-light" style="background: #004480; border-radius: 6px;" onclick="ia_processarPeticao()">
+              <i class="material-icons left">psychology</i>Iniciar Extração Inteligente
+            </button>
+          </div>
+        </div>
+      </div> <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+        <button class="btn-flat waves-effect waves-blue" style="color: #004480; font-weight: bold;" onclick="ia_togglePainel()">
+          <i class="material-icons left">auto_fix_high</i>Pincel Mágico
+        </button>
+        <div>
+          <button class="modal-close waves-effect waves-grey btn-flat" style="margin-right: 10px;">Cancelar</button>
+          <button id="procBtnSalvar" class="btn waves-effect waves-light btn-oab-confirm" onclick="formProcessos_salvar()">
+            <i class="material-icons left">save</i>Salvar
+          </button>
+        </div>
+      </div>
+      
       </form>
     </div>
-    <div class="modal-footer">
-      <button class="modal-close waves-effect waves-grey btn btn-oab" style="margin-right: 10px;">Cancelar</button>
-      <button id="procBtnSalvar" class="btn waves-effect waves-light btn-oab-confirm" onclick="formProcessos_salvar()">
-        <i class="material-icons left">save</i>Salvar
+
+    <div id="secaoIA" style="display: none; margin-top: 20px; border: 1px dashed #004480; padding: 15px; border-radius: 8px; background: #f0f7ff;">
+      <div style="display: flex; align-items: center; margin-bottom: 10px;">
+        <i class="material-icons" style="color: #004480; margin-right: 10px;">auto_fix_high</i>
+        <span style="font-weight: 700; color: #004480; text-transform: uppercase; font-size: 0.8rem;">Assistente de IA - Extração de Dados</span>
+      </div>
+      <p style="font-size: 0.8rem; color: #555; margin-bottom: 15px;">
+        Cole abaixo o texto da petição inicial ou relato dos fatos. A IA extrairá automaticamente o Requerido, Cidade, Ementa e Resumo.
+      </p>
+      <div class="input-field">
+        <textarea id="ia_input_peticao" class="materialize-textarea" style="background: white; border-radius: 4px; padding: 10px !important; min-height: 120px;"></textarea>
+        <label for="ia_input_peticao">Cole a petição aqui...</label>
+      </div>
+      <button type="button" id="btnIAExtrair" class="btn-small waves-effect waves-light" style="background: #004480;" onclick="ia_processarPeticao()">
+        <i class="material-icons left">analytics</i>Extrair Dados agora
       </button>
+    </div>
+
+    <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+      <button class="btn-flat waves-effect waves-blue" style="color: #004480; font-weight: bold;" onclick="ia_togglePainel()">
+        <i class="material-icons left">auto_fix_high</i>Pincel Mágico
+      </button>
+      <div>
+        <button class="modal-close waves-effect waves-grey btn-flat" style="margin-right: 10px;">Cancelar</button>
+        <button id="procBtnSalvar" class="btn waves-effect waves-light btn-oab-confirm" onclick="formProcessos_salvar()">
+          <i class="material-icons left">save</i>Salvar
+        </button>
+      </div>
     </div>
   </div>
 

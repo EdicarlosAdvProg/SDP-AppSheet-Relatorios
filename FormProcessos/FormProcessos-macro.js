@@ -702,3 +702,98 @@ function _registrarHistorico(ss, idProcesso, tipo, descricao, dataISO) {
 
   sheetHist.appendRow(linha);
 }
+
+/**
+ * Busca o prompt na tabPrompts e envia para o Gemini com extração robusta
+ */
+function ia_processarPeticaoBackEnd(textoPeticao) {
+  try {
+    const ss = SpreadsheetApp.openById(PLANILHA_DADOS_ID);
+    const sheetPrompts = ss.getSheetByName("tabPrompts");
+    const mapa = getMapaColunas(sheetPrompts);
+    const dados = sheetPrompts.getDataRange().getValues();
+    
+    let promptBase = "";
+    for (let i = 1; i < dados.length; i++) {
+      if (dados[i][mapa["descrição"] - 1] === "Extrair informações primárias") {
+        promptBase = dados[i][mapa["prompt"] - 1];
+        break;
+      }
+    }
+
+    if (!promptBase) throw new Error("Prompt não encontrado na tabPrompts.");
+
+    const apiKey = PropertiesService.getScriptProperties().getProperty('GEMINI_KEY');
+    const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=" + apiKey;
+
+    const payload = {
+      "contents": [{
+        "parts": [{ "text": promptBase + "\n\nTEXTO PARA ANÁLISE:\n" + textoPeticao }]
+      }],
+      "generationConfig": {
+        "temperature": 0.1,
+        "responseMimeType": "application/json"
+      }
+    };
+
+    const opcoesFetch = {
+      "method": "post",
+      "contentType": "application/json",
+      "payload": JSON.stringify(payload),
+      "muteHttpExceptions": true
+    };
+
+    // Retry com backoff: tenta até 3 vezes com espera crescente
+    const MAX_TENTATIVAS = 3;
+    const ESPERAS_MS = [3000, 7000, 15000];
+    let json = null;
+
+    for (let tentativa = 0; tentativa < MAX_TENTATIVAS; tentativa++) {
+      const response = UrlFetchApp.fetch(url, opcoesFetch);
+      json = JSON.parse(response.getContentText());
+
+      if (!json.error) break;
+
+      const ehSobrecarga = json.error.code === 503 ||
+                           (json.error.message || "").toLowerCase().includes("high demand") ||
+                           (json.error.message || "").toLowerCase().includes("overloaded");
+
+      if (!ehSobrecarga) {
+        throw new Error("API Gemini: " + json.error.message);
+      }
+
+      if (tentativa < MAX_TENTATIVAS - 1) {
+        Logger.log(`Tentativa ${tentativa + 1} falhou por sobrecarga. Aguardando ${ESPERAS_MS[tentativa] / 1000}s...`);
+        Utilities.sleep(ESPERAS_MS[tentativa]);
+      }
+    }
+
+    if (!json || json.error) {
+      throw new Error("A API do Gemini está sobrecarregada. Tente novamente em alguns instantes.");
+    }
+
+    if (!json.candidates || json.candidates.length === 0) throw new Error("Nenhuma resposta da IA.");
+
+    const candidato = json.candidates[0];
+
+    let textoBruto = "";
+    if (candidato.content && candidato.content.parts) {
+      textoBruto = candidato.content.parts
+        .filter(p => p.text)  // apenas verifica se text existe — não descarta pelo thoughtSignature
+        .map(p => p.text)
+        .join(" ")
+        .trim();
+    }
+
+    if (!textoBruto) {
+      Logger.log("Debug Resposta Vazia: " + JSON.stringify(candidato));
+      throw new Error("A IA processou, mas não devolveu texto legível.");
+    }
+
+    return textoBruto;
+
+  } catch (e) {
+    Logger.log("Erro no Processamento IA: " + e.message);
+    throw new Error(e.message);
+  }
+}

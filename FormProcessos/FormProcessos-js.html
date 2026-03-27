@@ -872,6 +872,108 @@ function abrirEditar(id) {
   }
 
   // ============================================================
+  // IA - GEMINI
+  // ============================================================
+
+  /**
+   * Alterna a visibilidade do painel de IA e ajusta o posicionamento
+   */
+  function ia_togglePainel() {
+    const painel = document.getElementById('secaoIA');
+    const modalContent = document.querySelector('#modalProcessoCad .modal-content');
+    
+    if (painel.style.display === 'none' || painel.style.display === '') {
+      painel.style.display = 'block';
+      
+      // Aguarda o render e rola para baixo
+      setTimeout(() => {
+        modalContent.scrollTo({
+          top: modalContent.scrollHeight,
+          behavior: 'smooth'
+        });
+        document.getElementById('ia_input_peticao').focus();
+      }, 150);
+    } else {
+      painel.style.display = 'none';
+    }
+  }
+
+  /**
+   * Envia texto para extração e preenche os campos do formulário
+   */
+  function ia_processarPeticao() {
+    const texto = document.getElementById('ia_input_peticao').value;
+    if (!texto || texto.length < 30) {
+      return M.toast({html: 'Por favor, cole o texto da petição ou portaria.', classes: 'orange'});
+    }
+
+    const btn = document.getElementById('btnIAExtrair');
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="material-icons left">hourglass_empty</i>Processando...';
+
+    google.script.run
+      .withSuccessHandler(function(resRaw) {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+        
+        try {
+          // Localiza o objeto JSON dentro da resposta (blindagem contra Markdown ou Thoughts)
+          const i = resRaw.indexOf('{');
+          const f = resRaw.lastIndexOf('}');
+          if (i === -1 || f === -1) throw new Error("JSON não localizado.");
+          
+          const dados = JSON.parse(resRaw.substring(i, f + 1));
+          
+          // 1. Requerido (Preenche se vazio)
+          const campoReq = document.getElementById('proc_f_Requerido');
+          if (!campoReq.value.trim() && dados.requerido) {
+            campoReq.value = formatarNomeCompleto(dados.requerido);
+          }
+
+          // 2. Ementa e Resumo
+          if (dados.ementa) document.getElementById('proc_f_Ementa').value = dados.ementa;
+          if (dados.resumo) document.getElementById('proc_f_Resumo').value = dados.resumo;
+
+          // 3. Cidade e Procurador (Integração com o Autocomplete)
+          if (dados.cidade && dados.cidade.toLowerCase() !== "não identificado") {
+            const campoLocal = document.getElementById('proc_f_Local');
+            campoLocal.value = dados.cidade.toUpperCase();
+            
+            // Busca o procurador no mapa global carregado no início
+            const procResponsavel = mapaCidadesProcuradores[campoLocal.value];
+            if (procResponsavel) {
+              document.getElementById('proc_f_Procurador').value = procResponsavel;
+            }
+          }
+
+          // 4. Atualização Visual
+          M.updateTextFields();
+          ['proc_f_Requerido', 'proc_f_Ementa', 'proc_f_Resumo'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) M.textareaAutoResize(el);
+          });
+          
+          M.toast({html: 'Dados extraídos com sucesso!', classes: 'green'});
+          
+          // Fecha o painel e volta ao topo
+          ia_togglePainel();
+          document.querySelector('#modalProcessoCad .modal-content').scrollTo({top: 0, behavior: 'smooth'});
+
+        } catch (e) {
+          console.error(e);
+          M.toast({html: 'Erro ao interpretar dados da IA.', classes: 'red'});
+        }
+      })
+      .withFailureHandler(function(err) {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+        M.toast({html: 'Erro: ' + err.message, classes: 'red'});
+      })
+      .ia_processarPeticaoBackEnd(texto);
+  }
+
+  // ============================================================
   // UTILITÁRIOS
   // ============================================================
 
@@ -958,4 +1060,5 @@ function abrirEditar(id) {
 
     return nomeFormatado;
   }
-</script> 
+
+</script>
