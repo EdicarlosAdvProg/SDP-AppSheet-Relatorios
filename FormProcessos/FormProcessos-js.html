@@ -151,13 +151,23 @@
           </span>`
         : (p.status ? `<span class="status-chip s-vazio">${p.status}</span>` : '');
 
-      // 2. NOVA ETIQUETA: Pílula de Pauta (Aparece apenas se p.dataPauta existir)
-      // Usando o azul escuro padrão do projeto (#002f5d)
-      const pautaHTML = p.dataPauta 
-        ? `<span class="pauta-pill" style="background-color: #002f5d; color: white; padding: 2px 10px; border-radius: 50px; font-size: 0.65rem; font-weight: 700; margin-left: 8px; display: inline-flex; align-items: center; gap: 4px; vertical-align: middle; text-transform: uppercase;">
-            <i class="material-icons" style="font-size:12px">event</i>Pautado para ${p.dataPauta}
-          </span>` 
-        : '';
+      // 2. ETIQUETA: Pílula de Pauta (apenas se a data for hoje ou futura)
+      let pautaHTML = '';
+      if (p.dataPauta) {
+        // Converte "dd/MM/yyyy" para objeto Date
+        const partes = p.dataPauta.split('/');
+        const dataSessao = new Date(partes[2], partes[1] - 1, partes[0]);
+
+        // Zera o horário de hoje para comparar apenas a data
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
+
+        if (dataSessao >= hoje) {
+          pautaHTML = `<span class="pauta-pill" style="background-color: #002f5d; color: white; padding: 2px 10px; border-radius: 50px; font-size: 0.65rem; font-weight: 700; margin-left: 8px; display: inline-flex; align-items: center; gap: 4px; vertical-align: middle; text-transform: uppercase;">
+              <i class="material-icons" style="font-size:12px">event</i>Pautado para ${p.dataPauta}
+            </span>`;
+        }
+      }
 
       // 3. Ícones e Tooltips de Status
       const isConcl  = p.status === 'Concluso';
