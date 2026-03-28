@@ -325,7 +325,7 @@
    * Clicar no mesmo card fechado → expande. Clicar no expandido → fecha.
    */
   function formSessoes_abrirFichas(idSessao) {
-    const panel    = document.getElementById('sessExpansionPanel');
+    const panel = document.getElementById('sessExpansionPanel');
     const novoCard = document.querySelector(`.collection-item-sessao[data-sessao-id="${idSessao}"]`);
     const cardAtivo = document.querySelector('.collection-item-sessao.expandido');
     const listWrapper = document.querySelector('.list-wrapper');
@@ -343,11 +343,11 @@
     }
 
     // Configura o estado global
-    sessaoAtualId    = idSessao;
-    fichaAtualId     = '';
+    sessaoAtualId = idSessao;
+    fichaAtualId = '';
     fichaAtualIdProc = '';
-    pdfSelecionado   = null;
-    fichasDaSessao   = [];
+    pdfSelecionado = null;
+    fichasDaSessao = [];
 
     // Reseta a área de fichas e votos
     _fichasPainelVazio();
@@ -381,24 +381,21 @@
     document.body.classList.add('fichas-abertas');
     document.body.style.overflow = 'hidden';
 
-    // ── Cálculo de altura dinâmica ──────────────────────────────────────
-    // Mede a altura disponível da janela descontando a barra de busca sticky
-    const searchBar = document.querySelector('.search-header-container');
-    const searchH   = searchBar ? searchBar.offsetHeight : 0;
-    const margemInferior = 16; // respiro mínimo abaixo do card
-    const alturaDisponivel = window.innerHeight - searchH - margemInferior;
-    novoCard.style.height = alturaDisponivel + 'px';
+    // Oculta a barra de pesquisa e rola para o topo imediatamente (sem animação)
+    const searchHeader = document.querySelector('.search-header-container');
+    if (searchHeader) searchHeader.style.display = 'none';
+    window.scrollTo({ top: 0 });
 
-    // ── Posiciona o card totalmente visível ─────────────────────────────
-    // Após aplicar a altura, desloca o scroll para que o card fique
-    // logo abaixo da barra de busca, sem cortes.
+    // Mede a posição real do card APÓS scroll e header oculto,
+    // para que a altura cubra exatamente o espaço restante da janela
     requestAnimationFrame(() => {
-      const cardTop = novoCard.getBoundingClientRect().top + window.pageYOffset;
-      const alvoScroll = cardTop - searchH - 8; // 8px de folga acima
-      window.scrollTo({ top: alvoScroll, behavior: 'smooth' });
+      const cardTop = novoCard.getBoundingClientRect().top;
+      const margemInferior = 20; // respiro na borda inferior
+      const alturaDisponivel = window.innerHeight - cardTop - margemInferior;
+      novoCard.style.height = Math.max(alturaDisponivel, 300) + 'px';
     });
 
-    // ── Bloqueia o scroll da lista externa ──────────────────────────────
+    // Bloqueia o scroll da lista externa (garantia extra)
     if (listWrapper) listWrapper.classList.add('scroll-bloqueado');
 
     // Carrega a lista de fichas do servidor
@@ -441,16 +438,21 @@
     document.body.appendChild(panel);
     panel.style.display = 'none';
 
+    // Restaura a barra de pesquisa
+    const searchHeader = document.querySelector('.search-header-container');
+    if (searchHeader) searchHeader.style.display = '';
+
     // Libera o scroll e restaura o FAB
     const listWrapper = document.querySelector('.list-wrapper');
     if (listWrapper) listWrapper.classList.remove('scroll-bloqueado');
     document.body.classList.remove('fichas-abertas');
     document.body.style.overflow = '';
 
-    fichaAtualId     = '';
+    // Limpa estados
+    fichaAtualId = '';
     fichaAtualIdProc = '';
-    fichasDaSessao   = [];
-    sessaoAtualId    = '';
+    fichasDaSessao = [];
+    sessaoAtualId = '';
     fichaSelecionadaOriginal = null;
     _fichasPainelVazio();
     formSessoes_fecharNovoVoto();
