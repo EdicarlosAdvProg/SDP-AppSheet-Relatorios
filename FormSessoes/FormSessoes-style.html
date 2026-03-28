@@ -191,12 +191,17 @@
   .collection-item-sessao.expandido .sess-participantes { display: none; }
   .collection-item-sessao.expandido .sess-col-metricas { display: none; }
 
-  /* Botões brancos sobre fundo azul — coluna mais larga, distribuídos na horizontal */
+  /* Botões brancos sobre fundo azul — coluna com 6 ícones lado a lado */
   .collection-item-sessao.expandido .sess-col-actions {
     border-left: 1px solid rgba(255,255,255,0.2);
     padding: 0 16px;
-    grid-template-columns: repeat(4, 36px); /* 4 ícones lado a lado */
-    grid-gap: 4px;
+    display: grid;
+    grid-template-columns: repeat(6, 36px); /* 6 ícones, cada com 36px */
+    gap: 8px; /* espaçamento entre ícones */
+    align-items: center;
+    justify-content: end; /* alinha à direita, mas pode ser center se preferir */
+    flex-shrink: 0; /* impede que a coluna encolha */
+    min-width: 280px; /* largura suficiente para 6 ícones + gaps + padding */
   }
   .collection-item-sessao.expandido .act-btn { color: rgba(255,255,255,0.75); }
   .collection-item-sessao.expandido .act-btn:hover { color: #fff; transform: scale(1.2); }
@@ -221,6 +226,10 @@
 
   /* Enquanto há um card expandido, bloqueia o scroll da lista externa */
   .list-wrapper.scroll-bloqueado {
+    overflow: hidden !important;
+  }
+
+  body.fichas-abertas {
     overflow: hidden !important;
   }
 

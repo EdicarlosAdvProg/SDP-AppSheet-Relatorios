@@ -38,27 +38,13 @@
       <div id="listaSessoes" class="collection" style="border: none;"></div>
     </div>
 
-    <!-- FAB principal -->
+    <!-- Botão flutuante para nova sessão -->
     <div class="fixed-action-btn">
-      <a class="btn-floating btn-large btn-oab-red">
-        <i class="large material-icons">menu</i>
+      <a class="btn-floating btn-large btn-oab-red tooltipped btn-hover-zoom"
+        data-position="left" data-tooltip="Nova Sessão"
+        onclick="formSessoes_abrirNova()">
+        <i class="large material-icons">add</i>
       </a>
-      <ul>
-        <li>
-          <a class="btn-floating btn-oab-red tooltipped btn-hover-zoom"
-             data-position="left" data-tooltip="Nova Sessão"
-             onclick="formSessoes_abrirNova()">
-            <i class="material-icons">add</i>
-          </a>
-        </li>
-        <li>
-          <a class="btn-floating btn-oab-red tooltipped btn-hover-zoom"
-             data-position="left" data-tooltip="Sincronizar lista"
-             onclick="formSessoes_carregar()">
-            <i class="material-icons">refresh</i>
-          </a>
-        </li>
-      </ul>
     </div>
 
   </div><!-- /main-container -->

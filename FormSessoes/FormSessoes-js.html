@@ -1205,7 +1205,7 @@
     let texto = `PAUTA DE JULGAMENTO - OAB/GO\n${orgao} - Sistema de Defesa das Prerrogativas\n\n`;
     texto += `Data: ${sessao.datasessao || 'Data não informada'}\n`;
     if (sessao.local) texto += `Local: ${sessao.local}\n`;
-    texto += `==================================================\n\n`;
+    texto += `=====================\n\n`;
 
     fichasOrdenadas.forEach((f, idx) => {
       const numero = f.proc.numero || 'S/N';
@@ -1215,7 +1215,7 @@
       texto += `Relator: ${relator}\n\n`;
     });
 
-    texto += `==================================================\n`;
+    texto += `=====================\n`;
     texto += `Total de processos: ${fichasOrdenadas.length}`;
 
     document.getElementById('pautaTexto').value = texto;
